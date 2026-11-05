@@ -1,0 +1,4 @@
+data/raw/
+*.rbxl.lock
+*.rbxlx.lock
+__pycache__/

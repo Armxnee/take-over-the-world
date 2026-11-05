@@ -1,0 +1,140 @@
+"""Real-world colours for every map cell (the "look" layer), from Natural Earth rasters
+(public domain): NE1_50M_SR_W (land cover + shaded relief) for land and OB_50M (shaded
+ocean bottom) for water, so forests, deserts, tundra and ice read like the real planet and
+the sea shows shallow shelves and deep basins.
+
+Output: src/shared/Maps/<Module>Look.luau = { pal = { hex... }, px = "<1 char per cell>" }
+(char = palette index in ALPHA). Run after build_maps.py: py -I tools/build_look.py [mapId ...]
+"""
+import math, re, sys
+import numpy as np
+from PIL import Image
+from scipy import ndimage
+
+sys.path.insert(0, "tools")
+Image.MAX_IMAGE_PIXELS = None
+ALPHA = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ-_"
+MODS = {"earth": "Earth", "northamerica": "NorthAmerica", "europe": "Europe", "africa": "Africa", "korea": "Korea"}
+LAND_COLS, SEA_COLS = 46, 18
+
+
+def miller(lat):
+    return 1.25 * math.log(math.tan(math.pi / 4 + 0.4 * math.radians(lat)))
+
+
+def inv_miller(y):
+    return math.degrees(2.5 * math.atan(math.exp(0.8 * y)) - 5 * math.pi / 8)
+
+
+def unrle(s, n):
+    out = np.zeros(n, np.int32)
+    i = 0
+    for v, ln in re.findall(r"(\d+):([0-9a-z]+),", s):
+        k = int(ln, 36)
+        out[i:i + k] = int(v)
+        i += k
+    return out
+
+
+print("loading rasters...")
+NE1 = np.asarray(Image.open("data/raw/NE1_50M_SR_W/NE1_50M_SR_W.tif").convert("RGB"), np.float32)
+OB = np.asarray(Image.open("data/raw/OB_50M/OB_50M.tif").convert("RGB"), np.float32)
+RH, RW = NE1.shape[:2]
+
+
+def sample(img, LON, LAT):
+    # average a 3x3 grid of samples inside each cell footprint
+    acc = np.zeros(LON.shape + (3,), np.float32)
+    for oy in (-1 / 3, 0, 1 / 3):
+        for ox in (-1 / 3, 0, 1 / 3):
+            lo = LON + ox * DLON
+            la = LAT + oy * DLAT
+            px = np.clip(((lo + 180) / 360 * RW).astype(int), 0, RW - 1)
+            py = np.clip(((90 - la) / 180 * RH).astype(int), 0, RH - 1)
+            acc += img[py, px]
+    return acc / 9
+
+
+def watery(c):
+    r, g, b = c[..., 0], c[..., 1], c[..., 2]
+    return (b > r + 3) & (b >= g - 6) & ((r + g + b) / 3 < 228)
+
+
+def fill_from_valid(cols, valid, region):
+    """cells in region that are not valid take the colour of the nearest valid cell"""
+    if not valid.any():
+        return cols
+    idx = ndimage.distance_transform_edt(~valid, return_distances=False, return_indices=True)
+    fixed = cols[idx[0], idx[1]]
+    bad = region & ~valid
+    cols[bad] = fixed[bad]
+    return cols
+
+
+def palette(colors, k):
+    img = Image.fromarray(colors.reshape(1, -1, 3).astype(np.uint8))
+    q = img.quantize(colors=k, method=Image.Quantize.MEDIANCUT)
+    pal = np.array(q.getpalette()[: k * 3], np.float32).reshape(-1, 3)
+    return pal
+
+
+def nearest(cols, pal):
+    d = ((cols[:, None, :] - pal[None, :, :]) ** 2).sum(-1)
+    return d.argmin(1)
+
+
+def build(mid):
+    global DLON, DLAT
+    mod = MODS[mid]
+    src = open(f"src/shared/Maps/{mod}.luau", encoding="utf-8").read()
+    W = int(re.search(r"w = (\d+)", src).group(1))
+    H = int(re.search(r"h = (\d+)", src).group(1))
+    lo0, lo1 = map(float, re.search(r"lon = \{ ([-\d.]+), ([-\d.]+) \}", src).groups())
+    la0, la1 = map(float, re.search(r"lat = \{ ([-\d.]+), ([-\d.]+) \}", src).groups())
+    terr = unrle(re.search(r'rle = "([^"]*)"', src).group(1), W * H).reshape(H, W)
+    YN, YS = miller(la1), miller(la0)
+    lons = lo0 + (np.arange(W) + 0.5) * (lo1 - lo0) / W
+    lats = np.array([inv_miller(YN - (y + 0.5) * (YN - YS) / H) for y in range(H)])
+    LON, LAT = np.meshgrid(lons, lats)
+    DLON = (lo1 - lo0) / W
+    DLAT = np.abs(np.gradient(lats))[:, None] * np.ones((1, W))
+
+    land = terr != 0
+    lc = sample(NE1, LON, LAT)
+    sc = sample(OB, LON, LAT)
+    lc = fill_from_valid(lc, land & ~watery(lc), land)
+    sc = fill_from_valid(sc, ~land & watery(sc), ~land)
+    # ice cells read as snow
+    ice = terr == 4
+    lc[ice] = lc[ice] * 0.3 + np.array([236, 242, 247]) * 0.7
+
+    # style: a touch brighter, gently saturated land; sea slightly deeper/cleaner
+    m = lc.mean(-1, keepdims=True)
+    lc = np.clip((lc - m) * 1.75 + (m - 128) * 1.12 + 124, 0, 255)
+    sm = sc.mean(-1, keepdims=True)
+    sc = np.clip((sc - sm) * 1.15 + (sm - 128) * 1.3 + 120, 0, 255)
+
+    # smooth single-cell noise (pixel art reads cleaner)
+    for c in (lc, sc):
+        for ch in range(3):
+            c[..., ch] = ndimage.median_filter(c[..., ch], size=2)
+
+    lp = palette(lc[land], LAND_COLS)
+    sp = palette(sc[~land], SEA_COLS) if (~land).any() else np.zeros((SEA_COLS, 3))
+    idx = np.zeros((H, W), np.int32)
+    idx[land] = nearest(lc[land], lp)
+    idx[~land] = nearest(sc[~land], sp) + LAND_COLS
+    pal = np.vstack([lp, sp]).astype(int)
+    hexes = ", ".join('"%02x%02x%02x"' % tuple(c) for c in pal)
+    px = "".join(ALPHA[v] for v in idx.flatten())
+    with open(f"src/shared/Maps/{mod}Look.luau", "w", encoding="utf-8") as fh:
+        fh.write("--!strict\n-- Generated by tools/build_look.py from Natural Earth rasters (public domain). Do not edit.\n")
+        fh.write(f"return {{ pal = {{ {hexes} }},\n\tpx = \"{px}\" }}\n")
+    prev = np.zeros((H, W, 3), np.uint8)
+    prev[...] = pal[idx]
+    Image.fromarray(prev).resize((W * 2, H * 2), Image.NEAREST).save(f"data/{mid}_look.png")
+    print(mid, W, H, "chars", len(px))
+
+
+for mid in (sys.argv[1:] or list(MODS)):
+    build(mid)
