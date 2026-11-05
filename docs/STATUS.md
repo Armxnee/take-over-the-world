@@ -302,3 +302,24 @@ An original real-time territory-conquest game for Roblox. RoWorld is the gamepla
 - Solo difficulty: `Config.Difficulty[d].Think` scales the AI nations' decision interval (`Bots.thinkMul`). It is passed through `ServerList.host` and the teleport data (`diff`).
 - HUD: the top status pill uses the RoWorld layout (clock block, World control with a 7 px amber bar, You % vs crown leader). The results screen has a gradient headline (VICTORY / DEFEAT / ELIMINATED / TIME UP) and four stat tiles.
 - Verified in Studio: title → solo panel → picker → quick play join → spawn → `win` → results. No script errors.
+
+## 2026-11-04: RoWorld interface port (batch 7, AGPL)
+- The user chose to make the game open source (AGPL-3.0) so RoWorld's UI could be copied verbatim. Source: https://github.com/Armxnee/take-over-the-world (public; `git push` after every change so the published source matches the game). LICENSE / NOTICE.md / README.md are in the repo root. `data/raw` is gitignored.
+- `src/airfront` → ReplicatedStorage.Airfront (a ModuleScript; RoWorld's Core/Data/Net/Assets). `src/client/RW/UI` holds RoWorld's UI unchanged except for marked edits. `tools/sync.lua` now handles `init.luau` (a folder becomes a ModuleScript).
+- Our adapters (src/client/RW):
+  - `Feed`: builds RoWorld's GameState from our State. Troops are ×10 because RoWorld shows tenths. Our kinds map to theirs: aa→S_ARTILLERY, missile→N_ATOM, nuke→N_HYDROGEN, bomber→N_AIRSTRIKE.
+  - `Session`: title/solo/public flow over the Menu remote. Intents become Cmd calls. Settings are saved server-side.
+  - `World`: shim over MapView.
+  - `AudioShim`: RoWorld's sounds are private to its experience, so its calls play our Audio.
+  - `OurRules`: our prices, placement and radii, via UIRules.hooks.
+  - `TopBar`: RoWorld Main's icon row.
+  - `Boot`: starts everything. Main.client.luau has `RW_ON = true`; our Hud/Menu/Wheel stay unused (Hud is hidden).
+- Server: Mine now carries `incoming` fronts; the Menu remote handles `settings_get` / `settings_set` (profile.settings, 4 KB cap) and `pause` (solo only).
+- Rebranded: wordmark "TAKE OVER THE WORLD!", a globe emblem, legal notices keep "© OpenFront and Contributors" and "RoWorld changes © Snick Co.", plus the source link. Arsenal/flag shop/starter/General buttons are hidden; the crate (Locker) and SHOP buttons open our Shop.
+- Verified in Studio: title, solo panel, map picker, solo start, spawn, expand, attacks panel, build (with cost growth), tooltips, coach tips, radial menu, alliance, leaderboard, game menu, victory screen, next round. No errors.
+- Open:
+  - Fighter patrol has no slot in RoWorld's bar (the bomber has one).
+  - There is no end-of-round map vote UI; the server picks among its 3 options.
+  - RoWorld's Locker/FlagShop are not wired to our shop backend.
+  - RoWorld's first-match tutorial is untested with our rules.
+  - The 2-client gate.
