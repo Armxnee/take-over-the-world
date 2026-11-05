@@ -27,6 +27,7 @@ export type Profile = {
 	matches: number,
 	receipts: { string }, -- last processed purchase ids (idempotent receipts)
 	rewardedRound: string?, -- last round id rewarded (retry-safe rewards)
+	settings: { [string]: { [string]: any } }, -- interface settings by section (RoWorld UI)
 }
 
 local profiles: { [Player]: Profile } = {}
@@ -42,6 +43,7 @@ local function fresh(): Profile
 		matches = 0,
 		receipts = {},
 		rewardedRound = nil,
+		settings = {},
 	}
 end
 
@@ -57,6 +59,7 @@ local function migrate(d: any): Profile
 	p.matches = tonumber(d.matches) or 0
 	p.receipts = typeof(d.receipts) == "table" and d.receipts or {}
 	p.rewardedRound = d.rewardedRound
+	p.settings = typeof(d.settings) == "table" and d.settings or {}
 	return p
 end
 

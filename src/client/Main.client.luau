@@ -16,6 +16,9 @@ local Shop = require(script.Parent.Shop)
 local Wheel = require(script.Parent.Wheel)
 local Audio = require(script.Parent.Audio)
 Audio.init()
+-- RoWorld's interface (AGPL, see NOTICE.md) drives the screens; our Hud / Menu stay unused
+local RW_ON = true
+local RW = require(script.Parent.RW.Boot)
 local GuiService = game:GetService("GuiService")
 
 local player = Players.LocalPlayer
@@ -44,6 +47,9 @@ local function phase(): string
 	return Remotes:GetAttribute("Phase") or "Lobby"
 end
 
+if RW_ON then
+	hudGui.Enabled = false
+end
 Tutorial.init(hudGui)
 Tutorial.call = call
 Tutorial.toast = Hud.toast
@@ -54,7 +60,9 @@ Menu.onShop = function()
 	Shop.open()
 end
 task.spawn(Shop.init)
-task.spawn(Wheel.init)
+if not RW_ON then
+	task.spawn(Wheel.init)
+end
 State.on("skin", function(id: number)
 	MapView.clearSkinCache()
 	MapView.redrawOwners(id, id)
@@ -76,7 +84,29 @@ end
 Menu.onClose = function()
 	hudGui.Enabled = true
 end
-task.spawn(Menu.init)
+if RW_ON then
+	local MenuRemote = Remotes:WaitForChild("Menu") :: RemoteFunction
+	local function menuCall(action: string, arg: any): (boolean, any)
+		local ok, a, b = pcall(MenuRemote.InvokeServer, MenuRemote, action, arg or {})
+		if not ok then
+			return false, "Network error"
+		end
+		return a, b
+	end
+	task.spawn(function()
+		local ui = RW.start(call, menuCall)
+		ui.external_shop = Shop.open
+	end)
+	-- phase attributes -> RoWorld phases
+	local function phaseSync()
+		RW.Feed.syncPhase(Remotes:GetAttribute("Phase") or "Lobby", Remotes:GetAttribute("PhaseEnds") or 0, Remotes:GetAttribute("RoundStart"))
+	end
+	Remotes:GetAttributeChangedSignal("Phase"):Connect(phaseSync)
+	Remotes:GetAttributeChangedSignal("PhaseEnds"):Connect(phaseSync)
+	Remotes:GetAttributeChangedSignal("RoundStart"):Connect(phaseSync)
+else
+	task.spawn(Menu.init)
+end
 
 ----------------------------------------------------------------------------
 -- snapshot / deltas
@@ -115,6 +145,9 @@ local function loadSnapshot(s: any)
 	MapView.allies = {}
 	applyDiplo()
 	clearSelection()
+	if RW_ON then
+		RW.snapshot()
+	end
 end
 
 local function resync()
@@ -151,12 +184,18 @@ Remotes:WaitForChild("Delta").OnClientEvent:Connect(function(b: buffer)
 			table.move(list, 1, #list, #pending + 1, pending)
 		else
 			MapView.cellsChanged(list)
+			if RW_ON then
+				RW.Feed.tilesChanged(list)
+			end
 		end
 	end
 end)
 Remotes:WaitForChild("Stats").OnClientEvent:Connect(function(b: buffer, seq: number)
 	if State.ready then
 		State.applyStats(b)
+		if RW_ON then
+			RW.Feed.stats()
+		end
 		-- a stats packet newer than our map means we missed deltas
 		if seq > State.seq + 2 and not loading then
 			resync()
@@ -167,6 +206,9 @@ Remotes:WaitForChild("Structures").OnClientEvent:Connect(function(rows)
 	if State.ready then
 		State.setStructures(rows)
 		MapView.syncStructures()
+		if RW_ON then
+			RW.Feed.syncStructures(true)
+		end
 		Hud.refreshTarget()
 	end
 end)
@@ -187,11 +229,17 @@ Remotes:WaitForChild("Diplomacy").OnClientEvent:Connect(function(rows)
 	if State.ready then
 		State.diplo = rows
 		applyDiplo()
+		if RW_ON then
+			RW.Feed.syncDiplomacy()
+		end
 	end
 end)
 Remotes:WaitForChild("Mine").OnClientEvent:Connect(function(m)
 	State.mine = m.fronts
 	State.income = m.income
+	if RW_ON then
+		RW.Feed.syncAttacks(m.fronts, m.incoming)
+	end
 end)
 Remotes:WaitForChild("Units").OnClientEvent:Connect(function(spawns, gones)
 	if State.ready then
@@ -210,12 +258,25 @@ Remotes:WaitForChild("Units").OnClientEvent:Connect(function(spawns, gones)
 			end
 		end
 		State.applyUnits(spawns, gones)
+		if RW_ON then
+			RW.Feed.syncUnits(true)
+		end
 	end
 end)
 Remotes:WaitForChild("Nations").OnClientEvent:Connect(function(list)
 	State.setNations(list)
+	if RW_ON then
+		RW.Feed.syncOwners(true)
+	end
 end)
 Remotes:WaitForChild("Feed").OnClientEvent:Connect(function(text, kind)
+	if RW_ON then
+		RW.Feed.message(text, kind)
+		if kind == "warn" then
+			Audio.play("alert")
+		end
+		return
+	end
 	if kind == "toast" then
 		Hud.toast(text)
 	elseif kind == "warn" then
@@ -246,6 +307,10 @@ Remotes:WaitForChild("Results").OnClientEvent:Connect(function(r)
 	Audio.play("coin")
 	world:SetAttribute("Winner", r.winner)
 	clearSelection()
+	if RW_ON then
+		RW.Feed.gameOver(r)
+		return
+	end
 	Hud.showResults(r)
 	if UserInputService:GetLastInputType().Name:match("^Gamepad") then
 		Hud.focusResults()
@@ -253,6 +318,9 @@ Remotes:WaitForChild("Results").OnClientEvent:Connect(function(r)
 end)
 player:GetAttributeChangedSignal("NationId"):Connect(function()
 	State.me = player:GetAttribute("NationId") or 0
+	if RW_ON then
+		RW.me(State.me)
+	end
 end)
 
 task.spawn(function()
@@ -518,8 +586,19 @@ function quickAttack(cell: number)
 	end
 end
 
+local function rwCell(p: Vector2): number?
+	return MapView.cellAt(p, false)
+end
+
 local function click(p: Vector2)
 	if not State.ready then
+		return
+	end
+	if RW_ON then
+		local c = rwCell(p)
+		if c and RW.world and RW.world.input_enabled then
+			RW.world.tile_clicked:Fire(c)
+		end
 		return
 	end
 	-- move order for a selected warship (raw cell, no land snap)
@@ -714,6 +793,13 @@ local function wheelAt(p: Vector2, pad: boolean?)
 	if not State.ready then
 		return
 	end
+	if RW_ON then
+		local c = rwCell(p)
+		if c and RW.world and RW.world.input_enabled then
+			RW.world.tile_context:Fire(c, p + MapView.frame().AbsolutePosition)
+		end
+		return
+	end
 	local cell = MapView.cellAt(p, true)
 	if not cell then
 		return
@@ -886,6 +972,9 @@ UserInputService.InputBegan:Connect(function(io, gpe)
 			return
 		end
 		local k = io.KeyCode
+		if RW_ON and k ~= KC.R and k ~= KC.T and k ~= KC.G and k ~= KC.Equals and k ~= KC.Minus then
+			return -- RoWorld's interface owns the other hotkeys
+		end
 		if k == KC.Q then
 			stepRatio(-Config.Combat.RatioStep)
 		elseif k == KC.E then
@@ -957,6 +1046,13 @@ UserInputService.InputChanged:Connect(function(io, gpe)
 	if t == UIT.MouseMovement then
 		local p = pos2(io)
 		hoverPos = p
+		if RW_ON and RW.world and State.ready then
+			local c = rwCell(p) or -1
+			if c ~= RW.lastHover then
+				RW.lastHover = c
+				RW.world.tile_hovered:Fire(c)
+			end
+		end
 		if down and not Hud.isSliderDragging() then
 			if not dragging and (p - down).Magnitude > 6 then
 				dragging = true
@@ -1086,6 +1182,9 @@ RunService.RenderStepped:Connect(function(dt)
 	end
 	MapView.flush(16)
 	MapView.updateUnits()
+	if RW_ON then
+		RW.Feed.frame()
+	end
 	-- touch long-press (0.45 s without moving) opens the wheel
 	if touchCount == 1 and down and not dragging and not longFired and os.clock() - pressAt > 0.45 and lastTouch then
 		longFired = true

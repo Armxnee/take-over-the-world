@@ -3,6 +3,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local HttpService = game:GetService("HttpService")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local MapGen = require(ReplicatedStorage.Shared.MapGen)
@@ -17,6 +18,7 @@ local Nukes = require(script.Parent.Nukes)
 local Air = require(script.Parent.Air)
 local ServerList = require(script.Parent.ServerList)
 local Shop = require(script.Parent.Shop)
+local PlayerData = require(script.Parent.PlayerData)
 
 local Match = {}
 Match.phase = "Lobby"
@@ -368,8 +370,19 @@ local function pushStats()
 			for _, att in n.attacks do
 				mine[#mine + 1] = { att.id, att.target, math.floor(att.troops) }
 			end
-			account(48 + #mine * 16, false)
-			R.Mine:FireClient(p, { fronts = mine, income = n.income })
+			-- fronts aimed at this player (RoWorld's attacks panel lists incoming wars too)
+			local incoming = {}
+			for _, o in Sim.nations do
+				if o.id ~= nid and o.alive then
+					for _, att in o.attacks do
+						if att.target == nid then
+							incoming[#incoming + 1] = { att.id, o.id, math.floor(att.troops) }
+						end
+					end
+				end
+			end
+			account(48 + (#mine + #incoming) * 16, false)
+			R.Mine:FireClient(p, { fronts = mine, incoming = incoming, income = n.income })
 		end
 	end
 end
@@ -837,6 +850,9 @@ function Match.init()
 	local function state()
 		return Match.mapId, Match.phase, maxHumans()
 	end
+	Players.PlayerRemoving:Connect(function()
+		Match.paused = false -- a paused solo match never stays frozen
+	end)
 	menu.OnServerInvoke = function(p: Player, action: any, arg: any)
 		if typeof(action) ~= "string" or not allow(p) then
 			return false, "slow down"
@@ -844,7 +860,44 @@ function Match.init()
 		if typeof(arg) ~= "table" then
 			arg = {}
 		end
-		if action == "info" then
+		if action == "pause" then
+			-- solo only (a reserved solo server, one human): the game menu / help freeze the match
+			if not ServerList.solo or #Players:GetPlayers() ~= 1 then
+				Match.paused = false
+				return false, "Only solo matches pause"
+			end
+			Match.paused = arg.on == true and Match.phase == "Playing"
+			return true, if Match.paused then "paused" else "resumed"
+		elseif action == "settings_get" then
+			local prof = PlayerData.get(p)
+			if not prof then
+				return false, "loading"
+			end
+			local out = table.clone(prof.settings or {})
+			out.stats = { matches = prof.matches, wins = prof.wins }
+			return true, out
+		elseif action == "settings_set" then
+			-- one section of plain values; capped so a client can't bloat its profile
+			local prof = PlayerData.get(p)
+			local sec, vals = arg.section, arg.values
+			if not prof or typeof(sec) ~= "string" or #sec > 24 or sec == "stats" or typeof(vals) ~= "table" then
+				return false, "bad"
+			end
+			local ok, json = pcall(HttpService.JSONEncode, HttpService, vals)
+			if not ok or #json > 4000 then
+				return false, "too big"
+			end
+			prof.settings = prof.settings or {}
+			local n = 0
+			for _ in prof.settings do
+				n += 1
+			end
+			if prof.settings[sec] == nil and n >= 8 then
+				return false, "too many"
+			end
+			prof.settings[sec] = HttpService:JSONDecode(json)
+			return true, "ok"
+		elseif action == "info" then
 			return true, { here = ServerList.selfInfo(state), servers = ServerList.list() }
 		elseif action == "solo" then
 			local d = if typeof(arg.diff) == "number" and Config.Difficulty[arg.diff] then arg.diff else 1

@@ -273,7 +273,7 @@ function Menu.close()
 end
 
 function Menu.isOpen(): boolean
-	return gui.Enabled
+	return gui ~= nil and gui.Enabled
 end
 
 local function result(ok: boolean, msg: any)

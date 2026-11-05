@@ -6,7 +6,9 @@ plays it can get its full source code from this repository (AGPL-3.0 section 13)
 
 ## Third-party code and art
 - **RoWorld** (Roblox port of Airfront / OpenFront): the user-interface framework, screens, UI art and icons
-  in `src/client/RW/` and `src/shared/RW/` are copied from RoWorld and modified to fit this game.
+  in `src/client/RW/UI/`, `src/client/RW/Audio/`, `src/client/RW/Map/`, `src/client/RW/TopBar.luau` and
+  `src/airfront/` (ReplicatedStorage.Airfront) are copied from RoWorld and modified to fit this game.
+  The adapters in `src/client/RW/` (Boot, Session, Feed, World, AudioShim, OurRules) are this game's own.
   © OpenFront and Contributors, licensed under GNU AGPL v3.
 - **Music**: "Orchestral Ambients" by Rodrigo Flores, CC BY 4.0.
 - **Map data**: Natural Earth (public domain), used by `tools/build_maps.py` and `tools/build_look.py`.
