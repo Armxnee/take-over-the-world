@@ -323,3 +323,11 @@ An original real-time territory-conquest game for Roblox. RoWorld is the gamepla
   - RoWorld's Locker/FlagShop are not wired to our shop backend.
   - RoWorld's first-match tutorial is untested with our rules.
   - The 2-client gate.
+
+## 2026-11-06: batch 8 (open items from batch 7)
+- Fighter patrol slot: RoWorld's bar has a new Arsenal kind `fighter` after the bomber (UIRules, OurRules, Session `LAUNCH_OF`). Its glyph is our fighter sprite as a white mask (`tools/assets_out/fighter_icon.png`, rbxassetid://116041021374110, in ArsenalArt.ui). It fires in one click like a strike and can target your own or allied land. The radial menu offers it over your own land as well.
+- End-of-round map vote: the GameOver screen has a "VOTE FOR THE NEXT MAP" row. It shows the server's `results.vote` maps with live counts from the Vote remote (`Feed.state.vote_counts`), and your pick is shown in gold. A vote is sent as the intent `vote` → Cmd `vote`.
+- Fix: the RoWorld aim tooltip called `tonumber(world_call("aim_sams"))` while our World shim returned nothing, which errored on every strike or nuke hover. `World.aim_sams` now counts the hostile finished SAMs that cover the missile or nuke aim.
+- Verified in Studio: the fighter slot is lit with an airfield, it launches over your own land, the fighter flies, the vote row appears and counts, and the voted map (Africa) loaded for the next round. No script errors.
+- **Sync note:** Studio now blocks MCP `execute_luau` HTTP to 127.0.0.1 ("not in the Assistant HTTP allowlist"), so `tools/sync.lua` cannot run that way. This batch was applied with MCP `multi_edit` (the same diffs as on disk). For a full re-sync, run the sync loadstring from Studio's command bar.
+- Still open: RoWorld's Locker/FlagShop are not wired to our shop backend, the first-match tutorial is untested with our rules, and the 2-client gate.

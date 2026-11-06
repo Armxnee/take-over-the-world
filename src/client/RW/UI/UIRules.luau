@@ -42,8 +42,9 @@ UIRules.HOTKEYS = { "1", "2", "3", "4", "5", "6", "7", "8", "9", "0" }
 --- structures, munitions launched like a nuke (the last two from their own structure: strikes), and
 --- the Reinforcements call. A locked one is offered in the Arsenal instead of doing anything.
 UIRules.ARSENAL_BUILD = { "airfield", "artillery" }
-UIRules.ARSENAL_NUKES = { "airstrike" }
-UIRules.ARSENAL = { "airfield", "artillery", "airstrike" }
+-- (Take Over the World!: "fighter" = a fighter patrol from an airfield, a strike like the bomber)
+UIRules.ARSENAL_NUKES = { "airstrike", "fighter" }
+UIRules.ARSENAL = { "airfield", "artillery", "airstrike", "fighter" }
 
 UIRules.TITLES = {
 	city = "City",
@@ -62,6 +63,7 @@ UIRules.TITLES = {
 	mega = "Mega Nuke",
 	scatter = "Scattershot",
 	airstrike = "Bomber",
+	fighter = "Fighter Patrol",
 	slug = "Railgun Shot",
 	reinforce = "Reinforcements",
 }
@@ -82,6 +84,7 @@ UIRules.SHORT = {
 	mega = "Mega",
 	scatter = "Scatter",
 	airstrike = "Bomber",
+	fighter = "Fighter",
 	slug = "Slug",
 	reinforce = "Troops",
 }
@@ -102,6 +105,7 @@ UIRules.BLURBS = {
 	mega = "Twice an Atom Bomb's radius: four times the ground, gone.",
 	scatter = "An Atom Bomb with {scat_lo} to {scat_hi} warheads that come down around it.",
 	airstrike = "A bomber sortie from your airfield: hits enemy fronts or buildings.",
+	fighter = "A fighter patrol from your airfield: guards the spot and shoots down enemy planes.",
 	slug = "A slug that takes a level off every structure it hits. Nothing intercepts it.",
 	reinforce = "Brings a fifth of your troop cap at once. Ready again every {rein_s} s.",
 }
@@ -173,11 +177,14 @@ end
 
 --- A strike: a munition its own structure fires (an Air Strike, a Railgun shot), not a silo.
 function UIRules.is_strike(kind: string): boolean
-	return kind == "airstrike" or kind == "slug"
+	return kind == "airstrike" or kind == "slug" or kind == "fighter"
 end
 
 --- The structure kind (Defs.S_*) a nuke / strike kind leaves from.
 function UIRules.launcher(kind: string): number
+	if kind == "fighter" then
+		return Defs.S_AIRFIELD
+	end
 	local nk = Defs.nuke_kind_from_name(kind)
 	local l = if nk >= 0 then Rules().NUKE_LAUNCHER[nk] else nil
 	return if type(l) == "number" and l >= 0 then l else Defs.S_SILO
@@ -206,6 +213,7 @@ function UIRules.is_nuke(kind: string): boolean
 		or kind == "scatter"
 		or kind == "airstrike"
 		or kind == "slug"
+		or kind == "fighter"
 end
 
 -- ---------------------------------------------------------------------------------------------
@@ -896,6 +904,14 @@ function UIRules._placement_exact(self: any, kind: string, tile: number): { [str
 	local map = s.map
 	local own = s:tile_owner(tile)
 	local me = ctx:me()
+	if kind == "fighter" then
+		if not self:in_reach(Defs.S_AIRFIELD, Defs.N_AIRSTRIKE, tile) then
+			out.reason = "No ready Airfield in reach"
+			return out
+		end
+		out.ok = true
+		return out
+	end
 	if UIRules.is_nuke(kind) then
 		if own == me and own ~= 0 then
 			out.reason = "That is your own land"
@@ -1288,10 +1304,11 @@ function UIRules.radial_items(self: any, tile: number): { { [string]: any } }
 	-- what can be launched at the tile: the bombs with a silo, and the Arsenal's munitions the player
 	-- has unlocked (a strike with its own structure)
 	local launch_kinds = {}
-	if playing and own ~= me and me ~= 0 then
-		local kinds = table.clone(UIRules.NUKE_KINDS)
+	-- (Take Over the World!: over your own land only the fighter patrol is offered)
+	if playing and me ~= 0 then
+		local kinds = if own ~= me then table.clone(UIRules.NUKE_KINDS) else {}
 		for _, k in UIRules.ARSENAL_NUKES do
-			if not self:arsenal_locked(k) then
+			if (own ~= me or k == "fighter") and not self:arsenal_locked(k) then
 				table.insert(kinds, k)
 			end
 		end

@@ -107,7 +107,24 @@ function World.set_range_focus(_self, tile: number?, radius: number?)
 	end
 end
 function World.set_range_owner(_self, _id: number) end
-function World.aim_sams(_self, ...) end
+-- hostile finished SAMs whose radius covers the current missile / nuke aim (RoWorld's tooltip row)
+function World.aim_sams(self): number
+	local a = self._aim
+	if not a or (a.kind ~= "atom" and a.kind ~= "hydrogen" and a.kind ~= "mirv") then
+		return 0
+	end
+	local r = Config.Structures.sam.radius
+	local ax, ay = a.tile % State.W, a.tile // State.W
+	local n = 0
+	for _, s in State.structures do
+		if s.kind == "sam" and s.owner ~= State.me and not State.allied(s.owner) and State.built(s) then
+			if (s.cell % State.W - ax) ^ 2 + (s.cell // State.W - ay) ^ 2 <= r * r then
+				n += 1
+			end
+		end
+	end
+	return n
+end
 function World.set_labels_visible(_self, _on: boolean) end
 function World.set_hud_controls(self, list: { GuiObject })
 	self.hud_controls = list

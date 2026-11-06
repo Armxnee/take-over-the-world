@@ -73,6 +73,9 @@ end
 Hud.thumb = Menu.thumbLabel
 Remotes:WaitForChild("Vote").OnClientEvent:Connect(function(counts)
 	Hud.setVotes(counts)
+	if RW_ON and RW.Feed.state then
+		RW.Feed.state.vote_counts = counts -- (RoWorld results screen: GameOver vote row)
+	end
 end)
 Hud.cb.vote = function(map: string)
 	local ok, msg = call("vote", { map = map })

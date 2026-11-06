@@ -331,12 +331,14 @@ function Session.send_intent(self, it: { [string]: any })
 			say(call("aid", { target = it.target, kind = if it.gold then "gold" else "troops", ratio = ratio, id = guid() }))
 		elseif t == "move_warship" then
 			say(call("moveship", { unit = it.uid, cell = it.tile }))
+		elseif t == "vote" then
+			say(call("vote", { map = it.map }))
 		end
 	end)
 end
 
 -- RoWorld slot names -> our kinds
 Session.BUILD_OF = { city = "city", port = "port", factory = "factory", defense = "defense", sam = "sam", silo = "silo", artillery = "aa", aa = "aa", airfield = "airfield", warship = "warship" }
-Session.LAUNCH_OF = { atom = "missile", hydrogen = "nuke", mirv = "nuke", airstrike = "bomber", [0] = "missile", [1] = "nuke", [2] = "nuke", [7] = "bomber" }
+Session.LAUNCH_OF = { atom = "missile", hydrogen = "nuke", mirv = "nuke", airstrike = "bomber", fighter = "fighter", [0] = "missile", [1] = "nuke", [2] = "nuke", [7] = "bomber" }
 
 return Session

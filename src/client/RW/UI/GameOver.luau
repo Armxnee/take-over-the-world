@@ -353,6 +353,40 @@ function GameOver.new(c: any)
 	self._x2_btn.pressed:Connect(function()
 		self.open_arsenal:Fire("stars2x", "offer")
 	end)
+	-- (Take Over the World!: the end-of-round map vote: the server offers random maps in the results,
+	-- each button shows its live count from the Vote remote, your pick in gold)
+	self._vote_gap = spacer(18)
+	self._center:add_child(self._vote_gap)
+	self._vote_cap = UITheme.caption("VOTE FOR THE NEXT MAP", 11, UITheme.TEXT_2)
+	self._vote_cap:set_alignment(W.ALIGN_CENTER)
+	self._center:add_child(self._vote_cap)
+	self._center:add_child(spacer(8))
+	self._vote_row = UITheme.hbox(10)
+	self._vote_row:set_alignment(W.ALIGN_CENTER)
+	self._center:add_child(self._vote_row)
+	self._vote_btns = {} :: { any }
+	self._vote_ids = {} :: { string }
+	self._vote_mine = nil :: string?
+	self._vote_sig = ""
+	for i = 1, 3 do
+		local b = UITheme.button("", "GlassButton", "globe", 44.0)
+		b:set_min_size(Vector2.new(190, 44))
+		b:set_font_size(14)
+		b.pressed:Connect(function()
+			local id = self._vote_ids[i]
+			if id ~= nil then
+				self._vote_mine = id
+				self._vote_sig = ""
+				self.ctx:sfx("click")
+				self.ctx:send({ type = "vote", map = id })
+				self:_refresh_vote()
+			end
+		end)
+		b:set_visible(false)
+		self._vote_row:add_child(b)
+		self._vote_btns[i] = b
+	end
+	self:_set_vote_visible(false)
 	self._next = UITheme.label("", 13, 600, UITheme.TEXT_2)
 	self._next:set_alignment(W.ALIGN_CENTER)
 	self._gap_next = spacer(14)
@@ -559,6 +593,11 @@ function GameOver.open(self, kind: string, winner: number, killer: number, stats
 	self._home:set_text("Return to title")
 	self._next:set_visible(ctx:mode() == UICtx.MODE_MULTI and kind ~= "eliminated")
 	self:_refresh_next()
+	if s == nil or s.results == nil or s.results.vote ~= self._vote_ids then
+		self._vote_mine = nil -- (a new round's options)
+	end
+	self._vote_sig = ""
+	self:_refresh_vote()
 	self:_show_takeover()
 	self:apply_layout()
 	-- Entrance (the dim stays put when the screen was already showing)
@@ -928,6 +967,53 @@ function GameOver._copy(self, kind: string, winner: number, killer: number, reas
 	return c
 end
 
+-- (Take Over the World!: the map vote row; see GameOver.new)
+function GameOver._set_vote_visible(self, on: boolean)
+	self._vote_gap:set_visible(on)
+	self._vote_cap:set_visible(on)
+	self._vote_row:set_visible(on)
+end
+
+function GameOver._refresh_vote(self)
+	local s = self.ctx.state
+	local r = s and s.results
+	local ids = if r and type(r.vote) == "table" and self._kind ~= "eliminated" then r.vote else {}
+	local counts = (s and s.vote_counts) or {}
+	local parts = { self._vote_mine or "" }
+	for _, id in ids do
+		table.insert(parts, id .. "=" .. tostring(counts[id] or 0))
+	end
+	local sig = table.concat(parts, ",")
+	if sig == self._vote_sig then
+		return
+	end
+	self._vote_sig = sig
+	self._vote_ids = ids
+	self:_set_vote_visible(#ids > 0)
+	local Maps = require(script.Parent.UIMaps) :: any
+	for i, b in self._vote_btns do
+		local id = ids[i]
+		b:set_visible(id ~= nil)
+		if id ~= nil then
+			local n = tonumber(counts[id]) or 0
+			b:set_text(string.format("%s  ·  %d", Maps.name_of(id), n))
+			local mine = id == self._vote_mine
+			local col = if mine then UITheme.GOLD else UITheme.TEXT
+			b:add_theme_color_override("font_color", col)
+			b:add_theme_color_override("font_hover_color", col)
+			b:add_theme_color_override("icon_normal_color", col)
+			b:add_theme_color_override("icon_hover_color", col)
+			local bg = if mine then UITheme.c(UITheme.GOLD, 0.14) else UITheme.rgba(1, 1, 1, 0.06)
+			local edge = if mine then UITheme.GOLD else UITheme.rgba(1, 1, 1, 0.14)
+			for _, st in ipairs({ "normal", "disabled" }) do
+				b:add_theme_stylebox_override(st, UITheme.flat(bg, UITheme.R_MD, edge, 1, 14.0, 6.0))
+			end
+			b:add_theme_stylebox_override("hover", UITheme.flat(UITheme.c(UITheme.GOLD, 0.18), UITheme.R_MD, UITheme.GOLD, 1, 14.0, 6.0))
+			b:add_theme_stylebox_override("pressed", UITheme.flat(UITheme.c(UITheme.GOLD, 0.26), UITheme.R_MD, UITheme.GOLD, 1, 14.0, 6.0))
+		end
+	end
+end
+
 --- Multiplayer: when the next match starts (results timer, then the lobby countdown).
 function GameOver._refresh_next(self)
 	if not self._next.visible then
@@ -1143,6 +1229,7 @@ function GameOver._process(self, delta: number)
 	if self._next_accum >= 0.25 then
 		self._next_accum = 0.0
 		self:_refresh_next()
+		self:_refresh_vote()
 		-- ELIMINATED while the war goes on: the "Current leader" pill follows the leaderboard
 		-- (review R2-2; the original kept the snapshot taken when the screen opened).
 		local s = self.ctx.state

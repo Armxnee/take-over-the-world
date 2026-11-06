@@ -407,6 +407,7 @@ function Feed.gameOver(r: any)
 		elseif reason:find("abandon") or reason:find("no human") then Defs.OVER_ABANDONED
 		else Defs.OVER_DOMINATION
 	s.results = r
+	s.vote_counts = {} -- (this round's map vote starts at zero; Main fills it from the Vote remote)
 	if s.phase ~= Defs.PHASE_OVER then
 		s.phase = Defs.PHASE_OVER
 		s.phase_changed:Fire(Defs.PHASE_OVER, 0)

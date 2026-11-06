@@ -2,7 +2,7 @@
 -- This game's rules for RoWorld's interface (UIRules.hooks): build prices, placement checks and blast
 -- radii come from Shared.Config / State (the same numbers the server uses), not RoWorld's Rules.
 -- RoWorld kind names map onto ours: artillery = our AA battery, atom = missile, hydrogen = nuke,
--- airstrike = bomber sortie.
+-- airstrike = bomber sortie, fighter = fighter patrol.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage.Shared.Config)
 local State = require(script.Parent.Parent.State)
@@ -23,6 +23,8 @@ function OurRules.cost(kind: string): number?
 		return Config.Naval and Config.Naval.WarshipCost or 0
 	elseif kind == "airstrike" then
 		return Config.Air.BomberCost or 0
+	elseif kind == "fighter" then
+		return Config.Air.FighterCost or 0
 	end
 	return nil
 end
@@ -64,6 +66,8 @@ function OurRules.nuke_radius(kind: string): (number?, number?)
 		return math.floor(Config.Nuke.Radius * 0.5), Config.Nuke.Radius
 	elseif kind == "airstrike" then
 		return 0, Config.Air.SuppressRadius or 3
+	elseif kind == "fighter" then
+		return 0, Config.Air.FighterRange or 5
 	end
 	return nil
 end

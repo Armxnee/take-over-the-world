@@ -11,6 +11,8 @@ return {
 		reinforce = "rbxassetid://80150583838975",
 		airstrike = "rbxassetid://97597884564003",
 		slug = "rbxassetid://74359376650198",
+		-- (Take Over the World!: our fighter glyph, tools/assets_out/fighter_icon.png)
+		fighter = "rbxassetid://116041021374110",
 		star = "rbxassetid://123717027950196",
 		lock = "rbxassetid://115477224449087",
 		reload = "rbxassetid://98646122722253",
