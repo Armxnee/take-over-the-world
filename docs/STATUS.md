@@ -1,5 +1,15 @@
 # Take Over the World! — checkpoint
 
+> **2026-11-06: the game is now RoWorld's full source** (AGPL; see NOTICE.md). `src/shared` → ReplicatedStorage.Airfront,
+> `src/server` → ServerScriptService.AirfrontServer, `src/client` → StarterPlayerScripts.AirfrontClient (rw.project.json).
+> Our pre-port game is in `legacy/` (not synced; its Studio scripts are parked in ServerStorage.Legacy).
+> Sync: start `py -I tools/bridge.py`, then the user runs the sync loadstring from Studio's **command bar** (MCP HTTP to
+> 127.0.0.1 is blocked). Big map modules go through ScriptEditorService (Source caps at 199,999 chars).
+> Changed from RoWorld: branding (name, globe emblem, credits + source link; OpenFront/RoWorld notices kept), Robux product
+> and subscription ids cleared (offers hidden), lobby service off. Verified: solo tutorial match, HUD, bots, lobbies; no
+> script errors. Known gap: RoWorld's audio (and a few images) are private to their account, so the game is silent.
+> Everything below this box describes the legacy game.
+
 An original real-time territory-conquest game for Roblox. RoWorld is the gameplay reference; we write our own code, UI, names and art. Planes are the launch feature.
 
 ## Resume
