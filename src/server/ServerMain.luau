@@ -762,6 +762,7 @@ function ServerMain.start()
 			end)
 			send(player, OP.CREDITS, Purchases.credits(player))
 			send(player, OP.INVENTORY, inventory_of(player))
+			send(player, OP.QUESTS, Purchases.quests(player))
 			if Subscription.id() ~= "" then
 				send(player, OP.GENERAL, General.state(player))
 			end
@@ -968,6 +969,23 @@ function ServerMain.start()
 				send(player, OP.UNLOCK_RESULT, key, ok, err)
 				if ok then
 					pcall(Analytics.report, player, "unlocked", key, "stars")
+				end
+			end)
+		elseif op == OP.CLAIM_QUEST or op == OP.BUY_ITEM then
+			-- (Take Over the World!: quests and the item shop; the record decides)
+			local c_used = credit_budget[player] or 0
+			local id = ...
+			if c_used >= ServerMain.MAX_CREDIT_USES_PER_SEC or type(id) ~= "string" or #id > 48 then
+				return
+			end
+			credit_budget[player] = c_used + 1
+			task.spawn(function()
+				if op == OP.CLAIM_QUEST then
+					Purchases.claim_quest(player, id)
+					send(player, OP.QUESTS, Purchases.quests(player))
+				else
+					local ok, why = Purchases.buy_item(player, id)
+					send(player, OP.ITEM_RESULT, id, ok, why)
 				end
 			end)
 		elseif op == OP.OPEN_CRATE then
@@ -1398,6 +1416,12 @@ function ServerMain.start()
 		send = function(player: Player, payload: any)
 			send(player, OP.STARS, payload)
 			pcall(Analytics.report, player, "stars_paid", payload.total)
+		end,
+		-- (Take Over the World!: a finished match advances the player's quests)
+		on_result = function(player: Player, result: any)
+			if Purchases.quest_progress(player, result) then
+				send(player, OP.QUESTS, Purchases.quests(player))
+			end
 		end,
 		log = print,
 	})

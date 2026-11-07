@@ -21,6 +21,7 @@
 --
 -- OVERRIDES (by flag code, or by "<map>:<slug>") replace derived fields for authored countries.
 local Provinces = require("../Core/Provinces")
+local CountryGrid = require("./CountryGrid")
 
 local Countries = {}
 
@@ -83,6 +84,15 @@ end
 --- Flag code of each nation name on `map` (its nations list).
 function Countries.flags_by_name(map: any): { [string]: string }
 	local out = {}
+	local g = CountryGrid.get(map.id)
+	if g ~= nil then
+		for _, nd in g.nations do
+			if nd[2] ~= "" then
+				out[nd[1]] = nd[2]
+			end
+		end
+		return out
+	end
 	local list = if type(map.load_nations) == "function" then map:load_nations() else map.nations
 	for _, nd in list or {} do
 		if type(nd) == "table" and nd.name ~= nil and nd.flag ~= nil then

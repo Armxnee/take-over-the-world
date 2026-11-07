@@ -155,7 +155,7 @@ UICtx.SFX_GAP = {
 	ship_sink = 300,
 }
 
---- A shared Data module (ReplicatedStorage.Airfront.Data: "Arsenal", "Stars", "Products"...),
+--- A shared Data module (ReplicatedStorage.Airfront.Data: "Arsenal", "Coins", "Products"...),
 --- required once and kept.
 local _data: { [string]: any } = {}
 function UICtx.data(name: string): any
@@ -196,7 +196,7 @@ end
 --- by 10-23, its trigger not found): with these kept, nothing on those paths requires any more.
 UICtx.PRIME_CORE = { "Signal", "Defs", "Rules", "NumberFormat", "Ev" }
 UICtx.PRIME_UI = { "UITheme", "Widgets", "UIRules", "FloatText", "Banner", "FillBar" }
-UICtx.PRIME_DATA = { "Arsenal", "Cosmetics", "Staging", "Stars", "Starter", "Tutorial", "Products" }
+UICtx.PRIME_DATA = { "Arsenal", "Cosmetics", "Staging", "Coins", "Starter", "Tutorial", "Products" }
 function UICtx.prime()
 	for _, n in UICtx.PRIME_CORE do
 		pcall(core, n)

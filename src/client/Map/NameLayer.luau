@@ -22,6 +22,8 @@ local Rules = require(Core:WaitForChild("Rules")) :: any
 local NumberFormat = require(Core:WaitForChild("NumberFormat")) :: any
 local Sprites = require(RS:WaitForChild("Airfront"):WaitForChild("Assets"):WaitForChild("MapSprites")) :: any
 local Cosmetics = require(RS:WaitForChild("Airfront"):WaitForChild("Data"):WaitForChild("Cosmetics")) :: any
+local Countries = require(RS:WaitForChild("Airfront"):WaitForChild("Data"):WaitForChild("Countries")) :: any
+local Countryball = require("../UI/Countryball") -- (Take Over the World!: a player's country shows its Countryball)
 local Coop = require(RS:WaitForChild("Airfront"):WaitForChild("Net"):WaitForChild("Coop")) :: any
 local FrameClock = require(script.Parent:WaitForChild("FrameClock")) :: any
 
@@ -624,10 +626,37 @@ function NameLayer.tick(self: any, dt: number)
 		-- a person's head shot and the owner's flag (Data/Cosmetics), left of the name
 		local cz = st.cosmetics and st.cosmetics[id]
 		local face_id = if cz ~= nil and cz.face ~= nil then cz.face else 0
-		if face_id ~= p.face_id then
-			p.face_id = face_id
-			p.face.Image = if face_id > 0 then Cosmetics.face_image(face_id) else ""
-			p.face.Visible = face_id > 0
+		-- (Take Over the World!: a country a player leads shows its Countryball instead of the player's head)
+		local ball = o.kind == Defs.KIND_HUMAN
+		local face_key = if ball then "ball:" .. tostring(o.name) else face_id
+		if face_key ~= p.face_id then
+			p.face_id = face_key
+			local ring = p.face:FindFirstChildOfClass("UIStroke")
+			if ball then
+				if self._flags_map ~= st.map then
+					self._flags_map = st.map
+					self._flags = Countries.flags_by_name(st.map)
+				end
+				local content = Countryball.ball_content(self._flags[o.name], o.name)
+				p.face.Image = ""
+				if content ~= nil then
+					p.face.ImageContent = content
+				end
+				p.face.ResampleMode = Enum.ResamplerMode.Pixelated
+				p.face.BackgroundTransparency = 1
+				if ring then
+					ring.Enabled = false
+				end
+				p.face.Visible = content ~= nil
+			else
+				p.face.Image = if face_id > 0 then Cosmetics.face_image(face_id) else ""
+				p.face.ResampleMode = Enum.ResamplerMode.Default
+				p.face.BackgroundTransparency = 0
+				if ring then
+					ring.Enabled = true
+				end
+				p.face.Visible = face_id > 0
+			end
 			p.px = -1 -- size the head with the name
 			p.size_dirty = 3
 		end

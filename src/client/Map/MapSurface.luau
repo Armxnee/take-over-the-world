@@ -626,7 +626,7 @@ function MapSurface._load_skins(self: any, ids: { number }?)
 	local list = ids
 	if list == nil then
 		list = {}
-		for id in st.cosmetics or {} do
+		for id in st.owners or {} do -- (Take Over the World!: every country: its flag when it wears no skin)
 			table.insert(list, id)
 		end
 	end
@@ -634,7 +634,7 @@ function MapSurface._load_skins(self: any, ids: { number }?)
 		local c = (st.cosmetics or {})[id]
 		local skin = if c ~= nil then Cosmetics.item(c.skin) else nil
 		if skin == nil or skin.kind ~= "skin" then
-			self._skins[id] = nil
+			self._skins[id] = MapSurface._flag_skin(st, id)
 		else
 			local cur = self._skins[id]
 			if cur == nil or cur.skin ~= skin then
@@ -654,6 +654,62 @@ function MapSurface._load_skins(self: any, ids: { number }?)
 			end
 		end
 	end
+end
+
+--- (Take Over the World!: a country's flag as its territory skin: the pixel flag (Data/FlagPix, 30 x 20) tiled
+--- over its land, each flag pixel 2 x 2 tiles, at the territory's own transparency. nil without a flag.)
+local flag_skins: { [string]: any } = {}
+local flag_by_name: { [string]: string }? = nil
+local flag_map: any = nil
+function MapSurface._flag_skin(st: any, id: number): any?
+	local o = st.owners and st.owners[id]
+	if o == nil or o.name == nil then
+		return nil
+	end
+	local Airfront = game:GetService("ReplicatedStorage"):WaitForChild("Airfront")
+	if flag_by_name == nil or flag_map ~= st.map then
+		flag_map = st.map
+		local okC, Countries = pcall(require, Airfront.Data.Countries)
+		flag_by_name = if okC and st.map then Countries.flags_by_name(st.map) else {}
+	end
+	local code = (flag_by_name :: any)[o.name]
+	if code == nil then
+		return nil
+	end
+	local rec = flag_skins[code]
+	if rec == nil then
+		local okF, FlagPix = pcall(require, Airfront.Data.FlagPix)
+		local g = if okF then FlagPix.forCode(code, o.name) else nil
+		if g == nil then
+			flag_skins[code] = false
+			return nil
+		end
+		local colors = {}
+		for k, c in g.pal do
+			colors[k] = math.floor(c.R * 255 + 0.5) * 65536 + math.floor(c.G * 255 + 0.5) * 256 + math.floor(c.B * 255 + 0.5)
+		end
+		local w, h = FlagPix.W, FlagPix.H
+		local mask = buffer.create(w * h)
+		for i = 0, w * h - 1 do
+			buffer.writeu8(mask, i, buffer.readu8(g.idx, i) + 1)
+		end
+		rec = { skin = { kind = "skin", flag = code, colors = colors, alpha = MapSurface.TERRITORY_ALPHA }, mask = mask, w = w, h = h }
+		flag_skins[code] = rec
+	end
+	if rec == false then
+		return nil
+	end
+	return {
+		mask = rec.mask,
+		w = rec.w,
+		h = rec.h,
+		scale = 1,
+		skin = rec.skin,
+		fill2 = 0,
+		fill2_hi = 0,
+		fills = {},
+		fills_hi = {},
+	}
 end
 
 --- Owners' skins changed (GameState.cosmetics_changed): their land repaints.

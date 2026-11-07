@@ -482,7 +482,7 @@ function FlagShop._bundle(self, order: number, sid: string)
 		BackgroundTransparency = 1,
 		FontFace = FONT,
 		Text = (if off > 0 then string.format("Save %d%%", off) else "One price")
-			.. (if have > 0 then "  ·  ones you own pay back Stars" else ""),
+			.. (if have > 0 then "  ·  ones you own pay back Coins" else ""),
 		TextColor3 = Color3.fromRGB(120, 230, 150),
 		TextSize = px(11),
 		TextXAlignment = Enum.TextXAlignment.Left,

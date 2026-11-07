@@ -61,7 +61,7 @@ Arsenal.GROUPS = {
 }
 Arsenal.KIND_TAGS = { structure = "BUILDING", nuke = "NUKE", call = "ORDER", boost = "BOOST" }
 --- Under the title.
-Arsenal.SUBTITLE = "Unlock once, keep it forever. Earn Stars by playing matches."
+Arsenal.SUBTITLE = "Unlock once, keep it forever. Earn Coins by playing matches."
 --- Logical px: the list's width, a row's height, the item's width and its preview's height (desktop);
 --- phones put the preview beside the words.
 Arsenal.LIST_W = 236
@@ -957,7 +957,7 @@ function Arsenal._build_cta(self)
 		y += 18
 	elseif stars >= it.stars then
 		local confirm = self._confirm == it.key
-		local alt = button(d.cta, "Stars", y, sh, u, GOLD, if confirm then nil else GOLD)
+		local alt = button(d.cta, "Coins", y, sh, u, GOLD, if confirm then nil else GOLD)
 		local col = if confirm then GOLD_DARK else GOLD
 		if busy and pending.how == "stars" then
 			words(alt.row, "...", if compact then 12 else 14, col, u, 1, sh)
@@ -1115,7 +1115,7 @@ function Arsenal._stars_pressed(self, it: any)
 	if (inv.stars or 0) < it.stars then
 		self.ctx:sfx("deny", -4.0)
 		local short = Arsenal.commas(it.stars - (inv.stars or 0))
-		self:_say(string.format("%s more Stars to go. Play matches to earn them.", short), GOLD)
+		self:_say(string.format("%s more Coins to go. Play matches to earn them.", short), GOLD)
 		return
 	end
 	if self._confirm ~= it.key or os.clock() > self._confirm_until then
@@ -1197,7 +1197,7 @@ function Arsenal._on_unlock_result(self, key: string, ok: boolean, reason: strin
 	self.ctx:sfx("deny")
 	self:_say(
 		if reason == "not enough"
-			then "Not enough Stars."
+			then "Not enough Coins."
 			elseif reason == "owned" then "You already have it."
 			else "Couldn't unlock it. Nothing was spent. Try again in a moment.",
 		UITheme.RED

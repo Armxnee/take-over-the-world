@@ -26,7 +26,7 @@ local Ev: any = if IS_ROBLOX then require(Core.Ev) else require("../Core/Ev")
 
 local Stars = {}
 
-Stars.NAME = "Stars"
+Stars.NAME = "Coins"
 Stars.FLOOR = 100
 Stars.PER_MINUTE = 15
 Stars.PER_SHARE = 30
@@ -53,7 +53,7 @@ Stars.LABELS = {
 	conquests = "Nations conquered",
 	placed = "Final place",
 	victory = "Victory",
-	double = "2x Stars",
+	double = "2x Coins",
 	general = "General +50%",
 }
 

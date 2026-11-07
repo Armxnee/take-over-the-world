@@ -18,6 +18,7 @@ local Defs = require(Airfront.Core.Defs)
 local Coop = require(Airfront.Net.Coop)
 local Provinces = require(Airfront.Core.Provinces)
 local Countries = require(Airfront.Data.Countries)
+local CountryGrid = require(Airfront.Data.CountryGrid)
 local Rules = require(Airfront.Core.Rules)
 local Countryball = require("./Countryball")
 local UITheme = require("./UITheme")
@@ -304,7 +305,22 @@ function CountryPicker._reset(self)
 	local map = s.map
 	local R = s.rules
 	self._job = Coop.job(function()
-		local P = Provinces.build(map, caps)
+		-- the same real borders as the server (Data/CountryGrid), by name
+		local G = CountryGrid.get(map.id)
+		local fn = nil
+		if G ~= nil then
+			local by_name, owner_of = {}, {}
+			for id, nm in names do
+				by_name[nm] = id
+			end
+			for i, nd in G.nations do
+				owner_of[i] = by_name[nd[1]]
+			end
+			fn = function(t: number): number
+				return owner_of[CountryGrid.at(G, map, t)] or 0
+			end
+		end
+		local P = Provinces.build(map, caps, fn)
 		Provinces.name_all(P, function(id)
 			return names[id] or "Nation"
 		end)

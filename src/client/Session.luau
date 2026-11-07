@@ -501,8 +501,28 @@ function Session._apply_own_cosmetics(self: any, id: number)
 end
 
 --- Does the player have Arsenal item `key`?
-function Session.has_unlock(self: any, key: string): boolean
-	return self.inventory.unlocks[key] == true
+function Session.has_unlock(_self: any, _key: string): boolean
+	return true -- (Take Over the World!: no Arsenal shop: every Arsenal item is open)
+end
+
+--- (Take Over the World!: claim a finished quest (the answer comes as QUESTS: quests_changed).)
+function Session.claim_quest(self: any, id: string): boolean
+	local net = self.env.net
+	if net == nil or not net.connected or type(net.send) ~= "function" then
+		return false
+	end
+	net.send(OP.CLAIM_QUEST, id)
+	return true
+end
+
+--- (Take Over the World!: buy "crate" or a featured item with coins (the answer comes as item_result).)
+function Session.buy_item(self: any, id: string): boolean
+	local net = self.env.net
+	if net == nil or not net.connected or type(net.send) ~= "function" then
+		return false
+	end
+	net.send(OP.BUY_ITEM, id)
+	return true
 end
 
 --- Unlock Arsenal item `key` with Stars (the answer comes as unlock_result; the inventory follows).
@@ -1525,6 +1545,15 @@ function Session._on_net(self: any, op: number, ...: any)
 	elseif op == OP.CRATE_RESULT then
 		local ok, res = ...
 		self:_emit("crate_result", ok == true, if type(res) == "string" then res else "")
+	elseif op == OP.QUESTS then
+		local q = ...
+		if type(q) == "table" then
+			self.quests = q
+			self:_emit("quests_changed", q)
+		end
+	elseif op == OP.ITEM_RESULT then
+		local id, ok, why = ...
+		self:_emit("item_result", id, ok == true, why)
 	elseif op == OP.STARS then
 		local p = ...
 		if type(p) == "table" and type(p.total) == "number" then

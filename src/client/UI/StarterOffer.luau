@@ -624,7 +624,7 @@ function StarterOffer.refresh(self)
 		t.owned.Visible = have
 		t.art.ImageTransparency = if have then 0.35 else 0
 		if have then
-			t.line.Text = "Owned already: you get its price in Stars"
+			t.line.Text = "Owned already: you get its price in Coins"
 		else
 			t.line.Text = t.it.tagline
 		end
@@ -707,7 +707,7 @@ function StarterOffer._on_inventory(self)
 		self.bought_at = os.clock()
 		self.ctx:sfx("unlock")
 		if self.ui_notice ~= nil then
-			self.ui_notice("Starter Pack unlocked! Mega Nuke, Scattershot and 2x Stars are yours.")
+			self.ui_notice("Starter Pack unlocked! Mega Nuke, Scattershot and 2x Coins are yours.")
 		end
 		self:close()
 		return

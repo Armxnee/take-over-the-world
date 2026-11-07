@@ -273,13 +273,13 @@ function GeneralOffer.refresh(self)
 		daily.head:set_text("A free crate every day")
 		daily.body:set_text("Play on any day to get it. Never a duplicate.")
 	else
-		daily.head:set_text(string.format("%s Stars every day", UICtx.commas(Subscription.DAILY_STARS)))
+		daily.head:set_text(string.format("%s Coins every day", UICtx.commas(Subscription.DAILY_STARS)))
 		daily.body:set_text("Play on any day to get them.")
 	end
 	self._perk_stars.head:set_text(
-		string.format("+%d%% Stars every match", math.floor(Subscription.STARS_BONUS * 100 + 0.5))
+		string.format("+%d%% Coins every match", math.floor(Subscription.STARS_BONUS * 100 + 0.5))
 	)
-	self._perk_stars.body:set_text("On top of 2x Stars.")
+	self._perk_stars.body:set_text("On top of 2x Coins.")
 	local skin = Cosmetics.item(Subscription.skin_for(os.time()))
 	self._perk_skin.head:set_text("This month's General skin")
 	self._perk_skin.body:set_text(

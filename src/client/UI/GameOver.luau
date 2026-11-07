@@ -271,7 +271,7 @@ function GameOver.new(c: any)
 	self._buttons:set_alignment(W.ALIGN_CENTER)
 	self._center:add_child(self._buttons)
 	-- the Stars this match paid (hidden until the payout arrives)
-	local sb = UITheme.button("+0", "GlassButton", "star", 52.0)
+	local sb = UITheme.button("+0", "GlassButton", "gold", 52.0) -- (Take Over the World!: coins)
 	sb:set_min_size(Vector2.new(150, 52))
 	sb:add_theme_constant_override("icon_max_width", 18)
 	sb:add_theme_color_override("font_color", UITheme.GOLD)
@@ -365,18 +365,18 @@ end
 --- What the Stars were for: the pill's card.
 function GameOver._stars_spec(self): { [string]: any }
 	local a = self._award
-	local StarsData = UICtx.data("Stars")
+	local StarsData = UICtx.data("Coins")
 	local rows = {}
 	for _, l in a.lines do
 		table.insert(rows, { StarsData.LABELS[l[1]] or l[1], "+" .. UICtx.commas(l[2]), UITheme.GOLD })
 	end
 	return {
-		title = "Stars earned",
-		body = "Stars unlock new weapons in the Arsenal.",
+		title = "Coins earned",
+		body = "Coins unlock new weapons in the Arsenal.",
 		rows = rows,
-		hint = string.format("You have %s Stars", UICtx.commas(a.balance or 0)),
+		hint = string.format("You have %s Coins", UICtx.commas(a.balance or 0)),
 		hint_color = UITheme.GOLD,
-		hint_icon = "star",
+		hint_icon = "gold",
 	}
 end
 

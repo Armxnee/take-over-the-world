@@ -61,6 +61,13 @@ local Shop: any = if IS_ROBLOX
 local Subscription: any = if IS_ROBLOX
 	then require((game :: any):GetService("ReplicatedStorage"):WaitForChild("Airfront").Data.Subscription)
 	else require("../shared/Data/Subscription")
+-- (Take Over the World!: daily / weekly quests and the item shop, both paid in coins = the record's `stars`)
+local Quests: any = if typeof(game) == "Instance"
+	then require((game :: any):GetService("ReplicatedStorage"):WaitForChild("Airfront").Data.Quests)
+	else require("../shared/Data/Quests")
+local ItemShop: any = if typeof(game) == "Instance"
+	then require((game :: any):GetService("ReplicatedStorage"):WaitForChild("Airfront").Data.ItemShop)
+	else require("../shared/Data/ItemShop")
 
 local Purchases = {}
 
@@ -91,6 +98,8 @@ type Record = {
 	gifts: { [string]: boolean },
 	--- RoWorld General: the UTC day whose perks were given (Purchases.general_perks)
 	general_day: number?,
+	--- (Take Over the World!: quests) { day, week, progress = { [id] = n }, claimed = { [id] = true } }
+	quests: any?,
 }
 
 --- Reading a player's record when they join: GetAsync attempts and the waits between them. Roblox
@@ -139,6 +148,31 @@ local function key(user_id: number): string
 	return "u" .. tostring(user_id)
 end
 
+-- (Take Over the World!: the quests part of a record, typed and bounded)
+local function clean_quests(q: any): any
+	local out = { day = 0, week = 0, progress = {}, claimed = {} }
+	if type(q) ~= "table" then
+		return out
+	end
+	out.day = math.floor(tonumber(q.day) or 0)
+	out.week = math.floor(tonumber(q.week) or 0)
+	if type(q.progress) == "table" then
+		for id, n in q.progress do
+			if type(id) == "string" and Quests.get(id) ~= nil and type(n) == "number" and n == n then
+				out.progress[id] = math.clamp(math.floor(n), 0, 1000000)
+			end
+		end
+	end
+	if type(q.claimed) == "table" then
+		for id, on in q.claimed do
+			if on == true and type(id) == "string" and Quests.get(id) ~= nil then
+				out.claimed[id] = true
+			end
+		end
+	end
+	return out
+end
+
 local function clean(v: any, user_id: number?): Record
 	local rec: Record = {
 		credits = {},
@@ -164,6 +198,7 @@ local function clean(v: any, user_id: number?): Record
 	rec.tutorial_paid = if v.tutorial_paid == true then true else nil
 	local gday = tonumber(v.general_day)
 	rec.general_day = if gday ~= nil and gday == gday then math.floor(gday) else nil
+	rec.quests = clean_quests(v.quests)
 	if type(v.unlocks) == "table" then
 		for k, on in v.unlocks do
 			if on == true and Arsenal.item(k) ~= nil then
@@ -260,6 +295,7 @@ local function remember(player: any, rec: Record)
 		unlocks = rec.unlocks,
 		paid = rec.paid,
 		starter = rec.starter,
+		quests = rec.quests,
 	}
 end
 
@@ -394,15 +430,185 @@ function Purchases.starter_seen(player: any): boolean
 end
 
 --- True when the player has Arsenal item `key` (as last read or written).
-function Purchases.has_unlock(player: any, key: string): boolean
-	local i = inv[player]
-	return i ~= nil and i.unlocks[key] == true
+function Purchases.has_unlock(_player: any, key: string): boolean
+	-- (Take Over the World!: the Arsenal shop is gone: every Arsenal item is open to everyone)
+	return Arsenal.item(key) ~= nil
 end
 
 --- The player's Arsenal as the Sim's bit mask (Defs.UNLOCK; Sim.set_unlocks).
-function Purchases.unlock_mask(player: any): number
+function Purchases.unlock_mask(_player: any): number
+	local all = {}
+	for _, it in Arsenal.ITEMS do
+		all[it.key] = true
+	end
+	return Arsenal.mask(all)
+end
+
+-- =============================================================================================
+-- (Take Over the World!: quests and the item shop, paid in coins: the record's `stars`)
+-- =============================================================================================
+
+-- the quests record with this day's / week's progress (a new day or week starts from zero)
+local function roll_quests(q: any, t: number): any
+	local day, week = Quests.day(t), Quests.week(t)
+	if q.day ~= day then
+		for _, d in Quests.DAILY do
+			q.progress[d.id] = nil
+			q.claimed[d.id] = nil
+		end
+		q.day = day
+	end
+	if q.week ~= week then
+		for _, w in Quests.WEEKLY do
+			q.progress[w.id] = nil
+			q.claimed[w.id] = nil
+		end
+		q.week = week
+	end
+	return q
+end
+
+--- The player's active quests: { day, week, list = { {id, text, period, goal, progress, reward, claimed} } }.
+function Purchases.quests(player: any): any
+	local t = now_s()
 	local i = inv[player]
-	return if i ~= nil then Arsenal.mask(i.unlocks) else 0
+	local q = roll_quests(clean_quests(i and i.quests), t)
+	local list = {}
+	for _, d in Quests.active(t) do
+		table.insert(list, {
+			id = d.id,
+			text = d.text,
+			period = d.period,
+			goal = d.goal,
+			progress = math.min(q.progress[d.id] or 0, d.goal),
+			reward = d.reward,
+			claimed = q.claimed[d.id] == true,
+		})
+	end
+	return { day = Quests.day(t), week = Quests.week(t), list = list }
+end
+
+--- A finished match's result advances the active quests (Rewards calls this; yields).
+function Purchases.quest_progress(player: any, result: any): boolean
+	if type(result) ~= "table" then
+		return false
+	end
+	local t = now_s()
+	local stored = nil
+	local ok = pcall(function()
+		deps.datastore:UpdateAsync(key(player.UserId), function(old: any): any
+			local rec = clean(old, player.UserId)
+			local q = roll_quests(rec.quests, t)
+			for _, d in Quests.active(t) do
+				local add = Quests.progress_of(d, result)
+				if add > 0 and not q.claimed[d.id] then
+					q.progress[d.id] = math.min((q.progress[d.id] or 0) + add, d.goal)
+				end
+			end
+			rec.quests = q
+			stored = rec
+			return rec
+		end)
+	end)
+	if ok and stored ~= nil then
+		remember(player, stored)
+		return true
+	end
+	return false
+end
+
+--- Claims a completed quest for its coins. (ok) or (false, reason). Yields.
+function Purchases.claim_quest(player: any, id: any): (boolean, string?)
+	local d = if type(id) == "string" then Quests.get(id) else nil
+	if d == nil then
+		return false, "unknown quest"
+	end
+	local t = now_s()
+	local active = false
+	for _, a in Quests.active(t) do
+		if a.id == id then
+			active = true
+		end
+	end
+	if not active then
+		return false, "not today's quest"
+	end
+	local why: string? = nil
+	local stored = nil
+	local ok, err = pcall(function()
+		deps.datastore:UpdateAsync(key(player.UserId), function(old: any): any
+			local rec = clean(old, player.UserId)
+			local q = roll_quests(rec.quests, t)
+			if q.claimed[id] then
+				why = "claimed"
+				return nil
+			end
+			if (q.progress[id] or 0) < d.goal then
+				why = "not done"
+				return nil
+			end
+			q.claimed[id] = true
+			rec.quests = q
+			rec.stars = math.min(rec.stars + d.reward, Purchases.MAX_STARS)
+			rec.stars_earned = math.min(rec.stars_earned + d.reward, Purchases.MAX_STARS)
+			stored = rec
+			return rec
+		end)
+	end)
+	if not ok then
+		return false, "store unavailable: " .. tostring(err)
+	end
+	if stored == nil then
+		return false, why or "failed"
+	end
+	remember(player, stored)
+	notify(player)
+	return true
+end
+
+--- Buys `id` from the item shop with coins: "crate" (a crate credit, opened as before) or one of
+--- today's featured skins. (ok) or (false, reason). Yields.
+function Purchases.buy_item(player: any, id: any): (boolean, string?)
+	if type(id) ~= "string" or #id > 48 then
+		return false, "unknown item"
+	end
+	local t = now_s()
+	local price = ItemShop.price_of(id, Quests.day(t))
+	if price == nil then
+		return false, "not for sale today"
+	end
+	local why: string? = nil
+	local stored = nil
+	local ok, err = pcall(function()
+		deps.datastore:UpdateAsync(key(player.UserId), function(old: any): any
+			local rec = clean(old, player.UserId)
+			if id ~= "crate" and rec.owned[id] then
+				why = "owned"
+				return nil
+			end
+			if rec.stars < price then
+				why = "not enough"
+				return nil
+			end
+			rec.stars -= price
+			if id == "crate" then
+				rec.credits.crate = (rec.credits.crate or 0) + 1
+			else
+				rec.owned[id] = true
+			end
+			stored = rec
+			return rec
+		end)
+	end)
+	if not ok then
+		return false, "store unavailable: " .. tostring(err)
+	end
+	if stored == nil then
+		return false, why or "failed"
+	end
+	remember(player, stored)
+	notify(player)
+	return true
 end
 
 function Purchases.stars(player: any): number

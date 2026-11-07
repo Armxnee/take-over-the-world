@@ -288,7 +288,7 @@ function UIRules.result_offers(award: any, inv: any, catalog: any, stars: number
 	end
 	if not unlocks.stars2x and catalog.item("stars2x") ~= nil then
 		-- (a payout already doubled never gets here: its owner has the booster)
-		out.x2 = { text = string.format("WITH 2X STARS: +%s", UICtx.commas(math.floor(award.total) * 2)) }
+		out.x2 = { text = string.format("WITH 2X COINS: +%s", UICtx.commas(math.floor(award.total) * 2)) }
 	end
 	return out
 end

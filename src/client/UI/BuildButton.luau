@@ -266,7 +266,7 @@ function BuildButton.hint_spec(self): { [string]: any }
 		-- locked: what unlocks it
 		rows = {}
 		if item.stars ~= nil then
-			table.insert(rows, { "Unlock", UICtx.commas(item.stars) .. " Stars", UITheme.GOLD })
+			table.insert(rows, { "Unlock", UICtx.commas(item.stars) .. " Coins", UITheme.GOLD })
 		end
 	end
 	local spec: { [string]: any } = {

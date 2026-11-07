@@ -41,6 +41,7 @@ local Nations = require("../Data/Nations")
 local Coop = require("../Net/Coop")
 local Provinces = require("./Provinces")
 local Countries = require("../Data/Countries")
+local CountryGrid = require("../Data/CountryGrid")
 
 local STRUCT_KINDS = SimState.STRUCT_KINDS
 local TICK_RATE = 10
@@ -607,6 +608,15 @@ end
 function Sim._create_nations(self: any)
 	local R = self.R
 	local list = self.map:load_nations()
+	-- (Take Over the World!: countries mode: the map's real countries, Data/CountryGrid)
+	self._grid_owner = {}
+	if self.countries then
+		local g = CountryGrid.get(self.map_id)
+		if g ~= nil then
+			self.cgrid = g
+			list = CountryGrid.nations(g, self.map)
+		end
+	end
 	local limit = self.nation_limit
 	if limit ~= nil and limit < #list then
 		-- (Humans Vs Nations: as many nations as players, picked at random)
@@ -631,6 +641,9 @@ function Sim._create_nations(self: any)
 		picked[id] = hex ~= nil
 		if nd.flag ~= nil then
 			self.nation_flag[id] = string.lower(tostring(nd.flag))
+		end
+		if nd.index ~= nil then
+			self._grid_owner[nd.index] = id
 		end
 		self.nation_count += 1
 		Coop.check()
@@ -677,7 +690,25 @@ function Sim._init_countries(self: any)
 			capitals[id] = self.o_spawn_tile[id]
 		end
 	end
-	self:_init_provinces(capitals, true)
+	local country_fn = nil
+	if self.cgrid ~= nil then
+		local g, map, go = self.cgrid, self.map, self._grid_owner
+		country_fn = function(t: number): number
+			return go[CountryGrid.at(g, map, t)] or 0
+		end
+	end
+	self:_init_provinces(capitals, true, country_fn)
+	-- capitals moved onto their country's land; a nation with no land on this map is out
+	for id, t in self.P.capital_tile do
+		self.o_spawn_tile[id] = t
+	end
+	for id in capitals do
+		if self.P.by_country[id] == nil and self.o_alive[id] == 1 then
+			self.o_alive[id] = 0
+			self.o_spawned[id] = 0
+			self:ev({ Ev.OWNER_OUT, id, 0 })
+		end
+	end
 	local names = {}
 	for id in capitals do
 		names[id] = self.o_name[id]

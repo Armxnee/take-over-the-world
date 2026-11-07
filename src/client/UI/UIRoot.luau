@@ -29,6 +29,8 @@ local Arsenal = require("./Arsenal")
 local StarterOffer = require("./StarterOffer")
 local GeneralOffer = require("./GeneralOffer")
 local FlagShop = require("./FlagShop")
+local QuestPanel = require("./QuestPanel")
+local ItemShopPanel = require("./ItemShopPanel")
 local ArsenalData: any = if typeof(game) == "Instance"
 	then require((game :: any):GetService("ReplicatedStorage"):WaitForChild("Airfront").Data.Arsenal)
 	else (require :: any)("../../shared/Data/Arsenal")
@@ -226,6 +228,16 @@ function UIRoot.setup(self, session: any, world: any, audio: any)
 		end)
 		self:_sig(session, "took_over", function(id)
 			self:_on_took_over(id)
+		end)
+		self:_sig(session, "item_result", function(id, ok, why)
+			if self.item_shop ~= nil then
+				self.item_shop:on_result(id, ok, why)
+			end
+		end)
+		self:_sig(session, "quests_changed", function()
+			if self.quests_ui ~= nil and self.quests_ui.is_open then
+				self.quests_ui:refresh()
+			end
 		end)
 		self:_sig(session, "lobby_updated", function(info)
 			self.title:set_lobby(info)
@@ -519,6 +531,12 @@ end
 --- "offer" (one of the result screen's offers).
 --- A solo match stands still while it is open.
 function UIRoot.open_arsenal(self, focus: string?, from: string?)
+	-- (Take Over the World!: the Arsenal became daily / weekly quests)
+	if self.quests_ui ~= nil then
+		self.interact:cancel_aim(false)
+		self.quests_ui:open()
+		return
+	end
 	if self.arsenal == nil then
 		return
 	end
@@ -532,6 +550,11 @@ end
 --- The flag shop (FlagShop; Data/Shop): the title's shop button. Opening it marks today's shop seen
 --- (the button's NEW sticker goes).
 function UIRoot.open_shop(self)
+	-- (Take Over the World!: the flag shop is gone: the item shop instead)
+	if self.item_shop ~= nil then
+		self.item_shop:open()
+		return
+	end
 	local fs = self.flag_shop
 	if fs == nil or fs.is_open then
 		return
@@ -635,7 +658,7 @@ function UIRoot._on_general(self, on: boolean, given: any)
 			table.insert(parts, "today's free crate is in your Locker")
 		end
 		if type(given.stars) == "number" then
-			table.insert(parts, string.format("+%s Stars today", UICtx.commas(given.stars)))
+			table.insert(parts, string.format("+%s Coins today", UICtx.commas(given.stars)))
 		end
 		local skin = if type(given.skin) == "string" then UICtx.data("Cosmetics").item(given.skin) else nil
 		if skin ~= nil then
@@ -652,6 +675,15 @@ end
 
 --- The Locker (Main's crate button on the title): crates, skins and flags.
 function UIRoot.open_locker(self)
+	-- (Take Over the World!: the crates button opens the item shop; its OPEN CRATES opens the Locker)
+	if self.item_shop ~= nil then
+		self.item_shop:open()
+		return
+	end
+	self:open_locker_direct()
+end
+
+function UIRoot.open_locker_direct(self)
 	if self.locker == nil or self.locker.is_open then
 		return
 	end
@@ -1154,6 +1186,11 @@ function UIRoot._build(self)
 	end)
 	root:add_child(flag_shop)
 	-- opening a crate: the show above the Locker (CrateOpening.luau)
+	-- (Take Over the World!: quests and the item shop, plain panels over the game)
+	self.quests_ui = QuestPanel.new(ctx, self.gui)
+	self.item_shop = ItemShopPanel.new(ctx, self.gui, function()
+		self:open_locker_direct()
+	end)
 	local opening = CrateOpening.new(ctx)
 	opening.name = "CrateOpening"
 	self.crate_opening = opening

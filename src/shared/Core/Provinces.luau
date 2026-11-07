@@ -97,7 +97,10 @@ end
 --- countries `capitals` = { [country id] = capital tile }. Returns
 --- { country_of: buffer (u16 per tile), prov_of: buffer (u16 per tile), list = { province }, by_country =
 --- { [country] = { province ids } }, capital_of = { [country] = province id } }.
-function Provinces.build(map: any, capitals: { [number]: number }): any
+--- `country_fn` (optional, Data/CountryGrid): tile -> country id from real borders; then the land BFS only
+--- fills the gaps, and each capital moves to its country's land nearest to it (P.capital_tile).
+function Provinces.build(map: any, capitals_in: { [number]: number }, country_fn: ((number) -> number)?): any
+	local capitals = table.clone(capitals_in)
 	local W, N = map.W, map.N
 	local land: buffer = map.land
 	local terr: buffer = map.terrain
@@ -114,12 +117,40 @@ function Provinces.build(map: any, capitals: { [number]: number }): any
 	end
 	table.sort(ids)
 	local qn = 0
-	for _, id in ids do
-		local t = capitals[id]
-		if t >= 0 and t < N and is_land(t) and readu16(country_of, t * 2) == 0 then
-			writeu16(country_of, t * 2, id)
-			writei32(queue, qn * 4, t)
-			qn += 1
+	if country_fn ~= nil then
+		-- (Take Over the World!: real borders) every land tile of a country seeds the fill; capitals snap to their land
+		local best = {}
+		for t = 0, N - 1 do
+			if is_land(t) then
+				local c = country_fn(t)
+				if c ~= 0 and capitals[c] ~= nil then
+					writeu16(country_of, t * 2, c)
+					writei32(queue, qn * 4, t)
+					qn += 1
+					local ct = capitals[c]
+					local dx, dy = t % W - ct % W, t // W - ct // W
+					local d = dx * dx + dy * dy
+					local b = best[c]
+					if b == nil or d < b[2] then
+						best[c] = { t, d }
+					end
+				end
+			end
+			if t % 100000 == 0 then
+				Coop.check()
+			end
+		end
+		for c, b in best do
+			capitals[c] = b[1]
+		end
+	else
+		for _, id in ids do
+			local t = capitals[id]
+			if t >= 0 and t < N and is_land(t) and readu16(country_of, t * 2) == 0 then
+				writeu16(country_of, t * 2, id)
+				writei32(queue, qn * 4, t)
+				qn += 1
+			end
 		end
 	end
 	fill(W, N, country_of, queue, qn, function(n)
@@ -321,6 +352,7 @@ function Provinces.build(map: any, capitals: { [number]: number }): any
 		list = list,
 		by_country = by_country,
 		capital_of = capital_of,
+		capital_tile = capitals,
 	}
 end
 
@@ -395,8 +427,8 @@ end
 function Provinces.install(C: any)
 	--- Builds the provinces from the countries' capital tiles and starts tracking them. With
 	--- `full_borders`, every country claims all of its region (Take Over the World!'s start).
-	function C._init_provinces(self: any, capitals: { [number]: number }, full_borders: boolean)
-		local P = Provinces.build(self.map, capitals)
+	function C._init_provinces(self: any, capitals: { [number]: number }, full_borders: boolean, country_fn: ((number) -> number)?)
+		local P = Provinces.build(self.map, capitals, country_fn)
 		Provinces.name_all(P, function(id)
 			return self.o_name[id] or "Nation"
 		end)

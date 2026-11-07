@@ -115,6 +115,11 @@ Protocol.OP = {
 	-- info: { map, map_name }?) asking / waiting in line for a free seat / seated, on the way / neither
 	STARTER_SEEN = 41, -- client → server: the starter pack's offer is on my screen: start its clock (once;
 	-- server/Purchases.starter_seen; the INVENTORY that follows carries `starter`)
+	-- (Take Over the World!: quests and the item shop)
+	QUESTS = 43, -- server -> client: ({ day, week, list = { {id, text, period, goal, progress, reward, claimed} } })
+	CLAIM_QUEST = 44, -- client -> server: (id: string) claim a finished quest's coins (reply QUESTS)
+	BUY_ITEM = 45, -- client -> server: (id: string) "crate" or a featured item, for coins (reply ITEM_RESULT)
+	ITEM_RESULT = 46, -- server -> client: (id: string, ok: boolean, reason: string?)
 	GENERAL = 42, -- server → client: ({ on: boolean, given: { crate: boolean?, stars: number?, skin: string? }? })
 	-- RoWorld General (Data/Subscription; server/General): subscribed or not, and what it just gave
 }

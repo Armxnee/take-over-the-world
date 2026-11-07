@@ -118,7 +118,7 @@ function ArsenalButton._build(self)
 	local pt = new("TextLabel", {
 		BackgroundTransparency = 1,
 		Size = UDim2.fromScale(1, 1),
-		Text = "ARSENAL",
+		Text = "QUESTS", -- (Take Over the World!: the Arsenal became quests)
 		FontFace = FONT_B,
 		TextColor3 = Color3.fromRGB(46, 26, 4),
 		TextScaled = true,
@@ -132,7 +132,7 @@ function ArsenalButton._build(self)
 	}, pt)
 	-- the Stars badge (top right of the shield)
 	local badge = new("Frame", {
-		Name = "Stars",
+		Name = "Coins",
 		BackgroundColor3 = Color3.fromRGB(20, 28, 52),
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Visible = false,

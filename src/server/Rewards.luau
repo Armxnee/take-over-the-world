@@ -89,6 +89,9 @@ end
 --- A result this server measured itself (a public match). Returns the Stars paid.
 function Rewards.pay(player: any, result: any, mode: string?): number
 	local m = mode or "public"
+	if deps.on_result then
+		task.spawn(deps.on_result, player, result) -- (Take Over the World!: quest progress)
+	end
 	local p = Stars.payout(result, m, false)
 	local lines, total = with_double(player, p.lines, p.total)
 	return deliver(player, lines, total, m)
@@ -115,6 +118,9 @@ function Rewards.solo_result(player: any, report: any): number
 	m.paid_at = t
 	if r.left then
 		solo[player] = nil -- the match is over for this player
+	end
+	if deps.on_result then
+		task.spawn(deps.on_result, player, r) -- (Take Over the World!: quest progress)
 	end
 	local p = Stars.payout(r, m.mode, false)
 	local lines, total = p.lines, p.total

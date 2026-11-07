@@ -136,7 +136,7 @@ function CrateButton._build(self)
 	self._pill_text = new("TextLabel", {
 		BackgroundTransparency = 1,
 		Size = UDim2.fromScale(1, 1),
-		Text = "CRATES",
+		Text = "ITEM SHOP", -- (Take Over the World!: crates are bought in the item shop)
 		FontFace = FONT_B,
 		TextColor3 = Color3.fromRGB(46, 26, 4),
 		TextScaled = true,
@@ -303,11 +303,11 @@ function CrateButton.refresh(self)
 	elseif fake == "calm" then
 		allowed = false
 	end
-	local state, text, badge, icon = "calm", "LOCKER", nil, false
+	local state, text, badge, icon = "calm", "ITEM SHOP", nil, false
 	if allowed and credits > 0 then
 		state, text, badge = "waiting", "OPEN", tostring(credits)
 	elseif allowed and not all_owned then
-		state, text = "offer", "CRATES"
+		state, text = "offer", "ITEM SHOP"
 		local first = Products.crate_first
 		if (inv.crates_bought or 0) <= 0 and first and first.id ~= 0 then
 			badge, icon = tostring(Prices.robux("crate_first")), true

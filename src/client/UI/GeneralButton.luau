@@ -63,7 +63,7 @@ end
 function GeneralButton.lines(): { string }
 	return {
 		"A free crate every day",
-		string.format("+%d%% Stars every match", math.floor(Subscription.STARS_BONUS * 100 + 0.5)),
+		string.format("+%d%% Coins every match", math.floor(Subscription.STARS_BONUS * 100 + 0.5)),
 		"A new skin every month",
 	}
 end

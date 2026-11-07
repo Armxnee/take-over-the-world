@@ -1,0 +1,162 @@
+{
+ "click": {
+  "id": 320181,
+  "title": "hint.wav by dland",
+  "author": "dland",
+  "license": "Creative Commons 0",
+  "url": "https://freesound.org/s/320181/",
+  "bytes": 8141
+ },
+ "whoosh": {
+  "id": 108334,
+  "title": "whoosh-click01.wav by Qat",
+  "author": "Qat",
+  "license": "Creative Commons 0",
+  "url": "https://freesound.org/s/108334/",
+  "bytes": 21921
+ },
+ "error": {
+  "id": 67454,
+  "title": "negativebeep.wav by Splashdust",
+  "author": "Splashdust",
+  "license": "Creative Commons 0",
+  "url": "https://freesound.org/s/67454/",
+  "bytes": 10748
+ },
+ "tick": {
+  "id": 534094,
+  "title": "clock-tick-01.flac by pbimal",
+  "author": "pbimal",
+  "license": "Creative Commons 0",
+  "url": "https://freesound.org/s/534094/",
+  "bytes": 5160
+ },
+ "build": {
+  "id": 17012,
+  "title": "hammering 2.wav by cognito perceptu",
+  "author": "cognito perceptu",
+  "license": "Creative Commons 0",
+  "url": "https://freesound.org/s/17012/",
+  "bytes": 39347
+ },
+ "pop": {
+  "id": 202230,
+  "title": "Pop sound by deraj",
+  "author": "deraj",
+  "license": "Creative Commons 0",
+  "url": "https://freesound.org/s/202230/",
+  "bytes": 17011
+ },
+ "drum": {
+  "id": 197763,
+  "title": "drum roll by owowowwo",
+  "author": "owowowwo",
+  "license": "Creative Commons 0",
+  "url": "https://freesound.org/s/197763/",
+  "bytes": 43778
+ },
+ "cannon": {
+  "id": 186950,
+  "title": "toy_cannon_shot.wav by ReadeOnly",
+  "author": "ReadeOnly",
+  "license": "Creative Commons 0",
+  "url": "https://freesound.org/s/186950/",
+  "bytes": 20038
+ },
+ "explosion": {
+  "id": 182429,
+  "title": "Explosion by qubodup",
+  "author": "qubodup",
+  "license": "Creative Commons 0",
+  "url": "https://freesound.org/s/182429/",
+  "bytes": 67008
+ },
+ "siren": {
+  "id": 135117,
+  "title": "regea syren.wav by .Andre_Onate",
+  "author": ".Andre_Onate",
+  "license": "Creative Commons 0",
+  "url": "https://freesound.org/s/135117/",
+  "bytes": 84216
+ },
+ "launch": {
+  "id": 521377,
+  "title": "Rocket Launch by Jarusca",
+  "author": "Jarusca",
+  "license": "Creative Commons 0",
+  "url": "https://freesound.org/s/521377/",
+  "bytes": 35136
+ },
+ "splash": {
+  "id": 9508,
+  "title": "SPLASH.wav by petenice",
+  "author": "petenice",
+  "license": "Creative Commons 0",
+  "url": "https://freesound.org/s/9508/",
+  "bytes": 16576
+ },
+ "chime": {
+  "id": 538333,
+  "title": "correct.mp3 by lionelmatthew001",
+  "author": "lionelmatthew001",
+  "license": "Creative Commons 0",
+  "url": "https://freesound.org/s/538333/",
+  "bytes": 45764
+ },
+ "fanfare": {
+  "id": 456966,
+  "title": "Success Fanfare Trumpets.mp3 by FunWithSound",
+  "author": "FunWithSound",
+  "license": "Creative Commons 0",
+  "url": "https://freesound.org/s/456966/",
+  "bytes": 102742
+ },
+ "defeat": {
+  "id": 335906,
+  "title": "Fail.mp3 by LittleRainySeasons",
+  "author": "LittleRainySeasons",
+  "license": "Creative Commons 0",
+  "url": "https://freesound.org/s/335906/",
+  "bytes": 61968
+ },
+ "coin": {
+  "id": 146723,
+  "title": "coin object by Leszek_Szary",
+  "author": "Leszek_Szary",
+  "license": "Creative Commons 0",
+  "url": "https://freesound.org/s/146723/",
+  "bytes": 5584
+ },
+ "crate": {
+  "id": 377552,
+  "title": "Wooden Creak by Mafon2",
+  "author": "Mafon2",
+  "license": "Creative Commons 0",
+  "url": "https://freesound.org/s/377552/",
+  "bytes": 26496
+ },
+ "music_menu": {
+  "id": 387223,
+  "title": "Orchestral Suspense Loop 1 by awrmacd",
+  "author": "awrmacd",
+  "license": "Creative Commons 0",
+  "url": "https://freesound.org/s/387223/",
+  "bytes": 2090441
+ },
+ "music_calm": {
+  "id": 503244,
+  "title": "Curious Ambience.wav by Reg1n0ld",
+  "author": "Reg1n0ld",
+  "license": "Creative Commons 0",
+  "url": "https://freesound.org/s/503244/",
+  "bytes": 4178190
+ },
+ "music_war": {
+  "id": 346455,
+  "title": "Epic_Battle_Music_1.MP3 by Airwolf89",
+  "author": "Airwolf89",
+  "license": "Creative Commons 0",
+  "url": "https://freesound.org/s/346455/",
+  "bytes": 2685423
+ }
+}

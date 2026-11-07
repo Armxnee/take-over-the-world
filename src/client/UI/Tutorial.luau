@@ -176,7 +176,7 @@ function Tutorial.stop(self, how: string)
 		self._ending = Tutorial.END_S
 		self._count:set_text("★")
 		self._text:set_text(
-			string.format("Tutorial complete! +%s Stars\nSpend them in the ARSENAL", UICtx.commas(Data.STARS))
+			string.format("Tutorial complete! +%s Coins\nSpend them in the ARSENAL", UICtx.commas(Data.COINS))
 		)
 		self._bar:set_visible(false)
 		self._skip:set_text("OK")

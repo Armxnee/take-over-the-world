@@ -1303,7 +1303,7 @@ function ArsenalDemo._build_stars2x(self, _it: any)
 	end
 	local star = (AA.ui and AA.ui.star) or ""
 	p.halo = self:_fx("Halo", "glow", 8, GOLD)
-	p.star = self:_img("Star", star, 9, GOLD)
+	p.star = self:_img("Coin", star, 9, GOLD)
 	p.pay = self:_text("Pay", "+1,440", fs, Color3.fromRGB(255, 220, 110), 11)
 	p.pay_scale = new("UIScale", {}, p.pay)
 	p.label = self:_text("Label", "MATCH PAYOUT", fs * 0.45, WHITE, 11, FONT_B)

@@ -428,6 +428,14 @@ function TitleScreen.new(c: any)
 	self:add_child(self._arsenal_btn)
 	-- under them, the flag shop (Data/Shop; shown while it sells something here)
 	self._shop_btn = ShopButton.new(c)
+	do
+		-- (Take Over the World!: no flag shop: its button never shows)
+		local base = self._shop_btn.set_visible
+		self._shop_btn.set_visible = function(n, _on)
+			base(n, false)
+		end
+		self._shop_btn:set_visible(false)
+	end
 	self._shop_btn.pressed:Connect(function()
 		self.open_shop:Fire()
 	end)
