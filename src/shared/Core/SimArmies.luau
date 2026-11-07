@@ -23,6 +23,7 @@
 local Defs = require("./Defs")
 local Ev = require("./Ev")
 local Units = require("../Data/Units")
+local Logistics = require("../Data/Logistics")
 
 local readu16, readi32 = buffer.readu16, buffer.readi32
 
@@ -225,6 +226,9 @@ function SimArmies.install(C: any)
 			a.dest_tile,
 			a.target_prov,
 			a.prov,
+			if a.connected then 1 else 0,
+			math.floor((a.consumption or 0) * 10),
+			a.source or 0,
 		})
 		a.dirty = false
 	end
@@ -255,6 +259,9 @@ function SimArmies.install(C: any)
 					a.dest_tile,
 					a.target_prov,
 					a.prov,
+					if a.connected then 1 else 0,
+					math.floor((a.consumption or 0) * 10),
+					a.source or 0,
 				})
 			end
 		end
@@ -358,6 +365,16 @@ function SimArmies.install(C: any)
 		if self.o_troops[owner] < men then
 			return self:_army_fail(owner, "Not enough troops")
 		end
+		local res = {}
+		for r, v in def.res or {} do
+			res[r] = v * count
+		end
+		if self.l_on and not self:can_pay(owner, 0, res) then
+			return self:_army_fail(owner, "Not enough resources") -- (Take Over the World!: steel, oil, food)
+		end
+		if self.l_on then
+			self:pay(owner, 0, res)
+		end
 		self.o_gold[owner] -= gold
 		self.o_troops[owner] -= men
 		if a == nil then
@@ -418,6 +435,11 @@ function SimArmies.install(C: any)
 		local ctrl = self.p_ctrl[pid]
 		if ctrl ~= 0 and self:_prov_has(pid, { Defs.S_CITY, Defs.S_FACTORY }, ctrl) then
 			speed *= Units.INFRA_SPEED
+		end
+		if self.l_on then
+			-- (Take Over the World!: roads and railways speed armies up, Data/Logistics)
+			local inf = self.l_infra[pid]
+			speed *= 1 + inf.road * Logistics.ROAD_SPEED + inf.rail * Logistics.RAIL_SPEED
 		end
 		local tpt = math.max(1, Defs.TICK_RATE / speed)
 		a.seg_path = path
@@ -576,9 +598,15 @@ function SimArmies.install(C: any)
 		end
 		a.order = "retreat"
 		a.target_prov = 0
-		if home == a.prov then
-			a.route = { home }
-		else
+		if self.l_on and not a.connected then
+			-- (Take Over the World!: cut off: fall back toward the nearest supplied province)
+			local sup = self:nearest_supplied(a.owner, a.prov)
+			if sup ~= 0 then
+				home = sup
+			end
+		end
+		a.route = (home ~= a.prov and self:_route(a.owner, a.prov, home, false)) or { home }
+		if #a.route == 0 then
 			a.route = { home }
 		end
 		a.route_i = 1
@@ -649,15 +677,20 @@ function SimArmies.install(C: any)
 		if a.status ~= STATUS.idle then
 			return self:_army_fail(owner, "Reinforcements reach an army that is standing still")
 		end
-		if self.p_ctrl[a.prov] ~= owner or a.supply < Units.REINFORCE_MIN_SUPPLY then
+		if self.p_ctrl[a.prov] ~= owner or a.supply < Logistics.REINFORCE_MIN or (self.l_on and not a.connected) then
 			return self:_army_fail(owner, "Reinforcements need a supplied army in your territory")
 		end
 		local added = 0
 		for _, k in TYPES do
 			local want = a.best[k] - a.n[k]
 			local def = DEFS[k]
-			while want > 0 and self.o_gold[owner] >= def.gold and self.o_troops[owner] >= def.men do
+			while want > 0 and self.o_gold[owner] >= def.gold and self.o_troops[owner] >= def.men
+				and (not self.l_on or def.res == nil or self:can_pay(owner, 0, def.res))
+			do
 				self.o_gold[owner] -= def.gold
+				if self.l_on and def.res ~= nil then
+					self:pay(owner, 0, def.res)
+				end
 				self.o_troops[owner] -= def.men
 				a.n[k] += 1
 				want -= 1
@@ -1089,6 +1122,9 @@ function SimArmies.install(C: any)
 				self:_battle_round(b)
 			end
 			-- supply, upkeep, recovery
+			if self.l_on then
+				self:_supply_round(Units.ROUND_TICKS / Defs.TICK_RATE) -- (Take Over the World!: Core/SimLogistics)
+			end
 			for _, id in self.army_order do
 				local a = self.armies[id]
 				if a == nil or a.dead then
@@ -1105,7 +1141,9 @@ function SimArmies.install(C: any)
 					self.o_gold[a.owner] -= upkeep
 				end
 				local s0, o0, m0 = a.supply, a.org, a.morale
-				if own and paid then
+				if self.l_on then
+					-- (supply came from the network above; recovery by its status tier)
+				elseif own and paid then
 					local regen = Units.SUPPLY_REGEN
 					if self.P.capital_of[a.owner] ~= nil and not self:holds_capital(a.owner) then
 						regen *= Units.CAPITAL_LOST_SUPPLY
@@ -1115,8 +1153,9 @@ function SimArmies.install(C: any)
 					a.supply = math.max(0, a.supply - Units.SUPPLY_LOSS)
 				end
 				if a.status ~= STATUS.combat then
-					a.org = math.min(1, a.org + Units.ORG_REGEN * a.supply)
-					a.morale = math.min(1, a.morale + Units.MORALE_REGEN * a.supply)
+					local rec = if self.l_on then Logistics.status(a.supply).recovery else a.supply
+					a.org = math.min(1, a.org + Units.ORG_REGEN * rec)
+					a.morale = math.min(1, a.morale + Units.MORALE_REGEN * rec)
 				end
 				if math.abs(a.supply - s0) + math.abs(a.org - o0) + math.abs(a.morale - m0) > 0.004 then
 					a.dirty = true

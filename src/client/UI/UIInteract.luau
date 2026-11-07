@@ -251,6 +251,9 @@ function UIInteract.on_click(self: any, tile: number)
 	end
 	local pos = self:tap_pos(tile)
 	-- (Take Over the World!: armies first: targeting, selecting one, the recruiting province)
+	if ctx.logistics_ui ~= nil and ctx.logistics_ui:on_map_click(tile, pos) then
+		return -- (Take Over the World!: logistics view: the build panel)
+	end
 	if ctx.army_ui ~= nil and ctx.army_ui:on_map_click(tile, pos) then
 		return
 	end

@@ -19,6 +19,7 @@ local Units = require(Airfront.Data.Units)
 local ArmySprites = require("../Map/ArmySprites")
 local UnitLayer = require("../Map/UnitLayer")
 local UITheme = require("./UITheme")
+local Logistics = require(Airfront.Data.Logistics)
 
 local ArmyPanel = {}
 ArmyPanel.__index = ArmyPanel
@@ -176,7 +177,7 @@ function ArmyPanel.new(ctx: any, gui: Instance)
 	-- army panel
 	local ap = glass(root, "Army")
 	ap.AnchorPoint = Vector2.new(0, 1)
-	ap.Size = UDim2.fromOffset(310, 318)
+	ap.Size = UDim2.fromOffset(310, 336)
 	ap.Visible = false
 	self.panel = ap
 	self.icon = make("ImageLabel", { BackgroundColor3 = TEXT2, BorderSizePixel = 0, Size = UDim2.fromOffset(40, 40), ResampleMode = Enum.ResamplerMode.Pixelated }, ap)
@@ -216,7 +217,9 @@ function ArmyPanel.new(ctx: any, gui: Instance)
 		})
 		self.bars[spec[1]] = { fill = fill, pct = pct }
 	end
-	self.orders = label(ap, "", 13, Enum.FontWeight.Bold, AMBER, { Position = UDim2.fromOffset(0, 196), Size = UDim2.new(1, 0, 0, 18) })
+	-- (Take Over the World!: supply detail: status, link, consumption, Core/SimLogistics)
+	self.supply_info = label(ap, "", 11, Enum.FontWeight.Bold, TEXT2, { Position = UDim2.fromOffset(0, 192), Size = UDim2.new(1, 0, 0, 14) })
+	self.orders = label(ap, "", 13, Enum.FontWeight.Bold, AMBER, { Position = UDim2.fromOffset(0, 212), Size = UDim2.new(1, 0, 0, 18) })
 	self.buttons = {}
 	local cmds = {
 		{ "move", "MOVE", AMBER },
@@ -230,7 +233,7 @@ function ArmyPanel.new(ctx: any, gui: Instance)
 		local col = (i - 1) % 3
 		local row = (i - 1) // 3
 		local b = button(ap, c[2], c[3], {
-			Position = UDim2.new(col / 3, if col > 0 then 3 else 0, 0, 222 + row * 44),
+			Position = UDim2.new(col / 3, if col > 0 then 3 else 0, 0, 238 + row * 44),
 			Size = UDim2.new(1 / 3, -4, 0, 38),
 		})
 		b.Activated:Connect(function()
@@ -480,6 +483,10 @@ function ArmyPanel._refresh(self)
 		b.fill.Size = UDim2.fromScale(v, 1)
 		b.pct.Text = string.format("%d%%", math.floor(v * 100 + 0.5))
 	end
+	local sup = Logistics.status((a.supply or 0) / 100)
+	self.supply_info.Text = string.format("%s · %s · uses %.1f/s", sup.name,
+		if a.connected then "linked via " .. self:_province_name(a.source or 0) else "CUT OFF from supply", a.consumption or 0)
+	self.supply_info.TextColor3 = if not a.connected or sup.code >= 2 then RED elseif sup.code == 1 then AMBER else GREEN
 	local st = a.status or 0
 	local text = STATUS_TEXT[st] or ""
 	if st == 1 and (a.target_province or 0) ~= 0 then

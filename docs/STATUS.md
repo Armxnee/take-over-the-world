@@ -353,3 +353,10 @@ An original real-time territory-conquest game for Roblox. RoWorld is the gamepla
 - Fixed: troop-growth bonus multiplied negative growth (troops above the cap fell far below it).
 - Studio copies of SimArmies/ArmyPanel/CountryPicker got some fixes as single-line equivalents (Studio multi-line edits
   fail on CRLF files); the next full sync makes Studio match the disk again.
+
+## 2026-11-06: Stage 5 (supply, logistics, resources)
+- Data/Logistics (all tuning: supply tiers, network capacities, infrastructure, deposits, production), Core/SimLogistics
+  (national stocks of food/steel/oil/aluminum/rare next to gold; province infrastructure road/rail/depot/farm/steel/oil with
+  build jobs; ports = existing port structure; widest-path supply networks per country, recalculated on change; army
+  supply delivery, tiers, attrition), Ev.RES / INFRA / SUPPLYNET, intent `build_infra`, UI/LogisticsUI (resource bar,
+  LOGISTICS view, build panel), army panel supply line. Tests: `AF_DEV = "LogisticsTests"` 32/32 (Army 33/33, Country 29/29).

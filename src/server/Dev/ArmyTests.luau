@@ -94,6 +94,12 @@ local function setup(seed: number)
 	for _, id in { A, B } do
 		sim.o_gold[id] = 5e6
 		sim.o_troops[id] = sim.o_cap[id] -- (above the cap troops fall back to it)
+		if sim.l_on then
+			local st = sim:_stock(id)
+			for k in st do
+				st[k] = 1e6 -- (Stage 5: units also cost steel / oil / food)
+			end
+		end
 		sim.o_shield_until[id] = 0
 	end
 	return sim, A, B, C

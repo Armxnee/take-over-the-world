@@ -49,6 +49,13 @@ Ev.BONUS = 34 -- owner, tile, gold  (gold `owner` earned at `tile`, a train's
 --- (Take Over the World!: an army's composition and condition, Core/SimArmies) uid, owner, seq, infantry, tanks,
 --- artillery, health %, morale %, organization %, supply %, status, dest_tile, target_province, province
 Ev.ARMY = 35
-Ev.COUNT = 36
+--- (Take Over the World!: Core/SimLogistics) a player's stocks: owner, food, steel, oil, aluminum, rare, then the
+--- same five production rates x10, storage cap
+Ev.RES = 36
+--- pid, road, rail, depot, farm, steel, oil, building (Data/Logistics code, 0 none), finish_tick, depot stock
+Ev.INFRA = 37
+--- owner, { pid * 4096 + capacity }: the provinces connected to the player's supply
+Ev.SUPPLYNET = 38
+Ev.COUNT = 39
 
 return Ev

@@ -141,6 +141,7 @@ Protocol.INTENT_TYPES = {
 	"army_disband", -- {uid}
 	"army_merge", -- {uid, target}: army `target` joins army `uid`
 	"army_reinforce", -- {uid}
+	"build_infra", -- {kind, tile}: (Take Over the World!: road, rail, depot, farm, steel, oil, port)
 }
 local INTENT_INDEX: { [string]: number } = {}
 for i, name in Protocol.INTENT_TYPES do

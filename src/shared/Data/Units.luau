@@ -3,6 +3,8 @@
 -- The one place ground units and army combat are tuned. A unit is a battalion: recruiting one takes
 -- `men` from the country's existing troop pool (o_troops, internal units: the HUD shows them / 10) and
 -- `gold` from its treasury: no other currency or troop system. Core/SimArmies reads everything here.
+local Logistics = require("./Logistics")
+
 local Units = {}
 
 --- Order of the unit types (army composition rows, UI, wire).
@@ -26,6 +28,7 @@ Units.DEFS = {
 		sprite = "unit:infantry",
 		men = 10000,
 		gold = 1500,
+		res = { food = 10 }, -- (Take Over the World!: strategic resources, Data/Logistics)
 		soft_attack = 4,
 		hard_attack = 1,
 		defense = 1.4,
@@ -45,6 +48,7 @@ Units.DEFS = {
 		sprite = "unit:tank",
 		men = 3000,
 		gold = 9000,
+		res = { steel = 40, oil = 20 },
 		soft_attack = 14,
 		hard_attack = 8,
 		defense = 1.6,
@@ -64,6 +68,7 @@ Units.DEFS = {
 		sprite = "unit:artillery",
 		men = 4000,
 		gold = 6000,
+		res = { steel = 25 },
 		soft_attack = 10,
 		hard_attack = 3,
 		defense = 0.8,
@@ -129,7 +134,8 @@ Units.REINFORCE_MIN_SUPPLY = 0.5
 
 --- Effectiveness from supply, organization and morale (0..1 each).
 function Units.effectiveness(supply: number, org: number, morale: number): number
-	return (0.5 + 0.5 * supply) * (0.4 + 0.6 * org) * (0.6 + 0.4 * morale)
+	-- (supply by status tier: Data/Logistics)
+	return Logistics.status(supply).combat * (0.4 + 0.6 * org) * (0.6 + 0.4 * morale)
 end
 
 --- A unit type's attack multiplier on terrain code `t` (Defs.T_*).
