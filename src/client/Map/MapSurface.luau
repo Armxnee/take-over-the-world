@@ -635,7 +635,9 @@ function MapSurface._load_skins(self: any, ids: { number }?)
 		-- (Take Over the World!: no territory skins: every country wears its flag)
 		local skin = nil
 		if skin == nil or skin.kind ~= "skin" then
-			self._skins[id] = MapSurface._flag_skin(st, id)
+			-- (the fit it had: an empire keeps its land's fit under its new name)
+			local prev = self._skins[id]
+			self._skins[id] = MapSurface._flag_skin(st, id, if prev ~= nil then prev.fit else nil)
 		else
 			local cur = self._skins[id]
 			if cur == nil or cur.skin ~= skin then
@@ -725,7 +727,7 @@ local function country_fits(map: any): { [string]: any }
 	end
 	return out
 end
-function MapSurface._flag_skin(st: any, id: number): any?
+function MapSurface._flag_skin(st: any, id: number, prev_fit: any?): any?
 	local o = st.owners and st.owners[id]
 	if o == nil or o.name == nil then
 		return nil
@@ -765,7 +767,7 @@ function MapSurface._flag_skin(st: any, id: number): any?
 		return nil
 	end
 	-- (no home land in the grid: a first guess, the refit scan finds its land)
-	local fit = (flag_fits :: any)[o.name] or { ox = 0, oy = 0, s = 2 }
+	local fit = prev_fit or (flag_fits :: any)[o.name] or { ox = 0, oy = 0, s = 2 }
 	return {
 		mask = rec.mask,
 		w = rec.w,

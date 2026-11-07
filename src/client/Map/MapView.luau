@@ -359,6 +359,8 @@ function MapView.bind_state(self: any, state: any)
 		call(self.layers.glow, "on_flags_changed", ch)
 	end)
 	self:_connect(state.owner_added, function(id)
+		-- (Take Over the World!: a renamed owner (an empire) wears its new flag)
+		surface:_load_skins({ id })
 		surface:refresh_palette()
 		-- (an owner that is sent again with land already on the map, in another colour: a slot that
 		-- changed hands. Its tiles kept the old colour until each was next repainted. A new owner

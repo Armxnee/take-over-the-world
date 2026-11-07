@@ -374,3 +374,19 @@ An original real-time territory-conquest game for Roblox. RoWorld is the gamepla
 - Flags follow the owner's land: MapSurface._refit_step scans owners' tiles incrementally and refits
   (3rd-97th percentile bounds) when the fit moves more than 12%.
 - Test coins: workspace AF_DIAG = true (Studio only), then LocalPlayer af_cmd = "stars 30000". Turn it off after.
+
+## 2026-11-07 (2): bundles, coin packs, empires, AI Countryballs, flag colours
+- Robux products (this universe, made by the user in Creator Dashboard): bundles royal 3729153353,
+  admiral 3729153448, winter 3729153535, frontline 3729153618; coins s 3729153677, m 3729153745,
+  l 3729153826, xl 3729153911. Data/Products marks them `own` (every RoWorld product is zeroed).
+  Data/Bundles lists them; server/Purchases.grant handles "coins:<n>" and "bundle:<id>" (owned items
+  come back as coins).
+- Item shop: sections scroll (featured + daily, then BUNDLES); top bar BUY COINS / MY ITEMS overlays
+  (no crates).
+- Empires (Data/Empires, Sim.form_empire, intent "empire", UI/EmpireButton): a player's country with 5%
+  of the map's land founds its empire (19 historical, else "Empire of <name>"); flags from Wikimedia
+  Commons pixelated by tools/build_empire_flags.py into Data/FlagData/Empires; Countries.flags_by_name maps
+  empire names to them; empire Countryballs get a moustache and a beard.
+- Every country's Countryball by its name (NameLayer: any owner with a flag); nation colours = their
+  flag's main colour (FlagPix.main_color, kept exactly in Sim._create_nations).
+- US flag hand-drawn (FlagPix.OVERRIDES).

@@ -40,6 +40,8 @@ local WorldMap = require("./WorldMap")
 local Nations = require("../Data/Nations")
 local Coop = require("../Net/Coop")
 local Provinces = require("./Provinces")
+local Empires = require("../Data/Empires")
+local FlagPix = require("../Data/FlagPix")
 local Countries = require("../Data/Countries")
 local CountryGrid = require("../Data/CountryGrid")
 
@@ -627,18 +629,24 @@ function Sim._create_nations(self: any)
 		end
 		list = table.move(pool, 1, limit, 1, {})
 	end
-	local picked = {} :: { [number]: boolean }
+	local picked = {} :: { [number]: any }
 	for _, nd in list do
 		if type(nd) ~= "table" then
 			continue
 		end
 		local hex = if nd.flag ~= nil then NATION_COLOR[string.lower(tostring(nd.flag))] else nil
 		local col = if hex ~= nil then Defs.html_rgba(hex) else 0x888888FF
+		-- (Take Over the World!: a country's colour is its flag's: Brazil green, Japan red. Kept exactly)
+		local flag_col = if self.countries and nd.flag ~= nil then FlagPix.main_color(tostring(nd.flag), tostring(nd.name or "")) else nil
+		if flag_col ~= nil then
+			hex = flag_col:ToHex()
+			col = Defs.html_rgba(hex)
+		end
 		local id = self:add_owner(tostring(nd.name or "Nation"), col, Defs.KIND_NATION)
 		if id <= 0 then
 			break
 		end
-		picked[id] = hex ~= nil
+		picked[id] = if flag_col ~= nil then "flag" elseif hex ~= nil then true else false
 		if nd.flag ~= nil then
 			self.nation_flag[id] = string.lower(tostring(nd.flag))
 		end
@@ -669,7 +677,9 @@ function Sim._create_nations(self: any)
 		end
 		Coop.check()
 		local refs = self:_colour_refs(id, Sim.COLOR_NEAR_NATION)
-		if picked[id] then
+		if picked[id] == "flag" then
+			continue -- (Take Over the World!: the flag's colour, exactly)
+		elseif picked[id] then
 			-- Authored colours stay unless a nearby capital's colour is too similar (minimal nudge).
 			self.o_color[id] = SimColors.nudge(self.o_color[id], refs)
 		else
@@ -1201,7 +1211,42 @@ function Sim._apply_intent(self: any, id: number, it: { [string]: any })
 		self:donate(id, _int(it, "target", 0), _int(it, "troops", 0))
 	elseif kind == "reinforce" then
 		self:reinforce(id)
+	elseif kind == "empire" then
+		self:form_empire(id)
 	end
+end
+
+--- (Take Over the World!: may `id` found its empire now? A country's leader (a person) holding
+--- Empires.LAND_SHARE of the map's land, once.)
+function Sim.can_form_empire(self: any, id: number): boolean
+	if not self.countries or id <= 0 or self.o_alive[id] ~= 1 or self.o_kind[id] ~= Defs.KIND_HUMAN then
+		return false
+	end
+	self._empire = self._empire or {}
+	if self._empire[id] ~= nil or Empires.is_empire(self.o_name[id]) then
+		return false
+	end
+	local land = self.map.land_count
+	return land > 0 and self.o_tiles[id] >= land * Empires.LAND_SHARE
+end
+
+--- (Take Over the World!: found the empire: the nation takes the empire's name (its flag follows the
+--- name: Data/Countries.flags_by_name), told to everyone as the owner sent again.)
+function Sim.form_empire(self: any, id: number): boolean
+	if not self:can_form_empire(id) then
+		return false
+	end
+	local country = self.o_name[id]
+	local e = Empires.of(country)
+	self._empire[id] = country
+	self.o_name[id] = e.name
+	self:ev({ Ev.OWNER_ADD, id, self.o_name[id], self.o_color[id], self.o_kind[id], self.o_team[id] })
+	for _, h in self.humans do
+		self:msg(h, if h == id then Defs.MSG_GOOD else Defs.MSG_ALERT, if h == id
+			then ("You founded the " .. e.name .. "!")
+			else (country .. " founded the " .. e.name .. "!"))
+	end
+	return true
 end
 
 function Sim._set_pending(self: any, id: number, t: number)

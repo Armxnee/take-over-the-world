@@ -32,13 +32,21 @@ local function decode(s: string): any
 	return { pal = pal, idx = idx }
 end
 
+--- (Take Over the World!: flags drawn by hand at 30 x 20, where the downscaled artwork smudges. The US:
+--- 13 stripes, red 2 px and white 1 px, a 12 x 11 canton with 45 stars.)
+FlagPix.OVERRIDES = {
+	us = "ffffffb222343c3b6e|222222222222111111111111111111202020202022111111111111111111220202020202000000000000000000202020202022111111111111111111220202020202111111111111111111202020202022000000000000000000220202020202111111111111111111202020202022111111111111111111220202020202000000000000000000202020202022111111111111111111222222222222111111111111111111000000000000000000000000000000111111111111111111111111111111111111111111111111111111111111000000000000000000000000000000111111111111111111111111111111111111111111111111111111111111000000000000000000000000000000111111111111111111111111111111111111111111111111111111111111",
+}
+
 function FlagPix.code(name: string): string?
 	if not names then
 		local folder = script.Parent:FindFirstChild("FlagData")
 		local nm = folder and folder:FindFirstChild("Names")
 		names = if nm then require(nm :: ModuleScript) :: any else {}
+		-- (Take Over the World!: flags drawn by hand win over the generated ones; then the empires)
+		table.insert(parts, FlagPix.OVERRIDES)
 		if folder then
-			for _, part in { "PixA", "PixB" } do
+			for _, part in { "Empires", "PixA", "PixB" } do
 				local m = folder:FindFirstChild(part)
 				if m then
 					table.insert(parts, require(m :: ModuleScript) :: any)
@@ -125,6 +133,33 @@ function FlagPix.forCode(code: string?, name: string?): any
 		end
 	end
 	return if name ~= nil then FlagPix.forCountry(name) else nil
+end
+
+--- (Take Over the World!: the colour a flag reads as: its most used colour, white, black and greys counting
+--- for less; nil without a flag)
+function FlagPix.main_color(code: string?, name: string?): Color3?
+	local g = FlagPix.forCode(code, name)
+	if g == nil then
+		return nil
+	end
+	local count = {}
+	for i = 0, W * H - 1 do
+		local k = buffer.readu8(g.idx, i) + 1
+		count[k] = (count[k] or 0) + 1
+	end
+	local best, best_s = nil, -1
+	for k, n in count do
+		local c = g.pal[k]
+		if c ~= nil then
+			local _, s, v = c:ToHSV()
+			local weight = if s < 0.18 or v < 0.2 then 0.05 else 1
+			local score = n * weight
+			if score > best_s then
+				best, best_s = c, score
+			end
+		end
+	end
+	return best
 end
 
 return FlagPix

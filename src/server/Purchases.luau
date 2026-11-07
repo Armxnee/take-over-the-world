@@ -65,6 +65,9 @@ local Subscription: any = if IS_ROBLOX
 local Quests: any = if typeof(game) == "Instance"
 	then require((game :: any):GetService("ReplicatedStorage"):WaitForChild("Airfront").Data.Quests)
 	else require("../shared/Data/Quests")
+local Bundles: any = if typeof(game) == "Instance"
+	then require((game :: any):GetService("ReplicatedStorage"):WaitForChild("Airfront").Data.Bundles)
+	else require("../shared/Data/Bundles")
 local ItemShop: any = if typeof(game) == "Instance"
 	then require((game :: any):GetService("ReplicatedStorage"):WaitForChild("Airfront").Data.ItemShop)
 	else require("../shared/Data/ItemShop")
@@ -661,11 +664,31 @@ function Purchases.grant(user_id: number, kind: string, receipt: string, n: numb
 				stored = rec -- granted before (a retry): nothing to add
 				return nil
 			end
+			-- (Take Over the World!: coin packs and gear bundles from the item shop)
+			local coin_pack = tonumber(string.match(kind, "^coins:(%d+)$"))
+			local bundle = Bundles.get(string.match(kind, "^bundle:(.+)$"))
 			local unlock_key = string.match(kind, "^unlock:(.+)$")
 			local it = if unlock_key ~= nil then Arsenal.item(unlock_key) else nil
 			local shop_key = string.match(kind, "^shopflag:(.+)$")
 			local set_id = string.match(kind, "^shopset:(.+)$")
-			if set_id ~= nil then
+			if coin_pack ~= nil then
+				rec.stars = math.min(rec.stars + math.clamp(coin_pack, 0, 1000000), Purchases.MAX_STARS)
+			elseif bundle ~= nil then
+				for _, id in bundle.items do
+					local item = Cosmetics.item(id)
+					if item ~= nil then
+						if rec.owned[id] then
+							-- (owned already: its price back in coins)
+							rec.stars = math.min(rec.stars + ItemShop.price(item), Purchases.MAX_STARS)
+						else
+							rec.owned[id] = true
+							if rec.equipped[item.kind] == nil then
+								rec.equipped[item.kind] = id
+							end
+						end
+					end
+				end
+			elseif set_id ~= nil then
 				local keys = Shop.set_keys(set_id)
 				local total = Shop.set_total(set_id)
 				local p = Products["shopset_" .. set_id]

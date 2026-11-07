@@ -2,11 +2,13 @@
 -- (Take Over the World!: the item shop, 2026-11-07 layout: a full screen over a pixel-art showroom.)
 -- Coins (the match currency) buy today's gear (Data/ItemShop: the same list on every client and the
 -- server, by UTC day): three tall FEATURED cards and six DAILY cards, each in its rarity's colours with
--- the item's picture (UI/GearArt), its name, its kind and its price. Hats are worn by the player's
--- Countryball; boat / nuke / missile skins colour those units. Supply crates (a random piece of gear)
--- are bought and opened from the top bar. BUY asks the server (Session.buy_item), which checks the
--- price and the balance, keeps the item and wears it when its slot is empty; an owned card wears it /
--- takes it off (Session.equip). Opening: the backdrop fades in, then everything pops in turn.
+-- the item's picture (UI/GearArt), its name, its kind and its price. Below them (the sections scroll):
+-- BUNDLES, several pieces of gear for Robux (Data/Bundles). The top bar: BUY COINS (coin packs for
+-- Robux) and MY ITEMS (owned gear, pressed to wear / take off). Hats are worn by the player's
+-- Countryball; boat / nuke / missile skins colour those units. BUY asks the server (Session.buy_item),
+-- which checks the price and the balance, keeps the item and wears it when its slot is empty; Robux
+-- products go through Roblox's prompt and the server's receipt (server/Purchases.grant). Opening: the
+-- backdrop fades in, then everything pops in turn.
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 local GuiService = game:GetService("GuiService")
@@ -17,6 +19,11 @@ local Cosmetics = require(Airfront.Data.Cosmetics)
 local UITheme = require("./UITheme")
 local GearArt = require("./GearArt")
 local Anim = require("./Anim")
+local Bundles = require(Airfront.Data.Bundles)
+local Products = require(Airfront.Data.Products)
+local MarketplaceService = game:GetService("MarketplaceService")
+local Players = game:GetService("Players")
+local ROBUX = "rbxasset://textures/ui/common/robux@3x.png"
 
 local ItemShopPanel = {}
 ItemShopPanel.__index = ItemShopPanel
@@ -207,7 +214,7 @@ function ItemShopPanel.new(ctx: any, gui: Instance, open_locker: () -> ())
 		table.insert(self._pops, inst)
 		return inst
 	end
-	-- top bar: the title, crates, the wallet, close
+	-- top bar: the title, coins, my items, the wallet, close
 	local head = pop(make("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(24, 10), Size = UDim2.fromOffset(420, 70), ZIndex = 43 }, canvas))
 	make("ImageLabel", {
 		BackgroundTransparency = 1,
@@ -278,26 +285,38 @@ function ItemShopPanel.new(ctx: any, gui: Instance, open_locker: () -> ())
 		Anim.button(b)
 		return b, l
 	end
-	local buy_crate, buy_l = pill(-296, 200)
-	self.buy_crate_l = buy_l
-	buy_l.Text = "BUY CRATE · " .. commas(ItemShop.CRATE_PRICE)
-	buy_crate.Activated:Connect(function()
-		self:_buy("crate")
-	end)
-	local open_crates, open_l = pill(-508, 200)
-	self.open_crates_l = open_l
-	open_crates.Activated:Connect(function()
+	-- (no crates: coins are bought with Robux, owned gear is worn from MY ITEMS)
+	local buy_coins, coins_l = pill(-296, 200)
+	coins_l.Text = "+ BUY COINS"
+	buy_coins.Activated:Connect(function()
 		self.ctx:sfx("click")
-		self:close()
-		open_locker()
+		self:_overlay("coins")
 	end)
-	-- the two sections
+	local my_items, items_l = pill(-508, 200)
+	items_l.Text = "MY ITEMS"
+	my_items.Activated:Connect(function()
+		self.ctx:sfx("click")
+		self:_overlay("items")
+	end)
+	-- the sections scroll: featured and daily, then the bundles
+	local scroll = make("ScrollingFrame", {
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		Position = UDim2.fromOffset(0, 88),
+		Size = UDim2.new(1, 0, 0, 552),
+		CanvasSize = UDim2.fromOffset(0, 552 + 404),
+		ScrollBarThickness = 8,
+		ScrollBarImageColor3 = AMBER,
+		ScrollingDirection = Enum.ScrollingDirection.Y,
+		ZIndex = 42,
+	}, canvas)
+	self.scroll = scroll
 	local FX, FW = 24, 724
 	local DX = FX + FW + 32
 	local DW = ItemShopPanel.W - 24 - DX
-	local TOP, CARD_H = 156, 476
-	local ta, tab_a, bar_a = banner(canvas, FX, 96, FW, "FEATURED ITEMS")
-	local tb, tab_b, bar_b = banner(canvas, DX, 96, DW, "DAILY ITEMS")
+	local TOP, CARD_H = 68, 476
+	local ta, tab_a, bar_a = banner(scroll, FX, 8, FW, "FEATURED ITEMS")
+	local tb, tab_b, bar_b = banner(scroll, DX, 8, DW, "DAILY ITEMS")
 	self.timer_a, self.timer_b = ta, tb
 	for _, o in { tab_a, bar_a, tab_b, bar_b } do
 		pop(o)
@@ -313,7 +332,7 @@ function ItemShopPanel.new(ctx: any, gui: Instance, open_locker: () -> ())
 			Size = UDim2.fromOffset(w, h),
 			ZIndex = 42,
 			Selectable = true,
-		}, canvas))
+		}, scroll))
 		local edge = make("UIStroke", { Thickness = 3, ApplyStrokeMode = Enum.ApplyStrokeMode.Border, Color = INK }, hit)
 		-- (a canvas group clips the slanted band and the rays)
 		local body = make("CanvasGroup", {
@@ -440,6 +459,58 @@ function ItemShopPanel.new(ctx: any, gui: Instance, open_locker: () -> ())
 		local col, row = (i - 1) % 3, (i - 1) // 3
 		self.cards[ItemShop.FEATURED + i] = card(DX + col * (dw + 16), TOP + row * (dh + 16), dw, dh, false)
 	end
+	-- the bundles (Robux)
+	local BY = TOP + CARD_H + 30
+	local tc, tab_c, bar_c = banner(scroll, FX, BY, ItemShopPanel.W - 48, "BUNDLES")
+	tc.Text = "ROBUX ONLY"
+	for _, o in { tab_c, bar_c } do
+		pop(o)
+	end
+	self.bundle_cards = {}
+	local BW = (ItemShopPanel.W - 48 - 3 * 18) / 4
+	for i, b in Bundles.LIST do
+		local c = card(FX + (i - 1) % 4 * (BW + 18), BY + 60, BW, 300, false)
+		c.bundle = b
+		c.f = nil
+		c.name.Text = string.upper(b.name)
+		c.kind.Text = string.format("BUNDLE · %d ITEMS", #b.items)
+		local r = RARITY[b.rarity] or RARITY.common
+		c.grad.Color = ColorSequence.new(r[1], r[2])
+		c.band_grad.Color = ColorSequence.new(r[3], r[3]:Lerp(Color3.new(0, 0, 0), 0.3))
+		c.notch.BackgroundColor3 = r[3]
+		c.edge.Color = r[4]:Lerp(INK, 0.6)
+		c.glow.ImageColor3 = r[4]
+		c.kind.TextColor3 = r[4]
+		c.price.coin.Image = ROBUX
+		c.price.coin.ImageColor3 = TEXT
+		-- the bundle's items, side by side over the art
+		c.art.Visible = false
+		local strip = make("Frame", {
+			BackgroundTransparency = 1,
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(0.5, 0.34),
+			Size = UDim2.new(1, -16, 0, BW / #b.items),
+			ZIndex = 44,
+		}, c.art.Parent)
+		make("UIListLayout", {
+			FillDirection = Enum.FillDirection.Horizontal,
+			HorizontalAlignment = Enum.HorizontalAlignment.Center,
+			VerticalAlignment = Enum.VerticalAlignment.Center,
+			Padding = UDim.new(0, 2),
+		}, strip)
+		for k, id in b.items do
+			local img = make("ImageLabel", {
+				BackgroundTransparency = 1,
+				ResampleMode = Enum.ResamplerMode.Pixelated,
+				Size = UDim2.fromOffset(BW / #b.items - 4, BW / #b.items - 4),
+				LayoutOrder = k,
+				ZIndex = 44,
+			}, strip)
+			img.ImageContent = GearArt.content(Cosmetics.item(id), BALLS[(i + k) % #BALLS + 1]) or Content.none
+		end
+		self.bundle_cards[i] = c
+	end
+	self:_build_overlay(canvas)
 	-- the note and the toast
 	pop(label(canvas, "Note: these items change how your Countryball and units look. They give no advantage in battle.", 15, Enum.FontWeight.Bold, Color3.fromHex("8FB8FF"), {
 		AnchorPoint = Vector2.new(0.5, 0),
@@ -467,6 +538,256 @@ function ItemShopPanel.new(ctx: any, gui: Instance, open_locker: () -> ())
 		end
 	end)
 	return self
+end
+
+--- The two panels over the shop: coin packs ("coins") and the gear the player owns ("items").
+function ItemShopPanel._build_overlay(self, canvas: Frame)
+	local dim = make("TextButton", {
+		Text = "",
+		AutoButtonColor = false,
+		BackgroundColor3 = Color3.new(0, 0, 0),
+		BackgroundTransparency = 0.35,
+		-- (past the canvas on every side: the whole screen dims)
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.fromScale(4, 4),
+		Visible = false,
+		ZIndex = 60,
+	}, canvas)
+	self.overlay = dim
+	local panel = make("Frame", {
+		BackgroundColor3 = Color3.new(1, 1, 1),
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(0.5, 0, 0.5, 14 / 4),
+		Size = UDim2.fromOffset(980, 480),
+		ZIndex = 61,
+	}, dim)
+	self.overlay_panel = panel
+	make("UICorner", { CornerRadius = UDim.new(0, 16) }, panel)
+	make("UIStroke", { Color = AMBER, Thickness = 3, ApplyStrokeMode = Enum.ApplyStrokeMode.Border }, panel)
+	make("UIGradient", { Color = ColorSequence.new(Color3.fromHex("22306A"), Color3.fromHex("0C1230")), Rotation = 90 }, panel)
+	self.overlay_title = label(panel, "", 32, Enum.FontWeight.Heavy, AMBER, {
+		Position = UDim2.fromOffset(24, 16),
+		Size = UDim2.fromOffset(600, 38),
+		ZIndex = 63,
+	})
+	make("UIStroke", { Color = INK, Thickness = 2 }, self.overlay_title)
+	local x = make("TextButton", {
+		Text = "X",
+		TextSize = 20,
+		FontFace = Font.new(FONT, Enum.FontWeight.Heavy),
+		TextColor3 = TEXT,
+		BackgroundColor3 = Color3.fromHex("C83A3A"),
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(1, -16, 0, 16),
+		Size = UDim2.fromOffset(42, 42),
+		ZIndex = 63,
+	}, panel)
+	make("UICorner", { CornerRadius = UDim.new(0, 10) }, x)
+	make("UIStroke", { Color = INK, Thickness = 2, ApplyStrokeMode = Enum.ApplyStrokeMode.Border }, x)
+	Anim.button(x)
+	x.Activated:Connect(function()
+		self.ctx:sfx("close")
+		dim.Visible = false
+	end)
+	dim.Activated:Connect(function()
+		dim.Visible = false
+	end)
+	-- coin packs
+	local packs = make("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(24, 76), Size = UDim2.new(1, -48, 1, -100), ZIndex = 62 }, panel)
+	self.overlay_coins = packs
+	local PW = (980 - 48 - 3 * 18) / 4
+	for i, pk in Bundles.COINS do
+		local b = make("TextButton", {
+			Text = "",
+			AutoButtonColor = false,
+			BackgroundColor3 = Color3.new(1, 1, 1),
+			Position = UDim2.fromOffset((i - 1) * (PW + 18), 0),
+			Size = UDim2.fromOffset(PW, 380),
+			ZIndex = 62,
+		}, packs)
+		make("UICorner", { CornerRadius = UDim.new(0, 12) }, b)
+		make("UIStroke", { Color = INK, Thickness = 3, ApplyStrokeMode = Enum.ApplyStrokeMode.Border }, b)
+		make("UIGradient", { Color = ColorSequence.new(Color3.fromHex("FFC94A"), Color3.fromHex("C46A12")), Rotation = 90 }, b)
+		make("ImageLabel", {
+			BackgroundTransparency = 1,
+			Image = UITheme.icon("gold") or "",
+			ImageColor3 = Color3.fromHex("FFF2B0"),
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(0.5, 0.34),
+			Size = UDim2.fromOffset(70 + i * 18, 70 + i * 18),
+			ZIndex = 63,
+		}, b)
+		local amount = label(b, commas(pk.coins), 34, Enum.FontWeight.Heavy, TEXT, {
+			AnchorPoint = Vector2.new(0.5, 0),
+			Position = UDim2.new(0.5, 0, 0, 236),
+			Size = UDim2.new(1, -12, 0, 38),
+			TextXAlignment = Enum.TextXAlignment.Center,
+			ZIndex = 63,
+		})
+		make("UIStroke", { Color = INK, Thickness = 2 }, amount)
+		label(b, "COINS", 16, Enum.FontWeight.Heavy, INK, {
+			AnchorPoint = Vector2.new(0.5, 0),
+			Position = UDim2.new(0.5, 0, 0, 276),
+			Size = UDim2.new(1, -12, 0, 20),
+			TextXAlignment = Enum.TextXAlignment.Center,
+			ZIndex = 63,
+		})
+		local price = make("Frame", {
+			BackgroundColor3 = Color3.fromHex("2F6B2F"),
+			AnchorPoint = Vector2.new(0.5, 1),
+			Position = UDim2.new(0.5, 0, 1, -14),
+			Size = UDim2.new(1, -28, 0, 44),
+			ZIndex = 63,
+		}, b)
+		make("UICorner", { CornerRadius = UDim.new(0, 10) }, price)
+		make("UIStroke", { Color = INK, Thickness = 2, ApplyStrokeMode = Enum.ApplyStrokeMode.Border }, price)
+		local row = price_row(price, 20, 9)
+		row.coin.Image = ROBUX
+		row.coin.ImageColor3 = TEXT
+		row.coin.ZIndex = 64
+		row.text.ZIndex = 64
+		row.text.Text = commas(pk.robux)
+		if pk.tag ~= nil then
+			local tag = make("TextLabel", {
+				Text = pk.tag,
+				TextSize = 15,
+				FontFace = Font.new(FONT, Enum.FontWeight.Heavy),
+				TextColor3 = TEXT,
+				BackgroundColor3 = Color3.fromHex("D13B3B"),
+				Position = UDim2.fromOffset(-8, -10),
+				Size = UDim2.fromOffset(118, 26),
+				Rotation = -6,
+				ZIndex = 65,
+			}, b)
+			make("UIStroke", { Color = INK, Thickness = 2, ApplyStrokeMode = Enum.ApplyStrokeMode.Border }, tag)
+		end
+		Anim.button(b, nil, 1.04)
+		b.Activated:Connect(function()
+			self:_prompt("coins_" .. pk.id)
+		end)
+	end
+	-- my items: a grid of owned gear (pressing one wears it / takes it off)
+	local grid = make("ScrollingFrame", {
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		Position = UDim2.fromOffset(24, 76),
+		Size = UDim2.new(1, -48, 1, -96),
+		AutomaticCanvasSize = Enum.AutomaticSize.Y,
+		CanvasSize = UDim2.new(),
+		ScrollBarThickness = 8,
+		ScrollBarImageColor3 = AMBER,
+		ZIndex = 62,
+	}, panel)
+	make("UIGridLayout", { CellSize = UDim2.fromOffset(140, 170), CellPadding = UDim2.fromOffset(12, 12), SortOrder = Enum.SortOrder.LayoutOrder }, grid)
+	self.overlay_items = grid
+	self.item_tiles = {}
+	self.items_empty = label(panel, "You don't own any gear yet: buy some in the shop!", 18, Enum.FontWeight.Bold, TEXT2, {
+		Position = UDim2.fromOffset(24, 90),
+		Size = UDim2.new(1, -48, 0, 24),
+		Visible = false,
+		ZIndex = 63,
+	})
+	MarketplaceService.PromptProductPurchaseFinished:Connect(function(_uid, _product, bought)
+		if self._prompted ~= nil and self.is_open then
+			self:_toast(if bought then "Thank you! It's being added to your account." else "Purchase cancelled.", if bought then GREEN else TEXT2)
+			if bought then
+				self.ctx:sfx("buy")
+			end
+		end
+		self._prompted = nil
+	end)
+end
+
+function ItemShopPanel._overlay(self, which: string)
+	self.overlay_which = which
+	self.overlay_title.Text = if which == "coins" then "BUY COINS" else "MY ITEMS"
+	self.overlay_coins.Visible = which == "coins"
+	self.overlay_items.Visible = which == "items"
+	self.overlay.Visible = true
+	self.overlay.BackgroundTransparency = 1
+	Anim.tween(self.overlay, Anim.FADE_S, { BackgroundTransparency = 0.35 })
+	Anim.pop(self.overlay_panel, 0.05)
+	self:_refresh_overlay()
+end
+
+function ItemShopPanel._refresh_overlay(self)
+	local items = self.overlay_which == "items"
+	local owned = {}
+	if items then
+		for _, it in Cosmetics.gear() do
+			if self:_owned(it.id) then
+				table.insert(owned, it)
+			end
+		end
+	end
+	self.items_empty.Visible = items and #owned == 0
+	for i, it in owned do
+		local t = self.item_tiles[i]
+		if t == nil then
+			local b = make("TextButton", {
+				Text = "",
+				AutoButtonColor = false,
+				BackgroundColor3 = Color3.new(1, 1, 1),
+				LayoutOrder = i,
+				ZIndex = 62,
+			}, self.overlay_items)
+			make("UICorner", { CornerRadius = UDim.new(0, 10) }, b)
+			local stroke = make("UIStroke", { Thickness = 3, ApplyStrokeMode = Enum.ApplyStrokeMode.Border, Color = INK }, b)
+			local grad = make("UIGradient", { Rotation = 90 }, b)
+			local pic = make("ImageLabel", {
+				BackgroundTransparency = 1,
+				ResampleMode = Enum.ResamplerMode.Pixelated,
+				AnchorPoint = Vector2.new(0.5, 0),
+				Position = UDim2.new(0.5, 0, 0, 8),
+				Size = UDim2.fromOffset(100, 100),
+				ZIndex = 63,
+			}, b)
+			local name = label(b, "", 13, Enum.FontWeight.Heavy, TEXT, {
+				Position = UDim2.fromOffset(6, 112),
+				Size = UDim2.new(1, -12, 0, 17),
+				TextXAlignment = Enum.TextXAlignment.Center,
+				TextScaled = true,
+				ZIndex = 63,
+			})
+			make("UITextSizeConstraint", { MaxTextSize = 13 }, name)
+			local state = label(b, "", 13, Enum.FontWeight.Heavy, AMBER, {
+				Position = UDim2.fromOffset(6, 140),
+				Size = UDim2.new(1, -12, 0, 17),
+				TextXAlignment = Enum.TextXAlignment.Center,
+				ZIndex = 63,
+			})
+			t = { b = b, stroke = stroke, grad = grad, pic = pic, name = name, state = state }
+			b.Activated:Connect(function()
+				local id = t.id
+				local item = id and Cosmetics.item(id)
+				local se = self.ctx.session
+				if item ~= nil and se ~= nil and type(se.equip) == "function" then
+					local wearing = self:_worn(item.kind, id)
+					se:equip(item.kind, if wearing then false else id)
+					self.ctx:sfx("click")
+					self:_toast(if wearing then (item.name .. " taken off.") else (item.name .. " equipped!"), GREEN)
+				end
+			end)
+			Anim.button(b, nil, 1.05)
+			self.item_tiles[i] = t
+		end
+		t.b.Visible = true
+		if t.id ~= it.id then
+			t.id = it.id
+			local r = RARITY[it.rarity or "common"] or RARITY.common
+			t.grad.Color = ColorSequence.new(r[1], r[2])
+			t.name.Text = string.upper(it.name)
+			t.pic.ImageContent = GearArt.content(it, BALLS[i % #BALLS + 1]) or Content.none
+		end
+		local worn = self:_worn(it.kind, it.id)
+		t.state.Text = if worn then "EQUIPPED" else "EQUIP"
+		t.state.TextColor3 = if worn then GREEN else AMBER
+		t.stroke.Color = if worn then GREEN else INK
+	end
+	for i = #owned + 1, #self.item_tiles do
+		self.item_tiles[i].b.Visible = false
+	end
 end
 
 function ItemShopPanel._fit(self)
@@ -522,9 +843,31 @@ function ItemShopPanel.refresh(self)
 	local left = 86400 - now % 86400
 	self.timer_a.Text = clock(left)
 	self.timer_b.Text = clock(left)
-	local n = self:_crates()
-	self.open_crates_l.Text = if n > 0 then string.format("OPEN CRATES (%d)", n) else "OPEN CRATES"
-	self.buy_crate_l.TextColor3 = if coins >= ItemShop.CRATE_PRICE then TEXT else Color3.fromHex("FFC4C4")
+	-- the bundles: their Robux price, or OWNED once every item is
+	for _, c in self.bundle_cards or {} do
+		local b = c.bundle
+		local all = true
+		for _, id in b.items do
+			if not self:_owned(id) then
+				all = false
+			end
+		end
+		local prod = Products["bundle_" .. b.id]
+		c.price.coin.Visible = not all
+		if all then
+			c.price.text.Text = "OWNED"
+			c.price.text.TextColor3 = GREEN
+		elseif prod == nil or prod.id == 0 then
+			c.price.text.Text = "SOON"
+			c.price.text.TextColor3 = TEXT2
+		else
+			c.price.text.Text = commas(prod.robux)
+			c.price.text.TextColor3 = TEXT
+		end
+	end
+	if self.overlay ~= nil and self.overlay.Visible then
+		self:_refresh_overlay()
+	end
 	if day ~= self.day then
 		self.day = day
 		local list = ItemShop.featured(day)
@@ -569,8 +912,27 @@ function ItemShopPanel.refresh(self)
 	end
 end
 
+--- A Robux product (Data/Products key): Roblox's purchase prompt; the server's receipt grants it.
+function ItemShopPanel._prompt(self, key: string)
+	local prod = Products[key]
+	if prod == nil or prod.id == 0 then
+		self:_toast("Coming soon!", TEXT2)
+		self.ctx:sfx("deny", -4.0)
+		return
+	end
+	self.ctx:sfx("click")
+	self._prompted = key
+	pcall(function()
+		MarketplaceService:PromptProductPurchase(Players.LocalPlayer, prod.id)
+	end)
+end
+
 --- A card pressed: buy it, or (owned) wear it / take it off.
 function ItemShopPanel._activate(self, c: any)
+	if c.bundle ~= nil then
+		self:_prompt("bundle_" .. c.bundle.id)
+		return
+	end
 	local f = c.f
 	if f == nil then
 		return
@@ -610,9 +972,7 @@ function ItemShopPanel.on_result(self, id: string, ok: boolean, why: string?)
 	if ok then
 		local it = Cosmetics.item(id)
 		self:_toast(
-			if id == "crate"
-				then "Crate bought! Press OPEN CRATES to open it."
-				else ((if it then it.name else "Item") .. " bought! It's on."),
+			(if it then it.name else "Item") .. " bought! It's on.",
 			GREEN
 		)
 		self.ctx:sfx("buy")
@@ -653,6 +1013,9 @@ function ItemShopPanel.close(self)
 		return
 	end
 	self.is_open = false
+	if self.overlay ~= nil then
+		self.overlay.Visible = false
+	end
 	for _, o in self._pops do
 		Anim.tween(Anim.scale_of(o), 0.14, { Scale = 0 }, Enum.EasingStyle.Back, Enum.EasingDirection.In)
 	end

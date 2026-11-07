@@ -22,6 +22,7 @@
 -- OVERRIDES (by flag code, or by "<map>:<slug>") replace derived fields for authored countries.
 local Provinces = require("../Core/Provinces")
 local CountryGrid = require("./CountryGrid")
+local Empires = require("./Empires") -- (Take Over the World!: empire names and flags)
 
 local Countries = {}
 
@@ -89,6 +90,9 @@ function Countries.flags_by_name(map: any): { [string]: string }
 		for _, nd in g.nations do
 			if nd[2] ~= "" then
 				out[nd[1]] = nd[2]
+				-- (Take Over the World!: and the empire it can found, under that empire's flag or its own)
+				local e = Empires.of(nd[1])
+				out[e.name] = e.flag or nd[2]
 			end
 		end
 		return out

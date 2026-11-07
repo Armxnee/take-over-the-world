@@ -67,6 +67,17 @@ for sid, s in Shop.SETS do
 	end
 end
 
+--- (Take Over the World!: the item shop's Robux bundles and coin packs, Data/Bundles. Ids: the products made in this
+--- experience (Creator Dashboard, 2026-11-07); 0 = not made yet, the offer says so.)
+PRODUCTS.bundle_royal = { own = true, id = 3729153353, robux = 499, grants = "bundle:royal" }
+PRODUCTS.bundle_admiral = { own = true, id = 3729153448, robux = 249, grants = "bundle:admiral" }
+PRODUCTS.bundle_winter = { own = true, id = 3729153535, robux = 129, grants = "bundle:winter" }
+PRODUCTS.bundle_frontline = { own = true, id = 3729153618, robux = 99, grants = "bundle:frontline" }
+PRODUCTS.coins_s = { own = true, id = 3729153677, robux = 49, grants = "coins:2500" }
+PRODUCTS.coins_m = { own = true, id = 3729153745, robux = 129, grants = "coins:7000" }
+PRODUCTS.coins_l = { own = true, id = 3729153826, robux = 279, grants = "coins:16000" }
+PRODUCTS.coins_xl = { own = true, id = 3729153911, robux = 599, grants = "coins:40000" }
+
 --- Rofront Staging (Data/Staging): there every product is its `staging` one.
 local Staging: any = if typeof(game) == "Instance"
 	then require((script :: any).Parent.Staging)
@@ -80,9 +91,12 @@ end
 
 -- (Take Over the World!: these product ids belong to RoWorld's experience. Every offer stays hidden (id 0)
 -- until this game's own developer products are created and their ids put here.)
+-- (2026-11-07: except this game's own, the bundles and coin packs: `own`)
 for _, p in PRODUCTS do
-	p.id = 0
-	p.staging = 0
+	if not p.own then
+		p.id = 0
+		p.staging = 0
+	end
 end
 
 return PRODUCTS

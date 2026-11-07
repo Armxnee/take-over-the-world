@@ -7,6 +7,7 @@
 local AssetService = game:GetService("AssetService")
 local FlagPix = require(game:GetService("ReplicatedStorage"):WaitForChild("Airfront"):WaitForChild("Data"):WaitForChild("FlagPix"))
 local Gear = require(game:GetService("ReplicatedStorage"):WaitForChild("Airfront"):WaitForChild("Data"):WaitForChild("Gear")) -- (Take Over the World!: hats)
+local Empires = require(game:GetService("ReplicatedStorage"):WaitForChild("Airfront"):WaitForChild("Data"):WaitForChild("Empires")) -- (Take Over the World!: beards)
 
 local Countryball = {}
 
@@ -128,6 +129,34 @@ function Countryball.ball_content(code: string?, name: string?, hat: string?): C
 				local c = EYE_COL[ch]
 				if c then
 					put(spec[1] + i - 1, 11 + j, c)
+				end
+			end
+		end
+	end
+	-- (Take Over the World!: an empire's Countryball wears a moustache and a beard)
+	if Empires.is_empire(name) or (type(code) == "string" and string.sub(code, 1, 4) == "emp_") then
+		local HAIR = {
+			k = Color3.fromRGB(58, 34, 18),
+			b = Color3.fromRGB(94, 60, 32),
+			s = Color3.fromRGB(70, 44, 22),
+		}
+		local BEARD = {
+			".kkkk....kkkk.",
+			"kkkkkkkkkkkkkk",
+			"kks.kkkkkk.skk",
+			".sbbbbbbbbbbs.",
+			".sbbbbbbbbbbs.",
+			"..sbbbbbbbbs..",
+			"..sbbbbbbbbs..",
+			"...sbbbbbbs...",
+			"....sbbbbs....",
+			".....ssss.....",
+		}
+		for j, row in BEARD do
+			for i = 1, #row do
+				local c = HAIR[string.sub(row, i, i)]
+				if c ~= nil then
+					put(8 + i, 18 + j, c)
 				end
 			end
 		end
