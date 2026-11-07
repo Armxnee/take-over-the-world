@@ -1,18 +1,16 @@
 --!nonstrict
 -- (Take Over the World!: the Countryball, 2026-11-06.)
--- A country's mascot: its flag (Data/FlagPix: this game's pixel flags, public-domain artwork) inside a
--- round body with a dark outline, a soft shine on top and two round eyes. This game's own simple
--- drawing from plain GUI objects and an EditableImage (no upload): Countryball.new(flag_code, px, name)
--- returns a Frame. A definition's `ball` field ("countryball:<code>", Data/Countries) names one.
+-- A country's mascot: its flag (Data/FlagPix: this game's pixel flags, public-domain artwork) as a
+-- pixel-art ball (2026-11-06 redesign after the user's reference): dark outline, shaded rim, two eyes.
+-- Drawn into an EditableImage (no upload): Countryball.new(flag_code, px, name) returns a Frame.
+-- A definition's `ball` field ("countryball:<code>", Data/Countries) names one.
 local AssetService = game:GetService("AssetService")
 local FlagPix = require(game:GetService("ReplicatedStorage"):WaitForChild("Airfront"):WaitForChild("Data"):WaitForChild("FlagPix"))
 
 local Countryball = {}
 
-local OUTLINE = Color3.fromRGB(16, 18, 28)
-
 local cache: { [string]: any } = {}
---- A flag as image Content: the whole 30x20 flag, or (`square`) its centre 20x20 for the ball. nil when
+--- A flag as image Content: the whole 30x20 flag, or (`square`) its centre 20x20. nil when
 --- the flag is unknown or EditableImage is unavailable.
 function Countryball.flag_content(code: string?, name: string?, square: boolean?): Content?
 	local key = tostring(code) .. "|" .. tostring(name) .. "|" .. tostring(square)
@@ -59,101 +57,105 @@ function Countryball.code_of(ref: string?): string?
 	return string.match(ref, "^countryball:(%w+)$")
 end
 
-local function eye(parent: Instance, x: number, look: number)
-	local white = Instance.new("Frame")
-	white.Name = "Eye"
-	white.AnchorPoint = Vector2.new(0.5, 0.5)
-	white.Position = UDim2.fromScale(x, 0.42)
-	white.Size = UDim2.fromScale(0.2, 0.24)
-	white.BackgroundColor3 = Color3.new(1, 1, 1)
-	white.BorderSizePixel = 0
-	white.ZIndex = 4
-	local c = Instance.new("UICorner")
-	c.CornerRadius = UDim.new(0.5, 0)
-	c.Parent = white
-	local s = Instance.new("UIStroke")
-	s.Color = OUTLINE
-	s.Thickness = 1.5
-	s.Parent = white
-	local pupil = Instance.new("Frame")
-	pupil.Name = "Pupil"
-	pupil.AnchorPoint = Vector2.new(0.5, 0.5)
-	pupil.Position = UDim2.fromScale(0.5 + look, 0.55)
-	pupil.Size = UDim2.fromScale(0.42, 0.42)
-	pupil.BackgroundColor3 = OUTLINE
-	pupil.BorderSizePixel = 0
-	pupil.ZIndex = 5
-	local pc = Instance.new("UICorner")
-	pc.CornerRadius = UDim.new(0.5, 0)
-	pc.Parent = pupil
-	pupil.Parent = white
-	white.Parent = parent
-	return white
+--- The ball as one pixel sprite (G x G): a dark outline, the flag across the body, a darker rim band
+--- on the upper right and along the bottom, and two round-topped white eyes with a grey glint.
+Countryball.G = 32
+local G = Countryball.G
+local OUT = Color3.fromRGB(18, 20, 28)
+local EYE = {
+	"..kkk..",
+	".kgwwk.",
+	"kgwwwwk",
+	"kwwwwwk",
+	"kwwwwwk",
+	".kkkkk.",
+}
+local EYE_COL = { k = OUT, w = Color3.new(1, 1, 1), g = Color3.fromRGB(200, 200, 205) }
+local balls: { [string]: any } = {}
+
+function Countryball.ball_content(code: string?, name: string?): Content?
+	local key = tostring(code) .. "|" .. tostring(name)
+	local hit = balls[key]
+	if hit ~= nil then
+		return hit or nil
+	end
+	balls[key] = false
+	local ok, img = pcall(function()
+		return AssetService:CreateEditableImage({ Size = Vector2.new(G, G) })
+	end)
+	if not ok or img == nil then
+		return nil
+	end
+	local g = FlagPix.forCode(code, name)
+	local FW, FH = FlagPix.W, FlagPix.H
+	local b = buffer.create(G * G * 4)
+	local function put(x: number, y: number, c: Color3, k: number?)
+		local o = (y * G + x) * 4
+		local m = k or 1
+		buffer.writeu8(b, o, math.floor(c.R * 255 * m + 0.5))
+		buffer.writeu8(b, o + 1, math.floor(c.G * 255 * m + 0.5))
+		buffer.writeu8(b, o + 2, math.floor(c.B * 255 * m + 0.5))
+		buffer.writeu8(b, o + 3, 255)
+	end
+	local cx, cy, R = 15.5, 15.5, 13.6
+	local grey = Color3.fromRGB(150, 156, 170)
+	for y = 0, G - 1 do
+		for x = 0, G - 1 do
+			local dx, dy = x - cx, y - cy
+			local d = math.sqrt(dx * dx + dy * dy)
+			if d <= R + 0.5 then
+				if d > R - 0.6 then
+					put(x, y, OUT)
+				else
+					local u = math.clamp((x - (cx - R)) / (2 * R), 0, 0.999)
+					local v = math.clamp((y - (cy - R)) / (2 * R), 0, 0.999)
+					local c = grey
+					if g ~= nil then
+						c = g.pal[buffer.readu8(g.idx, math.floor(v * FH) * FW + math.floor(u * FW)) + 1] or grey
+					end
+					local nx, ny = dx / math.max(d, 1e-6), dy / math.max(d, 1e-6)
+					local shade = (R - d) < 2.4 and (nx * 0.85 - ny * 0.25 > 0.45 or ny > 0.55)
+					put(x, y, c, if shade then 0.8 else 1)
+				end
+			end
+		end
+	end
+	for _, spec in { { 8, false }, { 17, true } } do
+		for j, row in EYE do
+			for i = 1, #row do
+				local ch = string.sub(row, if spec[2] then #row - i + 1 else i, if spec[2] then #row - i + 1 else i)
+				local c = EYE_COL[ch]
+				if c then
+					put(spec[1] + i - 1, 11 + j, c)
+				end
+			end
+		end
+	end
+	img:WritePixelsBuffer(Vector2.zero, Vector2.new(G, G), b)
+	local content = Content.fromObject(img)
+	balls[key] = content
+	return content
 end
 
---- A Countryball `px` wide for flag `code` (or the country `name`; a plain grey ball when unknown).
+--- A Countryball `px` wide for flag `code` (or the country `name`; a grey ball when unknown): one
+--- crisp pixel sprite.
 function Countryball.new(code: string?, px: number?, name: string?): Frame
 	local size = px or 64
 	local root = Instance.new("Frame")
 	root.Name = "Countryball"
 	root.BackgroundTransparency = 1
 	root.Size = UDim2.fromOffset(size, size)
-
-	local shadow = Instance.new("Frame")
-	shadow.Name = "Shadow"
-	shadow.AnchorPoint = Vector2.new(0.5, 0.5)
-	shadow.Position = UDim2.fromScale(0.5, 0.97)
-	shadow.Size = UDim2.fromScale(0.7, 0.12)
-	shadow.BackgroundColor3 = Color3.new(0, 0, 0)
-	shadow.BackgroundTransparency = 0.65
-	shadow.BorderSizePixel = 0
-	shadow.ZIndex = 1
-	local shc = Instance.new("UICorner")
-	shc.CornerRadius = UDim.new(0.5, 0)
-	shc.Parent = shadow
-	shadow.Parent = root
-
 	local body = Instance.new("ImageLabel")
 	body.Name = "Body"
-	body.AnchorPoint = Vector2.new(0.5, 0.5)
-	body.Position = UDim2.fromScale(0.5, 0.48)
-	body.Size = UDim2.fromScale(0.9, 0.9)
-	body.BackgroundColor3 = Color3.fromRGB(150, 156, 170)
-	body.BorderSizePixel = 0
-	body.ScaleType = Enum.ScaleType.Crop
+	body.BackgroundTransparency = 1
+	body.Size = UDim2.fromScale(1, 1)
+	body.ResampleMode = Enum.ResamplerMode.Pixelated
 	body.ZIndex = 2
-	local bc = Instance.new("UICorner")
-	bc.CornerRadius = UDim.new(0.5, 0)
-	bc.Parent = body
-	local bs = Instance.new("UIStroke")
-	bs.Color = OUTLINE
-	bs.Thickness = math.max(1.5, size / 28)
-	bs.Parent = body
-	local flag = Countryball.flag_content(code, name, true)
-	if flag ~= nil then
-		body.ImageContent = flag
-		body.ResampleMode = Enum.ResamplerMode.Pixelated
+	local c = Countryball.ball_content(code, name)
+	if c ~= nil then
+		body.ImageContent = c
 	end
 	body.Parent = root
-
-	-- shine: a soft white crescent at the top left
-	local shine = Instance.new("Frame")
-	shine.Name = "Shine"
-	shine.AnchorPoint = Vector2.new(0.5, 0.5)
-	shine.Position = UDim2.fromScale(0.34, 0.24)
-	shine.Size = UDim2.fromScale(0.34, 0.18)
-	shine.Rotation = -28
-	shine.BackgroundColor3 = Color3.new(1, 1, 1)
-	shine.BackgroundTransparency = 0.55
-	shine.BorderSizePixel = 0
-	shine.ZIndex = 3
-	local sc = Instance.new("UICorner")
-	sc.CornerRadius = UDim.new(0.5, 0)
-	sc.Parent = shine
-	shine.Parent = body
-
-	eye(body, 0.36, 0.12)
-	eye(body, 0.64, 0.12)
 	return root
 end
 
