@@ -232,6 +232,9 @@ function Session.new(env: { [string]: any }?)
 	self.credit_result = Signal.new() -- (kind, ok, reason?) the answer to use_credit
 	--- (owner_id) solo: the player took over the nation that eliminated them
 	self.took_over = Signal.new()
+	-- (Take Over the World!: quests and the item shop)
+	self.quests_changed = Signal.new() -- (quests)
+	self.item_result = Signal.new() -- (id, ok, reason)
 	--- Cosmetics (Data/Cosmetics) from the server: owned (set), equipped { skin?, flag? },
 	--- crates_bought, crates_allowed (false where paid random items are restricted, or not checked yet).
 	--- The Arsenal (Data/Arsenal): `stars` = the Stars balance (Data/Stars), `unlocks` = the items

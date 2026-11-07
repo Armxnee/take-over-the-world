@@ -224,6 +224,13 @@ task.spawn(function()
 		end
 	end
 	steps(sim, 2)
+	-- (it may hold land outside its own provinces by now: take every tile it owns)
+	for t = 0, sim.N - 1 do
+		if readi32(sim.owner, t * 4) == victim then
+			sim:set_owner(t, C)
+		end
+	end
+	steps(sim, 2)
 	check("country with no land is eliminated", sim.o_alive[victim] == 0)
 
 	-- the economy bonus: holding the capital raises gold income
@@ -242,7 +249,23 @@ task.spawn(function()
 			caps[id] = o.spawn_tile
 		end
 	end
-	local P2 = Provinces.build(map, caps)
+	-- (the same real borders the client passes: Data/CountryGrid, matched by name)
+	local CG = require(RS.Airfront.Data.CountryGrid)
+	local G2 = CG.get(map.id)
+	local fn2 = nil
+	if G2 ~= nil then
+		local byn, own = {}, {}
+		for id2 in caps do
+			byn[sim2.o_name[id2]] = id2
+		end
+		for i2, nd in G2.nations do
+			own[i2] = byn[nd[1]]
+		end
+		fn2 = function(t: number): number
+			return own[CG.at(G2, map, t)] or 0
+		end
+	end
+	local P2 = Provinces.build(map, caps, fn2)
 	local same = #P2.list == #sim2.P.list
 	if same then
 		for t = 0, sim2.N - 1, 7 do

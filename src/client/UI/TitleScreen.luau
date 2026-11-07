@@ -442,6 +442,14 @@ function TitleScreen.new(c: any)
 	self:add_child(self._shop_btn)
 	-- under those, while the starter pack's offer runs (Data/Starter)
 	self._starter_btn = StarterButton.new(c)
+	do
+		-- (Take Over the World!: no Robux starter pack: its offer never shows)
+		local base = self._starter_btn.set_visible
+		self._starter_btn.set_visible = function(n, _on)
+			base(n, false)
+		end
+		self._starter_btn:set_visible(false)
+	end
 	self._starter_btn.pressed:Connect(function()
 		self.open_starter:Fire()
 	end)

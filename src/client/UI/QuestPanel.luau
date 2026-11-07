@@ -112,11 +112,11 @@ function QuestPanel.new(ctx: any, gui: Instance)
 			make("UICorner", { CornerRadius = UDim.new(0, 10) }, row)
 			local text = label(row, "", 14, Enum.FontWeight.Bold, TEXT, { Position = UDim2.fromOffset(12, 6), Size = UDim2.new(1, -130, 0, 18), ZIndex = 43 })
 			local reward = label(row, "", 12, Enum.FontWeight.Bold, AMBER, { Position = UDim2.fromOffset(12, 30), Size = UDim2.fromOffset(110, 16), ZIndex = 43 })
-			local track = make("Frame", { BackgroundColor3 = Color3.new(1, 1, 1), BackgroundTransparency = 0.88, Position = UDim2.fromOffset(124, 35), Size = UDim2.new(1, -250, 0, 8), ZIndex = 43 }, row)
+			local track = make("Frame", { BackgroundColor3 = Color3.new(1, 1, 1), BackgroundTransparency = 0.88, Position = UDim2.fromOffset(124, 35), Size = UDim2.new(1, -304, 0, 8), ZIndex = 43 }, row)
 			make("UICorner", { CornerRadius = UDim.new(1, 0) }, track)
 			local fill = make("Frame", { BackgroundColor3 = GREEN, Size = UDim2.fromScale(0, 1), ZIndex = 44 }, track)
 			make("UICorner", { CornerRadius = UDim.new(1, 0) }, fill)
-			local count = label(row, "", 11, Enum.FontWeight.Bold, TEXT2, { Position = UDim2.new(1, -122, 0, 30), Size = UDim2.fromOffset(60, 16), ZIndex = 43 })
+			local count = label(row, "", 11, Enum.FontWeight.Bold, TEXT2, { Position = UDim2.new(1, -172, 0, 30), Size = UDim2.fromOffset(66, 16), TextXAlignment = Enum.TextXAlignment.Right, ZIndex = 43 })
 			local btn = make("TextButton", {
 				Text = "CLAIM",
 				TextSize = 13,
