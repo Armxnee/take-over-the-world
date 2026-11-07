@@ -328,7 +328,7 @@ function CountryPicker._reset(self)
 			end,
 			start_gold = 0,
 		})
-		return { defs = defs, list = list }
+		return { defs = defs, list = list, P = P }
 	end)
 end
 
@@ -345,6 +345,7 @@ function CountryPicker._process(self, dt: number)
 			if job.ok then
 				self.defs = job.result.defs
 				self.list = job.result.list
+				self.P = job.result.P -- (province names for the army panel)
 				self:_build_rows()
 			else
 				warn("[CountryPicker] " .. tostring(job.err))
@@ -502,7 +503,8 @@ function CountryPicker._live_stats(self)
 	end
 	if o ~= nil and (o.troops or 0) > 0 then
 		self.stats.Military.Text = UITheme.fmt_troops(o.troops) .. " troops"
-		self.stats.Economy.Text = "+" .. UITheme.fmt_cost(o.income or d.resources.income) .. "/s"
+		local inc = if (o.income or 0) > 0 then o.income else d.resources.income -- (AI income starts with the match)
+		self.stats.Economy.Text = "+" .. UITheme.fmt_cost(inc) .. "/s"
 	else
 		self.stats.Military.Text = fmt(d.military.troops) .. " troops"
 		self.stats.Economy.Text = string.format("+%s/s", fmt(d.resources.income))

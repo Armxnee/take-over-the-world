@@ -216,6 +216,8 @@ function GameState.new(world: any?)
 	self.structures = {} :: { [number]: StructInfo }
 	self.roads = {} :: { [number]: RoadInfo }
 	self.units = {} :: { [number]: UnitInfo }
+	--- (Take Over the World!: armies by unit id: composition and condition, Ev.ARMY / snapshot `armies`)
+	self.armies = {} :: { [number]: any }
 	self.nukes = {} :: { [number]: NukeInfo }
 	--- owner id -> the tick its next Reinforcements call is ready (Ev.REINFORCE; absent: now)
 	self.reinforce_ready = {} :: { [number]: number }
@@ -913,6 +915,10 @@ function GameState.load_snapshot(self: GameState, snap: { [string]: any })
 	for _, row in snap.roads or {} do
 		self:_add_road(row[1], row[2], row[3], row[4])
 	end
+	self.armies = {}
+	for _, row in snap.armies or {} do
+		self:_set_army(row, 0)
+	end
 	for _, row in snap.units or {} do
 		self:_add_unit(row, 0)
 	end
@@ -1245,7 +1251,35 @@ HANDLERS[Ev.UNIT_PATH] = function(self, e)
 	end
 end
 
+-- (Take Over the World!: army composition and condition)
+function GameState._set_army(self: any, r: { any }, o: number)
+	local id = r[o + 1]
+	self.armies[id] = {
+		id = id,
+		owner = r[o + 2],
+		seq = r[o + 3],
+		infantry = r[o + 4],
+		tank = r[o + 5],
+		artillery = r[o + 6],
+		health = r[o + 7],
+		morale = r[o + 8],
+		org = r[o + 9],
+		supply = r[o + 10],
+		status = r[o + 11],
+		dest_tile = r[o + 12],
+		target_province = r[o + 13],
+		province = r[o + 14],
+	}
+end
+
+HANDLERS[Ev.ARMY] = function(self, e)
+	self:_set_army(e, 1)
+end
+
 HANDLERS[Ev.UNIT_DEL] = function(self, e)
+	if self.armies then
+		self.armies[e[2]] = nil
+	end
 	self._removed_now[e[2]] = e[3]
 	if self.units[e[2]] ~= nil then
 		self.unit_removed:Fire(e[2], e[3])

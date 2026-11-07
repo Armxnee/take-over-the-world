@@ -341,3 +341,15 @@ An original real-time territory-conquest game for Roblox. RoWorld is the gamepla
 - Verified in Studio: the fighter slot is lit with an airfield, it launches over your own land, the fighter flies, the vote row appears and counts, and the voted map (Africa) loaded for the next round. No script errors.
 - **Sync note:** Studio now blocks MCP `execute_luau` HTTP to 127.0.0.1 ("not in the Assistant HTTP allowlist"), so `tools/sync.lua` cannot run that way. This batch was applied with MCP `multi_edit` (the same diffs as on disk). For a full re-sync, run the sync loadstring from Studio's command bar.
 - Still open: RoWorld's Locker/FlagShop are not wired to our shop backend, the first-match tutorial is untested with our rules, and the 2-client gate.
+
+## 2026-11-06: Stage 3 (countries/provinces) and Stage 4 (armies)
+- Stage 3: Core/Provinces (639 provinces on World, occupation/annexation/capitals), Data/Countries, Sim.pick_country via the
+  spawn intent, UI/CountryPicker + Countryball (pixel flags: Data/FlagPix, RoWorld's flag atlases are private). Tests:
+  `AF_DEV = "CountryTests"` 29/29.
+- Stage 4: Data/Units (infantry/tank/artillery, all balance), Core/SimArmies (recruit from troop pool + gold, province-graph
+  routing, per-province battles vs armies + garrison, retreat, reinforce, merge, disband, supply/morale/org, occupation via
+  set_owner), Ev.ARMY + U_ARMY unit kind, 7 `army_*` intents, UI/ArmyPanel (ARMIES recruit panel, army panel, map
+  click/right-click orders), Map/ArmySprites (own 16x16 sprites) drawn in UnitLayer. Tests: `AF_DEV = "ArmyTests"` 33/33.
+- Fixed: troop-growth bonus multiplied negative growth (troops above the cap fell far below it).
+- Studio copies of SimArmies/ArmyPanel/CountryPicker got some fixes as single-line equivalents (Studio multi-line edits
+  fail on CRLF files); the next full sync makes Studio match the disk again.

@@ -37,6 +37,7 @@
 --     is gone over on each frame something moved, shown or not, and the pools had grown to 7,700.
 local RS = game:GetService("ReplicatedStorage")
 local Airfront = RS:WaitForChild("Airfront")
+local ArmySprites = require("./ArmySprites") -- (Take Over the World!: army sprites)
 local Defs = require(Airfront:WaitForChild("Core"):WaitForChild("Defs")) :: any
 local Rules = require(Airfront:WaitForChild("Core"):WaitForChild("Rules")) :: any
 local Sprites = require(Airfront:WaitForChild("Assets"):WaitForChild("MapSprites")) :: any
@@ -160,6 +161,7 @@ function UnitLayer.new(parent: Instance, view: any)
 	self._sel_ring = self:_ring(root, "Selected", UnitLayer.Z + 3)
 	--- uid -> screen pos this frame, of the units a press can pick (warships, transports)
 	self._screen = {} :: { [number]: Vector2 }
+	self._army_gui = {} :: { [number]: any } -- (Take Over the World!: army badges)
 	--- the throttle: the camera's version and the sprite size last frame, the unit sprites drawn then,
 	--- and when
 	self._cam_seen = -1
@@ -526,8 +528,18 @@ function UnitLayer.tick(self: any, _dt: number)
 	-- ships / trains
 	local U_TRUCK, U_TRANSPORT, U_WARSHIP = Defs.U_TRUCK, Defs.U_TRANSPORT, Defs.U_WARSHIP
 	local cars = UnitLayer.TRAIN_CARRIAGES
+	local army_seen = {}
 	for uid, u in st.units do
 		local kind = u.kind
+		if kind == Defs.U_ARMY then
+			-- (Take Over the World!: armies: their own badge, Core/SimArmies)
+			local ax, ay = cam:map_to_screen(UnitLayer.unit_uv(st, u, rt))
+			if cam:on_screen(ax, ay, px * 2) then
+				self:_army(uid, u, st, ax, ay, px)
+				army_seen[uid] = true
+			end
+			continue
+		end
 		local col = UNIT_COL[kind]
 		if col == nil then
 			continue
@@ -563,6 +575,13 @@ function UnitLayer.tick(self: any, _dt: number)
 		drawn += 1
 	end
 	self._drawn = drawn
+	for uid, g in self._army_gui do
+		if not army_seen[uid] then
+			g.frame:Destroy()
+			self._army_gui[uid] = nil
+			self._screen[uid] = nil
+		end
+	end
 	-- nukes: trail, sprite, target ring
 	local now = FrameClock.now()
 	local rings_seen = {}
@@ -721,6 +740,91 @@ function UnitLayer.tick(self: any, _dt: number)
 end
 
 --- The warship or transport drawn nearest `pos` within `radius_px`, or -1.
+--- (Take Over the World!: the army selected in the army panel: drawn with a gold ring.)
+UnitLayer.selected_army = 0
+
+--- (Take Over the World!: an army's badge: owner colour, the sprite of its leading unit type, its battalion
+--- count; a gold ring when selected, a pulsing red ring in battle.)
+function UnitLayer._army(self: any, uid: number, u: any, st: any, x: number, y: number, px: number)
+	self._army_gui = self._army_gui or {}
+	local g = self._army_gui[uid]
+	local size = math.clamp(math.floor(px * 1.6), 26, 44)
+	if g == nil then
+		local frame = Instance.new("Frame")
+		frame.Name = "Army"
+		frame.AnchorPoint = Vector2.new(0.5, 0.5)
+		frame.BorderSizePixel = 0
+		frame.ZIndex = UnitLayer.Z + 2
+		local c = Instance.new("UICorner")
+		c.CornerRadius = UDim.new(0, 6)
+		c.Parent = frame
+		local stroke = Instance.new("UIStroke")
+		stroke.Thickness = 2
+		stroke.Color = Color3.fromRGB(16, 18, 28)
+		stroke.Parent = frame
+		local img = Instance.new("ImageLabel")
+		img.BackgroundTransparency = 1
+		img.AnchorPoint = Vector2.new(0.5, 0.5)
+		img.Position = UDim2.fromScale(0.5, 0.5)
+		img.Size = UDim2.fromScale(0.86, 0.86)
+		img.ResampleMode = Enum.ResamplerMode.Pixelated
+		img.ZIndex = UnitLayer.Z + 3
+		img.Parent = frame
+		local count = Instance.new("TextLabel")
+		count.BackgroundColor3 = Color3.fromRGB(16, 18, 28)
+		count.TextColor3 = Color3.new(1, 1, 1)
+		count.FontFace = Font.new("rbxassetid://12187365977", Enum.FontWeight.Heavy)
+		count.TextSize = 11
+		count.AnchorPoint = Vector2.new(0.5, 0)
+		count.Position = UDim2.new(0.5, 0, 1, 1)
+		count.Size = UDim2.fromOffset(22, 13)
+		count.ZIndex = UnitLayer.Z + 3
+		local cc = Instance.new("UICorner")
+		cc.CornerRadius = UDim.new(1, 0)
+		cc.Parent = count
+		count.Parent = frame
+		frame.Parent = self.root
+		g = { frame = frame, img = img, count = count, stroke = stroke, kind = "", owner = -1, n = -1 }
+		self._army_gui[uid] = g
+	end
+	local a = st.armies and st.armies[uid]
+	local kind = ArmySprites.kind_of(a)
+	if g.kind ~= kind then
+		g.kind = kind
+		local content = ArmySprites.content(kind)
+		if content ~= nil then
+			g.img.ImageContent = content
+		end
+	end
+	if g.owner ~= u.owner then
+		g.owner = u.owner
+		g.frame.BackgroundColor3 = st:owner_color(u.owner)
+	end
+	local n = if a then (a.infantry + a.tank + a.artillery) else (u.troops or 0)
+	if g.n ~= n then
+		g.n = n
+		g.count.Text = tostring(n)
+	end
+	g.frame.Size = UDim2.fromOffset(size, size)
+	g.frame.Position = UDim2.fromOffset(math.round(x), math.round(y))
+	local fighting = a ~= nil and a.status == 2
+	if fighting then
+		local pulse = 0.5 + 0.5 * math.sin(os.clock() * 10)
+		g.stroke.Color = Color3.fromRGB(255, 92 + 80 * pulse, 97)
+		g.stroke.Thickness = 2 + 2 * pulse
+		g.frame.Rotation = math.sin(os.clock() * 24) * 4
+	elseif UnitLayer.selected_army == uid then
+		g.stroke.Color = Color3.fromRGB(255, 181, 71)
+		g.stroke.Thickness = 3
+		g.frame.Rotation = 0
+	else
+		g.stroke.Color = Color3.fromRGB(16, 18, 28)
+		g.stroke.Thickness = 2
+		g.frame.Rotation = 0
+	end
+	self._screen[uid] = Vector2.new(x, y)
+end
+
 function UnitLayer.unit_at_screen(self: any, pos: Vector2, radius_px: number): number
 	local st = self._state
 	if st == nil then
@@ -729,7 +833,7 @@ function UnitLayer.unit_at_screen(self: any, pos: Vector2, radius_px: number): n
 	local best, best_d = -1, radius_px
 	for uid, p in self._screen do
 		local u = st.units[uid]
-		if u and (u.kind == Defs.U_WARSHIP or u.kind == Defs.U_TRANSPORT) then
+		if u and (u.kind == Defs.U_WARSHIP or u.kind == Defs.U_TRANSPORT or u.kind == Defs.U_ARMY) then
 			local d = (p - pos).Magnitude
 			if d <= best_d then
 				best, best_d = uid, d

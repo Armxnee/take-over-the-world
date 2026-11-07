@@ -22,6 +22,7 @@ local TouchRouter = require("./TouchRouter")
 local TitleScreen = require("./TitleScreen")
 local SpawnOverlay = require("./SpawnOverlay")
 local CountryPicker = require("./CountryPicker")
+local ArmyPanel = require("./ArmyPanel")
 local GameOver = require("./GameOver")
 local Takeover = require("./Takeover")
 local Locker = require("./Locker")
@@ -844,6 +845,9 @@ function UIRoot._build(self)
 	-- (Take Over the World!: the country picker takes the spawn phase of a countries match)
 	self.picker = CountryPicker.new(ctx, self.gui)
 	ctx.country_picker = self.picker
+	-- (Take Over the World!: the military UI: recruit, select and command armies)
+	self.army_ui = ArmyPanel.new(ctx, self.gui)
+	ctx.army_ui = self.army_ui
 	local alert = AlertBanner.new(ctx)
 	alert.name = "NukeAlert"
 	self.alert = alert
@@ -2043,6 +2047,7 @@ function UIRoot._apply_screen(self)
 	self.hud:set_visible(in_game)
 	self.spawn:set_visible(scr == "spawn")
 	self.picker:set_visible(scr == "spawn")
+	self.army_ui:set_visible(scr == "play" and alive)
 	self.top:set_visible(scr == "play" or scr == "over")
 	self.bar:set_visible(scr == "play" and alive)
 	self.spectate_pill:set_visible(in_game and scr ~= "spawn" and not alive and not self.over.is_open)
@@ -2227,6 +2232,7 @@ function UIRoot._layout(self)
 	self.top:apply_layout()
 	self.spawn:apply_layout()
 	self.picker:apply_layout()
+	self.army_ui:apply_layout()
 	self.bar:apply_layout()
 	-- Leaderboard: top-right, dropping below the status pill / spawn banner when they would touch.
 	local board_top = 12.0 + ctx.insets.y

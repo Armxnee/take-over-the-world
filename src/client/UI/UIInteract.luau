@@ -250,6 +250,10 @@ function UIInteract.on_click(self: any, tile: number)
 		return
 	end
 	local pos = self:tap_pos(tile)
+	-- (Take Over the World!: armies first: targeting, selecting one, the recruiting province)
+	if ctx.army_ui ~= nil and ctx.army_ui:on_map_click(tile, pos) then
+		return
+	end
 	local unit_card = self.unit_card
 	-- Warships: a tap on one selects it; with your own selected, a tap on the sea moves it there and
 	-- any other tap just deselects (never also an order).
@@ -563,6 +567,10 @@ function UIInteract.on_context(self: any, tile: number, screen_pos: Vector2)
 		return
 	end
 	self._last_ctx_msec = now
+	-- (Take Over the World!: a right click orders the selected army there)
+	if ctx.army_ui ~= nil and ctx.army_ui:on_map_context(tile) then
+		return
+	end
 	if self.aim_kind ~= "" then
 		self:cancel_aim()
 		return

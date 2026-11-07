@@ -46,6 +46,9 @@ Ev.BONUS = 34 -- owner, tile, gold  (gold `owner` earned at `tile`, a train's
 --   stop at a station. Only for a person, and sent to that person alone)
 
 --- Number of event ids (ids are 0..COUNT-1).
-Ev.COUNT = 35
+--- (Take Over the World!: an army's composition and condition, Core/SimArmies) uid, owner, seq, infantry, tanks,
+--- artillery, health %, morale %, organization %, supply %, status, dest_tile, target_province, province
+Ev.ARMY = 35
+Ev.COUNT = 36
 
 return Ev

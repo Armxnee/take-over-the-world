@@ -40,6 +40,7 @@ local WorldMap = require("./WorldMap")
 local Nations = require("../Data/Nations")
 local Coop = require("../Net/Coop")
 local Provinces = require("./Provinces")
+local SimArmies = require("./SimArmies")
 local Countries = require("../Data/Countries")
 
 local STRUCT_KINDS = SimState.STRUCT_KINDS
@@ -58,6 +59,7 @@ SimWarships.install(Sim)
 SimNukes.install(Sim)
 SimArsenal.install(Sim)
 Provinces.install(Sim) -- (Take Over the World!: provinces over the tile grid)
+SimArmies.install(Sim) -- (Take Over the World!: armies and ground warfare)
 
 Sim.TICK_RATE = TICK_RATE
 --- Owners whose start lies within these many tiles (of the original 1024-wide grid; scaled by the
@@ -158,6 +160,7 @@ function Sim.new(p_map: any, config: { [string]: any }?): any
 	self:_init_warships()
 	self:_init_nukes()
 	self:_init_arsenal()
+	self:_init_armies()
 	Coop.check()
 	if type(cfg.defense_posts_shoot) == "boolean" then
 		self.defense_posts_shoot = cfg.defense_posts_shoot
@@ -439,6 +442,7 @@ function Sim.step(self: any): { [string]: any }
 			end
 		end
 		if self.phase == Defs.PHASE_PLAYING then
+			self:_armies_tick() -- (Take Over the World!: army movement, battles, supply)
 			self:_provinces_tick() -- (Take Over the World!: occupation / annexation / capitals)
 		end
 	else
@@ -553,6 +557,7 @@ function Sim.snapshot(self: any): { [string]: any }
 		structs = self:struct_rows(),
 		roads = self:road_rows(),
 		units = self:unit_rows(),
+		armies = self:army_rows(), -- (Take Over the World!: Core/SimArmies)
 		nukes = self:nuke_rows(),
 		shells = self:shell_rows(),
 		sam_missiles = self:sam_rows(),
@@ -1170,6 +1175,21 @@ function Sim._apply_intent(self: any, id: number, it: { [string]: any })
 		self:donate(id, _int(it, "target", 0), _int(it, "troops", 0))
 	elseif kind == "reinforce" then
 		self:reinforce(id)
+	-- (Take Over the World!: army orders; each is validated against the sender: only its own armies)
+	elseif kind == "army_recruit" then
+		self:army_recruit(id, _int(it, "uid", 0), tile, _str(it, "kind"), _int(it, "troops", 1))
+	elseif kind == "army_move" then
+		self:army_move(id, _int(it, "uid", 0), tile)
+	elseif kind == "army_attack" then
+		self:army_attack(id, _int(it, "uid", 0), tile)
+	elseif kind == "army_retreat" then
+		self:army_retreat(id, _int(it, "uid", 0))
+	elseif kind == "army_disband" then
+		self:army_disband(id, _int(it, "uid", 0))
+	elseif kind == "army_merge" then
+		self:army_merge(id, _int(it, "uid", 0), _int(it, "target", 0))
+	elseif kind == "army_reinforce" then
+		self:army_reinforce(id, _int(it, "uid", 0))
 	end
 end
 
@@ -1746,7 +1766,11 @@ function Sim._economy_tick(self: any)
 		if prov_on then
 			gmul, tmul = self:country_mults(id)
 		end
-		o_troops[id] += math.floor(troop_growth_applied(tkind, o_troops[id], cap, tdiff) * tmul)
+		local growth = troop_growth_applied(tkind, o_troops[id], cap, tdiff)
+		if growth > 0 then
+			growth = math.floor(growth * tmul) -- (bonuses speed growth up, never the fall back to the cap)
+		end
+		o_troops[id] += growth
 		if (tick + id) % 10 == 0 then
 			o_income[id] = Rules.passive_income(kind, o_tiles[id]) * gmul
 		end
