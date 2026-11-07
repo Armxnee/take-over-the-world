@@ -69,6 +69,8 @@ function CrateButton.new(c: any)
 	return self
 end
 
+CrateButton.ICON = "rbxassetid://116782632104302" -- (Take Over the World!: the item shop stall icon instead of the 3D chest)
+
 function CrateButton._build(self)
 	local art = UITheme.crate_art()
 	local root = self.gui
@@ -102,6 +104,9 @@ function CrateButton._build(self)
 	)
 	self._vpf = vpf
 	self._chest = ChestView.build(vpf)
+	vpf.Visible = false
+	self._shop_shade = img("ShopShade", CrateButton.ICON, 3, { ImageColor3 = Color3.new(0, 0, 0), ImageTransparency = 0.6 })
+	self._shop_icon = img("ShopIcon", CrateButton.ICON, 3, {})
 	self._leak = img("Leak", art.glow, 4, { ImageColor3 = GOLD_LIGHT, ImageTransparency = 1 })
 	self._sparks = {}
 	for i = 1, 3 do
@@ -242,6 +247,8 @@ function CrateButton._size_parts(self)
 	self._s, self._cy = s, cy
 	self._vpf.Size = UDim2.fromOffset(s, s)
 	self._vpf.Position = UDim2.fromOffset(s * 0.5, cy)
+	self._shop_icon.Size = UDim2.fromOffset(s * 0.86, s * 0.86)
+	self._shop_shade.Size = UDim2.fromOffset(s * 0.86, s * 0.86)
 	self._rays.Size = UDim2.fromOffset(s * 1.35, s * 1.35)
 	self._rays.Position = UDim2.fromOffset(s * 0.5, cy)
 	self._glow.Size = UDim2.fromOffset(s * 1.15, s * 1.05)
@@ -344,6 +351,12 @@ function CrateButton._process(self, dt: number)
 	end
 	ChestView.pose(self._chest, P)
 	local s = self._s or 100
+	-- the stall icon bobs, and shakes while there's something to open
+	local bob = math.sin(t * 2.0) * s * 0.02
+	self._shop_icon.Position = UDim2.fromOffset(s * 0.5, self._cy + bob)
+	self._shop_shade.Position = UDim2.fromOffset(s * 0.5, self._cy + bob + s * 0.03)
+	self._shop_icon.Rotation = crack * math.sin(t * 38) * 7
+	self._shop_shade.Rotation = self._shop_icon.Rotation
 	-- light out of the seam while the lid cracks
 	local seam = ChestView.project(P, ChestView.v3(ChestView.Model.seam), s)
 	self._leak.Position = UDim2.fromOffset(s * 0.5 + seam.X, self._cy + seam.Y)

@@ -6,6 +6,7 @@
 -- A definition's `ball` field ("countryball:<code>", Data/Countries) names one.
 local AssetService = game:GetService("AssetService")
 local FlagPix = require(game:GetService("ReplicatedStorage"):WaitForChild("Airfront"):WaitForChild("Data"):WaitForChild("FlagPix"))
+local Gear = require(game:GetService("ReplicatedStorage"):WaitForChild("Airfront"):WaitForChild("Data"):WaitForChild("Gear")) -- (Take Over the World!: hats)
 
 local Countryball = {}
 
@@ -73,8 +74,8 @@ local EYE = {
 local EYE_COL = { k = OUT, w = Color3.new(1, 1, 1), g = Color3.fromRGB(200, 200, 205) }
 local balls: { [string]: any } = {}
 
-function Countryball.ball_content(code: string?, name: string?): Content?
-	local key = tostring(code) .. "|" .. tostring(name)
+function Countryball.ball_content(code: string?, name: string?, hat: string?): Content?
+	local key = tostring(code) .. "|" .. tostring(name) .. "|" .. tostring(hat)
 	local hit = balls[key]
 	if hit ~= nil then
 		return hit or nil
@@ -127,6 +128,27 @@ function Countryball.ball_content(code: string?, name: string?): Content?
 				local c = EYE_COL[ch]
 				if c then
 					put(spec[1] + i - 1, 11 + j, c)
+				end
+			end
+		end
+	end
+	-- (Take Over the World!: a hat from the item shop, over the top of the ball)
+	local hg = if hat ~= nil then Gear.item(hat) else nil
+	if hg ~= nil and hg.rows ~= nil then
+		for j, row in hg.rows do
+			local y = hg.y + j - 1
+			for i = 1, #row do
+				local ch = string.sub(row, i, i)
+				local x = hg.x + i - 1
+				if ch ~= "." and x >= 0 and x < G and y >= 0 and y < G then
+					if ch == "o" then
+						put(x, y, OUT)
+					else
+						local rgb = hg.pal[ch]
+						if rgb ~= nil then
+							put(x, y, Color3.fromRGB(rgb[1], rgb[2], rgb[3]))
+						end
+					end
 				end
 			end
 		end

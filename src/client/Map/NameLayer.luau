@@ -628,7 +628,8 @@ function NameLayer.tick(self: any, dt: number)
 		local face_id = if cz ~= nil and cz.face ~= nil then cz.face else 0
 		-- (Take Over the World!: a country a player leads shows its Countryball instead of the player's head)
 		local ball = o.kind == Defs.KIND_HUMAN
-		local face_key = if ball then "ball:" .. tostring(o.name) else face_id
+		local hat = if cz ~= nil then cz.hat else nil -- (and the hat it wears: Data/Gear)
+		local face_key = if ball then "ball:" .. tostring(o.name) .. "|" .. tostring(hat) else face_id
 		if face_key ~= p.face_id then
 			p.face_id = face_key
 			local ring = p.face:FindFirstChildOfClass("UIStroke")
@@ -637,7 +638,7 @@ function NameLayer.tick(self: any, dt: number)
 					self._flags_map = st.map
 					self._flags = Countries.flags_by_name(st.map)
 				end
-				local content = Countryball.ball_content(self._flags[o.name], o.name)
+				local content = Countryball.ball_content(self._flags[o.name], o.name, hat)
 				p.face.Image = ""
 				if content ~= nil then
 					p.face.ImageContent = content

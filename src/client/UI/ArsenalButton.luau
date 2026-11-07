@@ -58,6 +58,8 @@ function ArsenalButton.new(c: any)
 	return self
 end
 
+ArsenalButton.ICON = "rbxassetid://110859228590510" -- (Take Over the World!: the quests icon)
+
 function ArsenalButton._build(self)
 	local art = UITheme.crate_art()
 	local root = self.gui
@@ -83,15 +85,9 @@ function ArsenalButton._build(self)
 	self._rays = img("Rays", art.rays, 1, { ImageColor3 = GOLD, ImageTransparency = 0.84 })
 	self._glow = img("Glow", art.glow, 2, { ImageColor3 = GOLD, ImageTransparency = 0.5 })
 	-- the shield: a dark copy under it for depth
-	self._shade =
-		img("Shade", UITheme.icon("arsenal"), 3, { ImageColor3 = Color3.fromRGB(60, 34, 0), ImageTransparency = 0.25 })
-	self._shield = img("Shield", UITheme.icon("arsenal"), 4, { ImageColor3 = GOLD })
-	new(
-		"UIGradient",
-		{ Color = ColorSequence.new(GOLD_LIGHT, Color3.fromRGB(240, 150, 30)), Rotation = 90 },
-		self._shield
-	)
-	self._shield.ImageColor3 = Color3.new(1, 1, 1)
+	-- (Take Over the World!: the quest calendar icon, a soft shadow under it)
+	self._shade = img("Shade", ArsenalButton.ICON, 3, { ImageColor3 = Color3.new(0, 0, 0), ImageTransparency = 0.6 })
+	self._shield = img("Shield", ArsenalButton.ICON, 4, { ImageColor3 = Color3.new(1, 1, 1) })
 	self._spark = img("Spark", art.sparkle, 5, { ImageColor3 = GOLD_LIGHT, ImageTransparency = 1 })
 	local pill = new(
 		"Frame",
@@ -222,8 +218,8 @@ function ArsenalButton._size_parts(self)
 	self._rays.Position = UDim2.fromOffset(s * 0.5, cy)
 	self._glow.Size = UDim2.fromOffset(s * 1.2, s * 1.1)
 	self._glow.Position = UDim2.fromOffset(s * 0.5, cy)
-	self._shield.Size = UDim2.fromOffset(s * 0.7, s * 0.7)
-	self._shade.Size = UDim2.fromOffset(s * 0.7, s * 0.7)
+	self._shield.Size = UDim2.fromOffset(s * 0.8, s * 0.8)
+	self._shade.Size = UDim2.fromOffset(s * 0.8, s * 0.8)
 	self._spark.Size = UDim2.fromOffset(s * 0.14, s * 0.14)
 	local pw, ph = s * 0.86, math.max(22 * self._u, s * 0.22)
 	self._pill.Size = UDim2.fromOffset(pw, ph)

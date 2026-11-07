@@ -221,7 +221,7 @@ local function clean(v: any, user_id: number?): Record
 		end
 	end
 	if type(v.equipped) == "table" then
-		for _, slot in { "skin", "flag" } do
+		for _, slot in Cosmetics.SLOTS do -- (Take Over the World!: and the gear slots)
 			local id = v.equipped[slot]
 			local it = Cosmetics.item(id)
 			if it ~= nil and it.kind == slot and rec.owned[id] then
@@ -619,7 +619,7 @@ end
 --- What the player shows in a match: { skin = id?, flag = id? } (nil when nothing is equipped).
 function Purchases.equipped(player: any): any
 	local i = inv[player]
-	if i == nil or (i.equipped.skin == nil and i.equipped.flag == nil) then
+	if i == nil or next(i.equipped) == nil then
 		return nil
 	end
 	return table.clone(i.equipped)
@@ -889,7 +889,7 @@ end
 
 --- Equip an owned item in its slot ("skin" / "flag"), or clear the slot (id false). Yields.
 function Purchases.equip(player: any, slot: string, id: any): (boolean, string?)
-	if slot ~= "skin" and slot ~= "flag" then
+	if not table.find(Cosmetics.SLOTS, slot) then
 		return false, "bad slot"
 	end
 	if id ~= false then

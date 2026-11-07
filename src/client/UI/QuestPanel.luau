@@ -3,6 +3,7 @@
 -- The player's active quests (server/Purchases.quests via OP.QUESTS: Session.quests), each with its
 -- progress and coin reward; CLAIM asks the server (Session.claim_quest), which checks and pays.
 local RunService = game:GetService("RunService")
+local Anim = require("./Anim") -- (Take Over the World!: the dim fades in, the panel and its rows pop up)
 
 local QuestPanel = {}
 QuestPanel.__index = QuestPanel
@@ -82,6 +83,7 @@ function QuestPanel.new(ctx: any, gui: Instance)
 		Size = UDim2.fromOffset(480, 470),
 		ZIndex = 41,
 	}, dim)
+	self.panel = panel
 	make("UICorner", { CornerRadius = UDim.new(0, 14) }, panel)
 	make("UIStroke", { Color = Color3.new(1, 1, 1), Transparency = 0.85 }, panel)
 	make("UIPadding", { PaddingTop = UDim.new(0, 16), PaddingLeft = UDim.new(0, 18), PaddingRight = UDim.new(0, 18), PaddingBottom = UDim.new(0, 16) }, panel)
@@ -99,6 +101,7 @@ function QuestPanel.new(ctx: any, gui: Instance)
 		ZIndex = 42,
 	}, panel)
 	make("UICorner", { CornerRadius = UDim.new(0, 8) }, close)
+	Anim.button(close)
 	close.Activated:Connect(function()
 		self:close()
 	end)
@@ -131,6 +134,7 @@ function QuestPanel.new(ctx: any, gui: Instance)
 			}, row)
 			make("UICorner", { CornerRadius = UDim.new(0, 8) }, btn)
 			local r = { row = row, text = text, reward = reward, fill = fill, count = count, button = btn, id = nil }
+			Anim.button(btn)
 			btn.Activated:Connect(function()
 				if r.id ~= nil and r.ready then
 					local s = self.ctx.session
@@ -227,14 +231,20 @@ end
 
 function QuestPanel.open(self)
 	self.is_open = true
-	self.root.Visible = true
 	self:refresh()
+	Anim.open(self.root, self.panel)
+	for i, r in self.rows do
+		Anim.pop(r.ui.row, Anim.FADE_S * 0.6 + 0.1 + i * 0.05, 0.6)
+	end
 	self.ctx:sfx("open")
 end
 
 function QuestPanel.close(self)
+	if not self.is_open then
+		return
+	end
 	self.is_open = false
-	self.root.Visible = false
+	Anim.close(self.root, self.panel)
 	self.ctx:sfx("close")
 end
 

@@ -254,14 +254,28 @@ function GameState.set_cosmetics(self: any, map: { [any]: any }, full: boolean?)
 		local skin = if type(v) == "table" and type(v.skin) == "string" then v.skin else nil
 		local flag = if type(v) == "table" and type(v.flag) == "string" then v.flag else nil
 		local face = if type(v) == "table" and type(v.face) == "number" and v.face > 0 then v.face else nil
+		-- (Take Over the World!: the item shop's gear)
+		local function str(k: string): string?
+			return if type(v) == "table" and type(v[k]) == "string" then v[k] else nil
+		end
+		local hat, boat, nuke, missile = str("hat"), str("boat"), str("nuke"), str("missile")
 		local old = self.cosmetics[id]
-		if skin == nil and flag == nil and face == nil then
+		if skin == nil and flag == nil and face == nil and hat == nil and boat == nil and nuke == nil and missile == nil then
 			if old ~= nil then
 				self.cosmetics[id] = nil
 				table.insert(changed, id)
 			end
-		elseif old == nil or old.skin ~= skin or old.flag ~= flag or old.face ~= face then
-			self.cosmetics[id] = { skin = skin, flag = flag, face = face }
+		elseif
+			old == nil
+			or old.skin ~= skin
+			or old.flag ~= flag
+			or old.face ~= face
+			or old.hat ~= hat
+			or old.boat ~= boat
+			or old.nuke ~= nuke
+			or old.missile ~= missile
+		then
+			self.cosmetics[id] = { skin = skin, flag = flag, face = face, hat = hat, boat = boat, nuke = nuke, missile = missile }
 			table.insert(changed, id)
 		end
 	end

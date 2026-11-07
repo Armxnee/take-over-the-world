@@ -43,6 +43,7 @@ local Sprites = require(Airfront:WaitForChild("Assets"):WaitForChild("MapSprites
 local WakeRoute = require(script.Parent:WaitForChild("WakeRoute")) :: any
 local TrailBudget = require(script.Parent:WaitForChild("TrailBudget")) :: any
 local FrameClock = require(script.Parent:WaitForChild("FrameClock")) :: any
+local Gear = require(Airfront:WaitForChild("Data"):WaitForChild("Gear")) :: any
 
 --- The one-image sprites (Sprites.units_one) are used once the atlas is known to have loaded: an image
 --- still in moderation would leave every unit invisible.
@@ -106,6 +107,27 @@ local NUKE_COL = {
 	[Defs.N_AIRSTRIKE] = COL_SAM,
 	[Defs.N_SLUG] = COL_SHELL,
 }
+--- (Take Over the World!: the item shop's unit skins: which skin slot a munition wears; nukes otherwise)
+local NUKE_SLOT = { [Defs.N_AIRSTRIKE] = "missile", [Defs.N_SHELL] = false, [Defs.N_SLUG] = false }
+local gear_tints: { [string]: Color3 | false } = {}
+--- The colour owner `owner`'s `slot` skin ("boat" / "nuke" / "missile") paints, or nil.
+local function tint_of(st: any, owner: number, slot: string | false | nil): Color3?
+	if not slot then
+		return nil
+	end
+	local cz = st.cosmetics and st.cosmetics[owner]
+	local id = if cz ~= nil then cz[slot] else nil
+	if id == nil then
+		return nil
+	end
+	local t = gear_tints[id]
+	if t == nil then
+		t = Gear.color(id) or false
+		gear_tints[id] = t
+	end
+	return t or nil
+end
+
 --- Munitions drawn without a trail and a target ring (a battery's shells: there are many).
 local NUKE_PLAIN = { [Defs.N_SHELL] = true }
 --- Munitions drawn bigger than the others.
@@ -280,7 +302,8 @@ function UnitLayer._sprite(
 	x: number,
 	y: number,
 	px: number,
-	seen: { [number]: boolean }
+	seen: { [number]: boolean },
+	tint: Color3?
 )
 	seen[key] = true
 	local s = self._sprites[key]
@@ -296,9 +319,10 @@ function UnitLayer._sprite(
 			s.rim.ImageRectOffset = Vector2.new(col * cell, cell)
 		end
 	end
-	if s.owner ~= owner then
-		s.owner = owner
-		local c = self._state:owner_color(owner)
+	if s.owner ~= owner or (s :: any).tint ~= tint then
+		s.owner = owner;
+		(s :: any).tint = tint
+		local c = tint or self._state:owner_color(owner)
 		s.fill.ImageColor3 = c
 		if s.rim ~= nil then
 			s.rim.ImageColor3 = border_of(c)
@@ -559,7 +583,8 @@ function UnitLayer.tick(self: any, _dt: number)
 		if pick then
 			self._screen[uid] = Vector2.new(x, y)
 		end
-		self:_sprite(uid * 16, col, u.owner, x, y, px, seen)
+		local tint = if pick then tint_of(st, u.owner, "boat") else nil
+		self:_sprite(uid * 16, col, u.owner, x, y, px, seen, tint)
 		drawn += 1
 	end
 	self._drawn = drawn
@@ -571,14 +596,16 @@ function UnitLayer.tick(self: any, _dt: number)
 		local t = math.clamp((rt - n.launch_tick) / math.max(n.flight_ticks, 1), 0, 1)
 		local col = NUKE_COL[n.kind] or COL_ATOM
 		local npx = px * (NUKE_SCALE[n.kind] or 1)
+		local slot = NUKE_SLOT[n.kind]
+		local ntint = tint_of(st, n.owner, if slot == nil then "nuke" else slot)
 		if NUKE_PLAIN[n.kind] then
 			local sx0, sy0 = cam:map_to_screen(UnitLayer.nuke_uv(st, n, t))
 			if cam:on_screen(sx0, sy0, npx) then
-				self:_sprite(uid * 16 + KEY_NUKE, col, n.owner, sx0, sy0, npx, seen)
+				self:_sprite(uid * 16 + KEY_NUKE, col, n.owner, sx0, sy0, npx, seen, ntint)
 			end
 			continue
 		end
-		local c = st:owner_color(n.owner)
+		local c = ntint or st:owner_color(n.owner)
 		-- trail: the curve flown so far, a line through points every TRAIL_STEP full-size tiles, up to
 		-- the munition (it was a dot at each point, spaced wider than a dot: a broken line that looked
 		-- glitchy; solid since 2026-10-12)
@@ -605,7 +632,7 @@ function UnitLayer.tick(self: any, _dt: number)
 			px0, py0 = tx, ty
 		end
 		if cam:on_screen(x, y, npx) then
-			self:_sprite(uid * 16 + KEY_NUKE, col, n.owner, x, y, npx, seen)
+			self:_sprite(uid * 16 + KEY_NUKE, col, n.owner, x, y, npx, seen, ntint)
 		end
 		if n.kind == Defs.N_WARHEAD and not rings_for_warheads then
 			continue
@@ -678,7 +705,7 @@ function UnitLayer.tick(self: any, _dt: number)
 		local bx, by = UnitLayer.nuke_uv(st, n, ti)
 		local x, y = cam:map_to_screen(ax + (bx - ax) * t, ay + (by - ay) * t)
 		if cam:on_screen(x, y, px) then
-			self:_sprite(nuke_uid * 16 + KEY_SAM, COL_SAM, sam.owner, x, y, px, seen)
+			self:_sprite(nuke_uid * 16 + KEY_SAM, COL_SAM, sam.owner, x, y, px, seen, tint_of(st, sam.owner, "missile"))
 		end
 	end
 	for key, s in self._sprites do

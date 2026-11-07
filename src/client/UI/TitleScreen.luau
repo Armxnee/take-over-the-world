@@ -39,7 +39,7 @@ TitleScreen.MIN_FIT_PX = 46.0
 --- The credits line under the dock (desktop, phones). It points at the help window by its top-bar name
 --- (2026-10-25: "See Help & Credits" instead of "see How to play"; 2026-10-26: no map credit, the World
 --- map is RoWorld's own, made from public-domain data).
-TitleScreen.CREDITS = "© OpenFront and Contributors  ·  RoWorld © Snick Co.  ·  Music by Rodrigo Flores  ·  "
+TitleScreen.CREDITS = "© OpenFront and Contributors  ·  RoWorld © Snick Co.  ·  Music courtesy of APM Music  ·  "
 	.. "GNU AGPL v3, no warranty: See Help & Credits  ·  Source: github.com/Armxnee/take-over-the-world"
 TitleScreen.CREDITS_SHORT = "© OpenFront and Contributors  ·  RoWorld © Snick Co.  ·  GNU AGPL v3"
 
@@ -402,8 +402,8 @@ function TitleScreen.new(c: any)
 	self:_build_dock()
 	self:_build_queue()
 	self:_build_solo_menu()
-	-- credits: the copyright notice the code's licence asks to keep visible, Rodrigo Flores'
-	-- soundtrack (Orchestral Ambients) and the licence (2026-10-25: the full
+	-- credits: the copyright notice the code's licence asks to keep visible, the APM Music
+	-- soundtrack credit and the licence (2026-10-25: the full
 	-- notices are in How to play, HelpOverlay.LEGAL); phones get the short line (apply_layout)
 	self._credits = UITheme.label(
 		TitleScreen.CREDITS,

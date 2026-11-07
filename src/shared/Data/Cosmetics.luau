@@ -27,6 +27,9 @@ local ShopFlags: any = if IS_ROBLOX
 local Shop: any = if IS_ROBLOX
 	then require((game :: any):GetService("ReplicatedStorage"):WaitForChild("Airfront").Data.Shop)
 	else require("./Shop")
+local Gear: any = if IS_ROBLOX -- (Take Over the World!: item shop hats and unit skins)
+	then require((game :: any):GetService("ReplicatedStorage"):WaitForChild("Airfront").Data.Gear)
+	else require("./Gear")
 
 local Cosmetics = {}
 
@@ -400,6 +403,18 @@ for _, f in Shop.flags() do
 	table.insert(shop_items, it)
 end
 
+-- (Take Over the World!: the item shop's gear (Data/Gear: hats, boat / nuke / missile skins) resolves by id
+-- too, and stays out of `order`: never in crates)
+Cosmetics.SLOTS = { "skin", "flag", "hat", "boat", "nuke", "missile" }
+for _, g in Gear.items do
+	items[g.id] = g
+end
+
+--- The item shop's gear (Data/Gear.items).
+function Cosmetics.gear(): { Item }
+	return Gear.items
+end
+
 function Cosmetics.item(id: any): Item?
 	return if type(id) == "string" then items[id] else nil
 end
@@ -452,7 +467,7 @@ function Cosmetics.crate_owned(owned: { [string]: any }): number
 	local n = 0
 	for id in owned do
 		local it = items[id]
-		if it ~= nil and not it.exclusive and not it.shop and not it.general then
+		if it ~= nil and not it.exclusive and not it.shop and not it.general and not Gear.is_kind(it.kind) then
 			n += 1
 		end
 	end

@@ -46,6 +46,7 @@ MatchServer.__index = MatchServer
 --- and a skin among 30 bots.
 MatchServer.BOT_FLAG_SHARE = 0.08
 MatchServer.BOT_SKIN_SHARE = 0.04
+MatchServer.BOT_GEAR_SHARE = 0.3 -- (Take Over the World!: share of bot players wearing a hat / a boat skin)
 
 MatchServer.STAGE_IDLE = "idle"
 MatchServer.STAGE_LOBBY = "lobby"
@@ -894,8 +895,20 @@ function MatchServer._dress_bots(self: any, ids: any)
 			table.insert(skins, it.id)
 		end
 	end
+	-- (Take Over the World!: some bot players wear a hat or a boat skin too)
+	local gear = {}
+	for _, it in Cosmetics.gear() do
+		gear[it.kind] = gear[it.kind] or {}
+		table.insert(gear[it.kind], it.id)
+	end
 	for _, id in ids do
 		local c = {}
+		for _, kind in { "hat", "boat" } do
+			local list = gear[kind]
+			if list ~= nil and math.random() < MatchServer.BOT_GEAR_SHARE then
+				c[kind] = list[math.random(1, #list)]
+			end
+		end
 		if #flags > 0 and math.random() < MatchServer.BOT_FLAG_SHARE then
 			c.flag = flags[math.random(1, #flags)]
 		end
@@ -903,7 +916,7 @@ function MatchServer._dress_bots(self: any, ids: any)
 			c.skin = skins[math.random(1, #skins)]
 		end
 		c.face = face()
-		if c.flag or c.skin or c.face then
+		if next(c) ~= nil then
 			self._bot_cosmetics[id] = c
 		end
 	end
@@ -925,8 +938,13 @@ function MatchServer.cosmetics_map(self: any): { [number]: any }
 			local uid = tonumber(part.uid)
 			local face = if uid ~= nil and uid > 0 then uid else nil
 			local skin, flag = if c ~= nil then c.skin else nil, if c ~= nil then c.flag else nil
-			if skin ~= nil or flag ~= nil or face ~= nil then
-				map[part.owner] = { skin = skin, flag = flag, face = face }
+			-- (Take Over the World!: and the item shop's gear: a hat, boat / nuke / missile skins)
+			local hat = if c ~= nil then c.hat else nil
+			local boat = if c ~= nil then c.boat else nil
+			local nuke = if c ~= nil then c.nuke else nil
+			local missile = if c ~= nil then c.missile else nil
+			if skin ~= nil or flag ~= nil or face ~= nil or hat ~= nil or boat ~= nil or nuke ~= nil or missile ~= nil then
+				map[part.owner] = { skin = skin, flag = flag, face = face, hat = hat, boat = boat, nuke = nuke, missile = missile }
 			end
 		end
 	end

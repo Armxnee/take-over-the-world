@@ -656,11 +656,74 @@ function MapSurface._load_skins(self: any, ids: { number }?)
 	end
 end
 
---- (Take Over the World!: a country's flag as its territory skin: the pixel flag (Data/FlagPix, 30 x 20) tiled
---- over its land, each flag pixel 2 x 2 tiles, at the territory's own transparency. nil without a flag.)
+--- (Take Over the World!: a country's flag as its territory skin: one pixel flag (Data/FlagPix, 30 x 20)
+--- stretched over the whole country (cover-fit to its home land's bounds, Data/CountryGrid; 5th-95th
+--- percentile so far-off islands don't shrink it), at the territory's own transparency. Land past
+--- the bounds repeats the flag. Without a grid it tiles, 2 x 2 tiles per flag pixel. nil without a flag.)
 local flag_skins: { [string]: any } = {}
 local flag_by_name: { [string]: string }? = nil
 local flag_map: any = nil
+local flag_fits: { [string]: any }? = nil
+
+--- name -> { ox, oy, s } (map tiles; s = tiles per flag pixel) for every country of the map's grid.
+local function country_fits(map: any): { [string]: any }
+	local out = {}
+	local okG, CountryGrid = pcall(require, game:GetService("ReplicatedStorage").Airfront.Data.CountryGrid)
+	local grid = if okG and map ~= nil then CountryGrid.get(map.id) else nil
+	if grid == nil then
+		return out
+	end
+	local gw, gh = grid.w, grid.h
+	local n = #grid.nations
+	-- per-nation histograms of columns and rows (bins of 4 grid tiles)
+	local BIN = 4
+	local bw, bh = gw // BIN + 1, gh // BIN + 1
+	local hx = buffer.create((n + 1) * bw * 4)
+	local hy = buffer.create((n + 1) * bh * 4)
+	local cnt = table.create(n, 0)
+	local idx = grid.idx
+	for y = 0, gh - 1 do
+		local row = y * gw
+		local by = y // BIN
+		for x = 0, gw - 1 do
+			local v = buffer.readu16(idx, (row + x) * 2)
+			if v ~= 0 and v <= n then
+				cnt[v] += 1
+				local kx = (v * bw + x // BIN) * 4
+				buffer.writeu32(hx, kx, buffer.readu32(hx, kx) + 1)
+				local ky = (v * bh + by) * 4
+				buffer.writeu32(hy, ky, buffer.readu32(hy, ky) + 1)
+			end
+		end
+	end
+	local function pct(h: buffer, v: number, nb: number, total: number, q: number): number
+		local want, acc = total * q, 0
+		for b = 0, nb - 1 do
+			acc += buffer.readu32(h, (v * nb + b) * 4)
+			if acc >= want then
+				return b
+			end
+		end
+		return nb - 1
+	end
+	local W = map.W
+	local H = map.N // W
+	local kx, ky = W / gw, H / gh
+	for v, nd in grid.nations do
+		local c = cnt[v]
+		if c > 0 then
+			local x0 = pct(hx, v, bw, c, 0.05) * BIN
+			local x1 = (pct(hx, v, bw, c, 0.95) + 1) * BIN
+			local y0 = pct(hy, v, bh, c, 0.05) * BIN
+			local y1 = (pct(hy, v, bh, c, 0.95) + 1) * BIN
+			local w, h = (x1 - x0) * kx, (y1 - y0) * ky
+			local sc = math.max(w / 30, h / 20, 0.2)
+			local cx, cy = (x0 + x1) * 0.5 * kx, (y0 + y1) * 0.5 * ky
+			out[nd[1]] = { ox = cx - 15 * sc, oy = cy - 10 * sc, s = sc }
+		end
+	end
+	return out
+end
 function MapSurface._flag_skin(st: any, id: number): any?
 	local o = st.owners and st.owners[id]
 	if o == nil or o.name == nil then
@@ -671,6 +734,7 @@ function MapSurface._flag_skin(st: any, id: number): any?
 		flag_map = st.map
 		local okC, Countries = pcall(require, Airfront.Data.Countries)
 		flag_by_name = if okC and st.map then Countries.flags_by_name(st.map) else {}
+		flag_fits = country_fits(st.map)
 	end
 	local code = (flag_by_name :: any)[o.name]
 	if code == nil then
@@ -699,11 +763,13 @@ function MapSurface._flag_skin(st: any, id: number): any?
 	if rec == false then
 		return nil
 	end
+	local fit = (flag_fits :: any)[o.name]
 	return {
 		mask = rec.mask,
 		w = rec.w,
 		h = rec.h,
 		scale = 1,
+		fit = fit,
 		skin = rec.skin,
 		fill2 = 0,
 		fill2_hi = 0,
@@ -853,8 +919,16 @@ function MapSurface.tile_pixel(self: MapSurface, i: number): number
 	local sk = (self :: any)._skins[o]
 	if sk ~= nil then
 		-- a territory skin: the mask's secondary tiles (a non-zero mask byte)
-		local mx = bit32.rshift(x, sk.scale) % sk.w
-		local my = bit32.rshift(i // W, sk.scale) % sk.h
+		local mx, my
+		local fit = sk.fit
+		if fit ~= nil then
+			-- (a flag stretched over its country)
+			mx = ((x - fit.ox) / fit.s) // 1 % sk.w
+			my = ((i // W - fit.oy) / fit.s) // 1 % sk.h
+		else
+			mx = bit32.rshift(x, sk.scale) % sk.w
+			my = bit32.rshift(i // W, sk.scale) % sk.h
+		end
 		local k = readu8(sk.mask, my * sk.w + mx)
 		if k ~= 0 then
 			local fills = sk.fills

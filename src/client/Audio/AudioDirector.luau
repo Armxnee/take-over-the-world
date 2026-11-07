@@ -1,7 +1,7 @@
 --!strict
 -- Port of scripts/audio/audio_director.gd: music + sound-effect director (client only).
 --
--- - The soundtrack (Assets/Soundtrack.luau: Rodrigo Flores' Orchestral Ambients, 2026-09-27) plays by
+-- - The soundtrack (Assets/Soundtrack.luau: APM Music via Roblox licensed audio, 2026-11-06) plays by
 --   mood (set_music_mood: title, wait, calm, war, victory, defeat — UIRoot picks it with MusicMood):
 --   whole tracks, intro to ending, the next one (Playlist: shuffled, no recent repeats) fading in over
 --   the last TRACK_OVERLAP_S; a new mood crossfades at once, except war -> calm, which lets the battle

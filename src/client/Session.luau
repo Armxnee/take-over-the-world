@@ -500,7 +500,9 @@ function Session._apply_own_cosmetics(self: any, id: number)
 	local eq = self.inventory.equipped or {}
 	-- (and their own head shot beside their name, as in a public match)
 	local uid = if type(self.env.user_id) == "function" then self.env.user_id() else 0
-	st:set_cosmetics({ [id] = { skin = eq.skin, flag = eq.flag, face = uid } }, true)
+	st:set_cosmetics({
+		[id] = { skin = eq.skin, flag = eq.flag, face = uid, hat = eq.hat, boat = eq.boat, nuke = eq.nuke, missile = eq.missile },
+	}, true)
 end
 
 --- Does the player have Arsenal item `key`?
