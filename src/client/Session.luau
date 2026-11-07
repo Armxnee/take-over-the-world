@@ -1228,8 +1228,21 @@ function Session._step_done(self: any, job: any, sim: any): boolean
 			self:_solo_report(false)
 		end
 	end
+	local moves = if type(sim.drain_owner_moves) == "function" then sim:drain_owner_moves() else {}
 	if self:_apply_local_delta(d) then
 		return false
+	end
+	-- (Take Over the World!: a country pick in a local match: this player commands that country now)
+	for _, mv in moves do
+		if state ~= nil and mv[1] == state.local_owner then
+			if tracker ~= nil then
+				tracker:adopt(mv[1], mv[2])
+			end
+			state.local_owner = mv[2]
+			table.clear(self._queued)
+			self:_apply_own_cosmetics(mv[2])
+			self:_emit("took_over", mv[2])
+		end
 	end
 	return self._sim == sim
 end

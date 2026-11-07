@@ -280,6 +280,12 @@ function UIInteract.on_click(self: any, tile: number)
 	end
 	local act = ctx.rules:primary(tile)
 	local kind = tostring(act.type)
+	-- (Take Over the World!: in a countries match a spawn click selects that country in the picker; its
+	-- CONFIRM sends the pick)
+	if kind == "spawn" and ctx.country_picker ~= nil and ctx.country_picker:active() then
+		ctx.country_picker:select_owner(tonumber(act.target) or 0, false)
+		return
+	end
 	local selectable = (kind == "attack" or kind == "boat") and act.ok
 	-- Touch: an ally's land opens their card (Donate / Break alliance) instead of a bare info card.
 	local ally_own = if ctx.touch then self:_ally_at(tile) else 0
@@ -1313,7 +1319,11 @@ function UIInteract.hover_spec(self: any, tile: number, pinned: boolean?): { [st
 	local act = ctx.rules:primary(tile)
 	local verb = if ctx.touch then "Tap" else "Click"
 	local ty = tostring(act.type)
-	if ty == "spawn" then
+	if ty == "spawn" and ctx.country_picker ~= nil and ctx.country_picker:active() then
+		spec.hint = verb .. " to view this country" -- (Take Over the World!: countries match)
+		spec.hint_color = Th.AMBER
+		spec.hint_icon = "target"
+	elseif ty == "spawn" then
 		spec.hint = verb .. " to place your capital here"
 		spec.hint_color = Th.AMBER
 		spec.hint_icon = "target"

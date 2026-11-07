@@ -39,6 +39,8 @@ local Teams = require("./Teams")
 local WorldMap = require("./WorldMap")
 local Nations = require("../Data/Nations")
 local Coop = require("../Net/Coop")
+local Provinces = require("./Provinces")
+local Countries = require("../Data/Countries")
 
 local STRUCT_KINDS = SimState.STRUCT_KINDS
 local TICK_RATE = 10
@@ -55,6 +57,7 @@ SimNaval.install(Sim)
 SimWarships.install(Sim)
 SimNukes.install(Sim)
 SimArsenal.install(Sim)
+Provinces.install(Sim) -- (Take Over the World!: provinces over the tile grid)
 
 Sim.TICK_RATE = TICK_RATE
 --- Owners whose start lies within these many tiles (of the original 1024-wide grid; scaled by the
@@ -93,6 +96,16 @@ function Sim.new(p_map: any, config: { [string]: any }?): any
 	--- Map id (snapshots carry it so mirrors build GameState on the same map).
 	self.map_id = p_map.id
 	self.tribe_count = math.clamp(Defs.trunc(tonumber(cfg.tribes) or Sim.default_tribes(p_map)), 0, 700)
+	--- (Take Over the World!: countries mode: every nation starts with its whole region (full borders) and a
+	--- human plays by picking a country (pick_country); no tribes. `countries = false` = RoWorld rules.)
+	self.countries = cfg.countries ~= false and cfg.nations ~= false
+	if self.countries then
+		self.tribe_count = 0
+	end
+	--- owner moves (a human took command of a country): { {from, to} }, drained by the host
+	self.owner_moves = {} :: { { number } }
+	self._picked = {} :: { [number]: any } -- country id -> { from = placeholder, saved AI fields }
+	self.nation_flag = {} :: { [number]: string }
 	self.time_limit_s = math.max(Defs.trunc(tonumber(cfg.time_limit_s) or 0), 0)
 	self.spawn_total = math.max(Defs.trunc(tonumber(cfg.spawn_ticks) or Rules.DEFAULT_SPAWN_TICKS), 10)
 	--- True when max_humans == 1 (spawn phase waits for the player's pick, then counts down 5 s).
@@ -425,6 +438,9 @@ function Sim.step(self: any): { [string]: any }
 				end
 			end
 		end
+		if self.phase == Defs.PHASE_PLAYING then
+			self:_provinces_tick() -- (Take Over the World!: occupation / annexation / capitals)
+		end
 	else
 		table.clear(self._intents)
 	end
@@ -613,6 +629,9 @@ function Sim._create_nations(self: any)
 			break
 		end
 		picked[id] = hex ~= nil
+		if nd.flag ~= nil then
+			self.nation_flag[id] = string.lower(tostring(nd.flag))
+		end
 		self.nation_count += 1
 		Coop.check()
 		self.o_troops[id] = Rules.start_troops(Defs.KIND_NATION, self.difficulty)
@@ -644,6 +663,154 @@ function Sim._create_nations(self: any)
 			self.o_color[id] = SimColors.pick(SimColors.human_palette(), refs, self.rng)
 		end
 	end
+	if self.countries then
+		self:_init_countries()
+	end
+end
+
+--- (Take Over the World!: the nations' provinces (from their capitals), full borders and the country
+--- definitions (Data/Countries): each nation starts with its definition's troops and gold.)
+function Sim._init_countries(self: any)
+	local capitals = {}
+	for id = 1, self.owner_total do
+		if self.o_kind[id] == Defs.KIND_NATION and self.o_spawn_tile[id] >= 0 then
+			capitals[id] = self.o_spawn_tile[id]
+		end
+	end
+	self:_init_provinces(capitals, true)
+	local names = {}
+	for id in capitals do
+		names[id] = self.o_name[id]
+	end
+	local R = self.R
+	local diff = self.difficulty
+	self.country_defs, self.country_list = Countries.build(self.P, {
+		map_id = self.map_id,
+		names = names,
+		flags = self.nation_flag,
+		max_troops = function(tiles)
+			return R.max_troops(Defs.KIND_NATION, tiles, 0, diff)
+		end,
+		income = function(tiles)
+			return Rules.passive_income(Defs.KIND_NATION, tiles)
+		end,
+		start_gold = Rules.START_GOLD,
+	})
+	for id, def in self.country_defs do
+		self.o_troops[id] = def.military.troops
+		self.o_gold[id] = def.resources.gold
+	end
+end
+
+--- (Take Over the World!: a human (`id`: their placeholder, or the country they picked earlier this spawn
+--- phase) takes command of country `target`, an AI nation. Validated here, so the server's Sim is
+--- the authority: one country per human, one human per country (intents are applied one at a time,
+--- so of two simultaneous picks the first wins and the second is refused). The move is queued in
+--- owner_moves for the host (MatchServer / Session) to re-point the player. True when done.)
+function Sim.can_pick_country(self: any, id: number, target: number): boolean
+	if not self.countries or id <= 0 or id > self.owner_total or target <= 0 or target > self.owner_total then
+		return false
+	end
+	if self.o_kind[id] ~= Defs.KIND_HUMAN or self.o_alive[id] == 0 or self.o_left[id] == 1 then
+		return false
+	end
+	-- the human's own state: a placeholder that never spawned, or (spawn phase) a picked country
+	local repick = self._picked[id] ~= nil
+	if repick then
+		if self.phase ~= Defs.PHASE_SPAWN then
+			return false
+		end
+	elseif self.o_spawned[id] ~= 0 then
+		return false
+	end
+	if self.phase ~= Defs.PHASE_SPAWN and self.phase ~= Defs.PHASE_PLAYING then
+		return false
+	end
+	return self.o_kind[target] == Defs.KIND_NATION
+		and self.o_alive[target] == 1
+		and self.o_spawned[target] == 1
+		and self.o_tiles[target] > 0
+		and self.country_defs ~= nil
+		and self.country_defs[target] ~= nil
+end
+
+function Sim.pick_country(self: any, id: number, target: number): boolean
+	if id == target or not self:can_pick_country(id, target) then
+		return false
+	end
+	local from = id
+	local prev = self._picked[id]
+	if prev ~= nil then
+		-- a new pick during the spawn phase: the previous country goes back to its AI
+		from = prev.from
+		self._picked[id] = nil
+		self.o_kind[id] = Defs.KIND_NATION
+		self.o_ai[id] = prev.ai
+		self.o_skill[id] = prev.skill
+		self.o_unlock[id] = prev.unlock
+		local i = table.find(self.humans, id)
+		if i ~= nil then
+			table.remove(self.humans, i)
+		end
+		self:ev({ Ev.OWNER_ADD, id, self.o_name[id], self.o_color[id], Defs.KIND_NATION, self.o_team[id] })
+	end
+	self._picked[target] = { from = from, ai = self.o_ai[target], skill = self.o_skill[target], unlock = self.o_unlock[target] }
+	self.o_kind[target] = Defs.KIND_HUMAN
+	self.o_unlock[target] = self.o_unlock[from]
+	self.o_ai[target] = 0
+	self.o_skill[target] = -1
+	self.o_left[target] = 0
+	for key, hid in self.human_keys do
+		if hid == id then
+			self.human_keys[key] = target
+		end
+	end
+	table.insert(self.humans, target)
+	if from == id then
+		-- the placeholder is done with: out of the match quietly (it never held land)
+		local i = table.find(self.humans, id)
+		if i ~= nil then
+			table.remove(self.humans, i)
+		end
+		self.o_left[id] = 1
+		if self.o_alive[id] == 1 then
+			self.o_alive[id] = 0
+			self:ev({ Ev.OWNER_OUT, id, 0 })
+		end
+	end
+	self:ev({ Ev.OWNER_ADD, target, self.o_name[target], self.o_color[target], Defs.KIND_HUMAN, self.o_team[target] })
+	table.insert(self.owner_moves, { id, target })
+	self:msg(target, Defs.MSG_GOOD, "You lead " .. self.o_name[target])
+	if self.solo and self.phase == Defs.PHASE_SPAWN and self.spawn_left < 0 then
+		self.spawn_left = self.solo_countdown
+		self:ev({ Ev.PHASE, Defs.PHASE_SPAWN, self.spawn_left })
+	end
+	return true
+end
+
+--- A random country nobody commands (for players who never picked and bot players), or 0.
+function Sim.random_free_country(self: any): number
+	local free = {}
+	for _, d in self.country_list or {} do
+		local o = d.owner
+		if self.o_kind[o] == Defs.KIND_NATION and self.o_alive[o] == 1 and self.o_tiles[o] > 0 then
+			table.insert(free, o)
+		end
+	end
+	if #free == 0 then
+		return 0
+	end
+	return free[self.rng:randi_range(1, #free)]
+end
+
+--- The host takes the owner moves made since the last call.
+function Sim.drain_owner_moves(self: any): { { number } }
+	local m = self.owner_moves
+	if #m == 0 then
+		return m
+	end
+	self.owner_moves = {}
+	return m
 end
 
 --- A nation's spawn land: a free, contestable tile within +-NATION_SPAWN_DELTA of `t`
@@ -948,6 +1115,13 @@ function Sim._apply_intent(self: any, id: number, it: { [string]: any })
 	local kind = _str(it, "type")
 	local tile = _int(it, "tile", -1)
 	if kind == "spawn" then
+		if self.countries then
+			-- (Take Over the World!: the spawn tile names the country: whoever holds it at the pick)
+			if tile >= 0 and tile < self.N then
+				self:pick_country(id, readi32(self.owner, tile * 4))
+			end
+			return
+		end
 		self:_intent_spawn(id, tile)
 		return
 	end
@@ -1462,7 +1636,12 @@ function Sim._spawn_phase_tick(self: any)
 		for id, at in self._bot_spawn_at do
 			if self.spawn_left <= at then
 				self._bot_spawn_at[id] = nil
-				if self.o_spawned[id] == 0 and self.o_alive[id] == 1 and self._pending_spawn[id] == nil then
+				if self.countries and self.o_spawned[id] == 0 and self.o_alive[id] == 1 then
+					local c = self:random_free_country()
+					if c > 0 then
+						self:pick_country(id, c)
+					end
+				elseif self.o_spawned[id] == 0 and self.o_alive[id] == 1 and self._pending_spawn[id] == nil then
 					local t = if self.team_mode then self:_team_start(id) else self:_random_start(id)
 					if t >= 0 then
 						self:_recolor_human(id, t)
@@ -1474,6 +1653,19 @@ function Sim._spawn_phase_tick(self: any)
 		return
 	end
 	-- Humans that never picked get a random start (multiplayer).
+	if self.countries then
+		for _, h in table.clone(self.humans) do
+			if self.o_spawned[h] == 0 and self.o_alive[h] == 1 and self.o_left[h] == 0 then
+				local c = self:random_free_country()
+				if c > 0 and self:pick_country(h, c) then
+					self._auto_placed[c] = true
+				end
+			end
+		end
+		self._picked = {}
+		self:_start_playing()
+		return
+	end
 	for _, h in self.humans do
 		if self.o_spawned[h] == 0 and self.o_alive[h] == 1 and self.o_left[h] == 0 then
 			local t = if self.team_mode then self:_team_start(h) else self:_random_start(h)
@@ -1533,6 +1725,7 @@ function Sim._economy_tick(self: any)
 	local o_bot = self.o_bot
 	local o_skill = self.o_skill
 	local NOVICE = Sim.NOVICE_SKILL
+	local prov_on = self._prov_on
 	for id = 1, self.owner_total do
 		if o_alive[id] == 0 or o_spawned[id] == 0 then
 			continue
@@ -1548,9 +1741,14 @@ function Sim._economy_tick(self: any)
 		o_cap[id] = cap
 		-- Per-tick player update: + troopIncreaseRate troops (whole troops: truncated) and
 		-- + goldAdditionRate gold every tick, never during the spawn phase.
-		o_troops[id] += troop_growth_applied(tkind, o_troops[id], cap, tdiff)
+		-- (Take Over the World!: national bonuses and the capital's economy / supply bonus)
+		local gmul, tmul = 1, 1
+		if prov_on then
+			gmul, tmul = self:country_mults(id)
+		end
+		o_troops[id] += math.floor(troop_growth_applied(tkind, o_troops[id], cap, tdiff) * tmul)
 		if (tick + id) % 10 == 0 then
-			o_income[id] = Rules.passive_income(kind, o_tiles[id])
+			o_income[id] = Rules.passive_income(kind, o_tiles[id]) * gmul
 		end
 		o_gold[id] += o_income[id] / TICK_RATE
 		if second then

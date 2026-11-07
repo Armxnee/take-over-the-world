@@ -1160,6 +1160,24 @@ function MatchServer._step_once(self: any)
 			st.deltas_sent += 1
 		end
 	end
+	-- (Take Over the World!: country picks the Sim accepted this tick: the player commands that country now)
+	local moves = sim:drain_owner_moves()
+	if #moves > 0 then
+		for _, mv in moves do
+			for _, peer in self._order do
+				local part = self._participants[peer]
+				if part.owner == mv[1] then
+					part.owner = mv[2]
+					if tracker ~= nil then
+						tracker:adopt(mv[1], mv[2])
+					end
+					self:_send(peer, OP.OWNER_CHANGED, mv[2])
+					self:_log(string.format("[Countries] %s leads %s", part.name, tostring(sim.o_name[mv[2]])))
+				end
+			end
+		end
+		self:_broadcast_cosmetics()
+	end
 	if self._stage == STAGE_SPAWN and sim.phase == PHASE_PLAYING then
 		self:_set_stage(STAGE_PLAYING, 0.0)
 	end

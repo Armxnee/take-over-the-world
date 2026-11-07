@@ -1044,6 +1044,25 @@ function UIRules._primary(self: any, tile: number): { [string]: any }
 	end
 	local o = ctx:my()
 	if s.phase == Defs.PHASE_SPAWN or ctx:needs_spawn() then
+		-- (Take Over the World!: a countries match: a click chooses the country under it (CountryPicker))
+		local picker = ctx.country_picker
+		if picker ~= nil and picker:active() then
+			local oo = if own ~= 0 then s.owners[own] else nil
+			if own ~= 0 and own == me then
+				out.type = "inspect"
+				out.ok = true
+			elseif oo ~= nil and oo.kind == Defs.KIND_NATION and oo.alive then
+				out.type = "spawn"
+				out.ok = true
+				out.verb = "Choose this country"
+				out.icon = "target"
+			elseif oo ~= nil then
+				out.reason = "Another player leads this country"
+			else
+				out.reason = if map:is_land(tile) then "Pick a country" else "Pick a country, not the sea"
+			end
+			return out
+		end
 		if o ~= nil and o.spawned and own == me then
 			out.type = "inspect"
 			out.ok = true

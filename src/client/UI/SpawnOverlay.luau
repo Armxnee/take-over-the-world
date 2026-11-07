@@ -210,6 +210,26 @@ function SpawnOverlay.refresh(self)
 	end
 	local late = s.phase == Defs.PHASE_PLAYING
 	local verb = if ctx.touch then "Tap" else "Click"
+	-- (Take Over the World!: a countries match picks a country, not a capital spot)
+	local picker = ctx.country_picker
+	if ctx:me() ~= 0 and picker ~= nil and picker:active() then
+		if placed and solo and left >= 0.0 then
+			self._title:set_text(string.format("STARTING IN %d", math.ceil(left)))
+			self._sub:set_text("Choose another country to switch.")
+		elseif placed then
+			self._title:set_text("COUNTRY CHOSEN")
+			self._sub:set_text("You can switch until the countdown ends.")
+		elseif late then
+			self._title:set_text("JOIN THE WAR")
+			self._sub:set_text("Pick a country an AI still leads.")
+		else
+			self._title:set_text("CHOOSE YOUR COUNTRY")
+			self._sub:set_text("Pick one in the list or " .. string.lower(verb) .. " it on the map, then confirm.")
+		end
+		self:_refresh_players()
+		self.panel:reset_size()
+		return
+	end
 	if ctx:me() == 0 then
 		self._title:set_text("COMMANDERS ARE DEPLOYING")
 		self._sub:set_text("You are spectating this match.")

@@ -256,6 +256,9 @@ local function set_owner(self: any, t: number, nw: number)
 	if readi32(self.struct_at, t * 4) ~= 0 then
 		self:_struct_tile_changed(t, old, nw)
 	end
+	if self._prov_on then
+		self:_prov_tile_changed(t, old, nw) -- (Take Over the World!: province tile counts)
+	end
 end
 
 --- True if `id` owns a 4-neighbour of `t`.
