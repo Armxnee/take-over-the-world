@@ -345,3 +345,19 @@ An original real-time territory-conquest game for Roblox. RoWorld is the gamepla
 ## 2026-11-06: Stages 4 and 5 removed
 - At the user's request the armies (Stage 4) and logistics (Stage 5) were reverted (commits fd8920a, f76e94a stay in history).
   Kept: the RoWorld port + country selection and provinces (Stage 3), with its two later bug fixes (troop growth above the cap, picker income).
+
+## 2026-11-06: native audio, fitted flags, item shop gear, tweens
+- Audio: only Roblox-licensed sounds (Roblox UI kit, APM Music, Pro Sound Effects); tools/native_audio.py
+  writes Assets/{Audio,AudioExtra,AudioUI,Soundtrack}.luau (lengths measured in Studio; long sounds cut
+  with playback regions).
+- Territory flags: MapSurface._flag_skin cover-fits one FlagPix flag to each country's home land
+  (CountryGrid, 5th-95th percentile bounds); tiled only without a grid.
+- Quests / Item Shop buttons: new icons (tools/assets_out/icons, rbxassetid 110859228590510 / 116782632104302).
+- Item shop (UI/ItemShopPanel): 2 FEATURED + 6 DAILY cards (Data/ItemShop.featured by UTC day), crate +
+  My Crates cards, NEW! = not on sale yesterday; an owned card equips / takes off.
+- Data/Gear: 9 Countryball hats (drawn by Countryball.ball_content) and boat / nuke / missile colour skins
+  (UnitLayer tint_of). Slots in Cosmetics.SLOTS, end to end: Purchases clean/equip, MatchServer
+  cosmetics_map, GameState.set_cosmetics, Session._apply_own_cosmetics. 30% of bot players wear a hat / boat.
+- UI/Anim: dim fade + panel pop + staggered pops; button hover / press scale (shop, quests).
+- Studio MCP mouse input takes GUI coordinates (screenshot y minus the 58 px top bar).
+- Not yet seen in a match: hats on nameplates and tinted units (test account can't afford one).
