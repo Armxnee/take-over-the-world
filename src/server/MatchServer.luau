@@ -891,7 +891,7 @@ function MatchServer._dress_bots(self: any, ids: any)
 	for _, it in Cosmetics.all() do
 		if it.kind == "flag" then
 			table.insert(flags, it.id)
-		elseif it.rarity == "common" or it.rarity == "rare" then
+		elseif it.kind == "skin" and (it.rarity == "common" or it.rarity == "rare") then
 			table.insert(skins, it.id)
 		end
 	end

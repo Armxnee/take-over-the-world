@@ -595,6 +595,11 @@ function Purchases.buy_item(player: any, id: any): (boolean, string?)
 				rec.credits.crate = (rec.credits.crate or 0) + 1
 			else
 				rec.owned[id] = true
+				-- (Take Over the World!: worn at once when nothing is in its slot)
+				local it = Cosmetics.item(id)
+				if it ~= nil and rec.equipped[it.kind] == nil then
+					rec.equipped[it.kind] = id
+				end
 			end
 			stored = rec
 			return rec

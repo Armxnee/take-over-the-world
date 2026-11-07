@@ -31,6 +31,7 @@ end
 local Cosmetics = shared("Cosmetics")
 local Products = shared("Products")
 local Prices = require("./Prices")
+local GearArt = require("./GearArt") -- (Take Over the World!: hats and unit skins)
 local SkinPreviews: any = (function()
 	local ok, m = pcall(function()
 		if IS_ROBLOX then
@@ -43,7 +44,7 @@ end)()
 
 local Locker = W.class(W.Control)
 
-Locker.TABS = { { "Skins", "skin" }, { "Flags", "flag" } }
+Locker.TABS = { { "Hats", "hat" }, { "Boats", "boat" }, { "Nukes", "nuke" }, { "Missiles", "missile" }, { "Flags", "flag" } }
 Locker.SKIN_CARD = Vector2.new(116, 128)
 Locker.FLAG_CARD = Vector2.new(104, 96)
 Locker.GRID_SIZE = Vector2.new(560, 430)
@@ -129,6 +130,12 @@ local function show_item(img: ImageLabel, it: any)
 	img.ImageContent = Content.none
 	img.Image = ""
 	if it == nil then
+		return
+	end
+	local gear = GearArt.content(it)
+	if gear ~= nil then
+		img.ResampleMode = Enum.ResamplerMode.Pixelated
+		img.ImageContent = gear
 		return
 	end
 	if it.kind == "flag" then
@@ -653,7 +660,12 @@ function Locker._on_result(self, ok: boolean, res: string)
 		local it = Cosmetics.item(res)
 		if it ~= nil then
 			-- the grid behind shows the new item's tab
-			self._tab = if it.kind == "flag" then 2 else 1
+			self._tab = 1
+			for ti, t in ipairs(Locker.TABS) do
+				if t[2] == it.kind then
+					self._tab = ti
+				end
+			end
 			for j, ch in ipairs(self._tabs) do
 				ch:set_pressed_no_signal(j == self._tab)
 			end
@@ -784,7 +796,7 @@ function Locker._rebuild(self)
 	table.clear(self._cards)
 	local s = UITheme.scale
 	local slot = Locker.TABS[self._tab][2]
-	local cell = if slot == "skin" then Locker.SKIN_CARD else Locker.FLAG_CARD
+	local cell = if slot ~= "flag" then Locker.SKIN_CARD else Locker.FLAG_CARD
 	if self.ctx.compact then
 		cell *= 0.82
 	end

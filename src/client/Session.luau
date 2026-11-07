@@ -1501,10 +1501,14 @@ function Session._on_net(self: any, op: number, ...: any)
 			local eq = if type(inv.equipped) == "table" then inv.equipped else {}
 			self.inventory = {
 				owned = owned,
-				equipped = {
-					skin = if type(eq.skin) == "string" then eq.skin else nil,
-					flag = if type(eq.flag) == "string" then eq.flag else nil,
-				},
+				-- (Take Over the World!: every slot, the item shop's gear too)
+				equipped = (function()
+					local out = {}
+					for _, slot in { "skin", "flag", "hat", "boat", "nuke", "missile" } do
+						out[slot] = if type(eq[slot]) == "string" then eq[slot] else nil
+					end
+					return out
+				end)(),
 				crates_bought = tonumber(inv.crates_bought) or 0,
 				crates_allowed = inv.crates_allowed == true,
 				stars = math.max(0, math.floor(tonumber(inv.stars) or 0)),

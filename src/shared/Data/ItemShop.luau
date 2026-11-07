@@ -8,7 +8,7 @@ local Cosmetics = require("./Cosmetics")
 local ItemShop = {}
 
 ItemShop.CRATE_PRICE = 1500
-ItemShop.FEATURED = 2 -- the big cards (hats and unit skins, rare and up)
+ItemShop.FEATURED = 3 -- the big cards (rare and up)
 ItemShop.DAILY = 6 -- the small cards (anything for sale)
 ItemShop.PRICES = { common = 800, uncommon = 1500, rare = 2500, epic = 5000, legendary = 12000 }
 ItemShop.DEFAULT_PRICE = 2000
@@ -22,11 +22,7 @@ local pools: any = nil
 local function items(): any
 	if pools == nil then
 		local all, big = {}, {}
-		for _, it in Cosmetics.all() do
-			if it.kind == "skin" and Cosmetics.may_own(it.id, nil) and it.shop ~= false then -- (skins: drawn from masks, no images)
-				table.insert(all, it)
-			end
-		end
+		-- (gear only: hats and boat / nuke / missile skins; no territory skins, a country wears its flag)
 		for _, it in Cosmetics.gear() do
 			table.insert(all, it)
 			if it.rarity == "rare" or it.rarity == "epic" or it.rarity == "legendary" then

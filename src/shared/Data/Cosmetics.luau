@@ -343,7 +343,8 @@ for _, s in Cosmetics.skins do
 	local it: any = table.clone(s)
 	it.kind = "skin"
 	items[it.id] = it
-	table.insert(order, it)
+	-- (Take Over the World!: no territory skins: a country wears its flag. Old records still resolve them,
+	-- crates give the gear instead: see below)
 end
 for _, f in (Flags.flags or {}) :: { any } do
 	local it: any = table.clone(f)
@@ -406,8 +407,9 @@ end
 -- (Take Over the World!: the item shop's gear (Data/Gear: hats, boat / nuke / missile skins) resolves by id
 -- too, and stays out of `order`: never in crates)
 Cosmetics.SLOTS = { "skin", "flag", "hat", "boat", "nuke", "missile" }
-for _, g in Gear.items do
+for i, g in Gear.items do
 	items[g.id] = g
+	table.insert(order, i, g) -- (crates give gear: first in `order`, before the name flags)
 end
 
 --- The item shop's gear (Data/Gear.items).
@@ -467,7 +469,7 @@ function Cosmetics.crate_owned(owned: { [string]: any }): number
 	local n = 0
 	for id in owned do
 		local it = items[id]
-		if it ~= nil and not it.exclusive and not it.shop and not it.general and not Gear.is_kind(it.kind) then
+		if it ~= nil and not it.exclusive and not it.shop and not it.general and it.kind ~= "skin" then
 			n += 1
 		end
 	end

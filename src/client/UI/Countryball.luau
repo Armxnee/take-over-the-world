@@ -161,7 +161,7 @@ end
 
 --- A Countryball `px` wide for flag `code` (or the country `name`; a grey ball when unknown): one
 --- crisp pixel sprite.
-function Countryball.new(code: string?, px: number?, name: string?): Frame
+function Countryball.new(code: string?, px: number?, name: string?, hat: string?): Frame
 	local size = px or 64
 	local root = Instance.new("Frame")
 	root.Name = "Countryball"
@@ -173,7 +173,7 @@ function Countryball.new(code: string?, px: number?, name: string?): Frame
 	body.Size = UDim2.fromScale(1, 1)
 	body.ResampleMode = Enum.ResamplerMode.Pixelated
 	body.ZIndex = 2
-	local c = Countryball.ball_content(code, name)
+	local c = Countryball.ball_content(code, name, hat)
 	if c ~= nil then
 		body.ImageContent = c
 	end

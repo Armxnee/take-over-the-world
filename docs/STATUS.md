@@ -361,3 +361,16 @@ An original real-time territory-conquest game for Roblox. RoWorld is the gamepla
 - UI/Anim: dim fade + panel pop + staggered pops; button hover / press scale (shop, quests).
 - Studio MCP mouse input takes GUI coordinates (screenshot y minus the 58 px top bar).
 - Not yet seen in a match: hats on nameplates and tinted units (test account can't afford one).
+
+## 2026-11-07: shop rebuilt full screen, gear only, live flag fit
+- Item shop (UI/ItemShopPanel): full screen over a pixel showroom (tools/build_shop_bg.py, original art,
+  rbxassetid 84971757872319; our coin on the floor platform): 3 FEATURED + 6 DAILY cards, banners with
+  timers, crates bought / opened from the top bar. UI/GearArt draws every gear picture (shop, Locker,
+  crate reveal).
+- No territory skins: MapSurface always paints the flag; crates roll gear (Cosmetics `order` = gear +
+  name flags); Locker tabs Hats / Boats / Nukes / Missiles / Flags; Gear rarities = the crate's four.
+- Buying wears the item when its slot is empty. Session's INVENTORY copy keeps every slot (it kept only
+  skin / flag: hats never reached the nameplate). Nameplate Countryball drawn 1.8x the name height.
+- Flags follow the owner's land: MapSurface._refit_step scans owners' tiles incrementally and refits
+  (3rd-97th percentile bounds) when the fit moves more than 12%.
+- Test coins: workspace AF_DIAG = true (Studio only), then LocalPlayer af_cmd = "stars 30000". Turn it off after.

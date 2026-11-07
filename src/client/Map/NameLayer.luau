@@ -709,7 +709,9 @@ function NameLayer.tick(self: any, dt: number)
 			end
 			if p.face.Visible then
 				-- a head about as tall as the name's line
-				local hh = math.max(6, math.round(ts * 1.05))
+				-- (Take Over the World!: a Countryball bigger, so its hat reads)
+				local ballk = if type(p.face_id) == "string" then 1.8 else 1.05
+				local hh = math.max(6, math.round(ts * ballk))
 				p.face.Size = UDim2.fromOffset(hh, hh)
 			end
 			p.scaler.Scale = sc

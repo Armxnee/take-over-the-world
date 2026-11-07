@@ -600,6 +600,7 @@ function MapSurface.bind(self: MapSurface, state: any)
 	self._flags = if state then state.flags else nil
 	self._skins = {}
 	self:_load_skins(nil)
+	self._refit = nil
 	table.clear(self._bbox)
 	if buffer.len(self.defended) > 0 then
 		buffer.fill(self.defended, 0, 0)
@@ -631,8 +632,8 @@ function MapSurface._load_skins(self: any, ids: { number }?)
 		end
 	end
 	for _, id in list do
-		local c = (st.cosmetics or {})[id]
-		local skin = if c ~= nil then Cosmetics.item(c.skin) else nil
+		-- (Take Over the World!: no territory skins: every country wears its flag)
+		local skin = nil
 		if skin == nil or skin.kind ~= "skin" then
 			self._skins[id] = MapSurface._flag_skin(st, id)
 		else
@@ -763,7 +764,8 @@ function MapSurface._flag_skin(st: any, id: number): any?
 	if rec == false then
 		return nil
 	end
-	local fit = (flag_fits :: any)[o.name]
+	-- (no home land in the grid: a first guess, the refit scan finds its land)
+	local fit = (flag_fits :: any)[o.name] or { ox = 0, oy = 0, s = 2 }
 	return {
 		mask = rec.mask,
 		w = rec.w,
@@ -776,6 +778,93 @@ function MapSurface._flag_skin(st: any, id: number): any?
 		fills = {},
 		fills_hi = {},
 	}
+end
+
+--- (Take Over the World!: a flag follows its owner's land as it grows or shrinks. A scan of every
+--- REFIT_STRIDE-th tile in each direction, REFIT_ROWS rows a step, keeps per-owner histograms of
+--- columns and rows; when it ends, each flag owner's 3rd-97th percentile bounds give a new cover-fit,
+--- and an owner whose fit moved more than REFIT_CHANGE (of the flag's size) repaints.)
+MapSurface.REFIT_STRIDE = 3
+MapSurface.REFIT_ROWS = 24
+MapSurface.REFIT_BIN = 6
+MapSurface.REFIT_CHANGE = 0.12
+function MapSurface._refit_step(self: any)
+	local own = self._own
+	local skins = self._skins
+	if own == nil or skins == nil then
+		return
+	end
+	local W, N = self.W, self.N
+	local H = N // W
+	local st = self._refit
+	if st == nil then
+		st = { y = 0, hx = {}, hy = {}, n = {} }
+		self._refit = st
+	end
+	local S, BIN = MapSurface.REFIT_STRIDE, MapSurface.REFIT_BIN
+	local bw, bh = W // BIN + 1, H // BIN + 1
+	local y1 = math.min(H, st.y + MapSurface.REFIT_ROWS * S)
+	for y = st.y, y1 - 1, S do
+		local row = y * W
+		local by = y // BIN
+		for x = (y // S) % S, W - 1, S do
+			local o = readi32(own, (row + x) * 4)
+			if o > 0 then
+				local sk = skins[o]
+				if sk ~= nil and sk.fit ~= nil then
+					local hx = st.hx[o]
+					if hx == nil then
+						hx = buffer.create(bw * 4)
+						st.hx[o] = hx
+						st.hy[o] = buffer.create(bh * 4)
+						st.n[o] = 0
+					end
+					local kx = (x // BIN) * 4
+					buffer.writeu32(hx, kx, buffer.readu32(hx, kx) + 1)
+					local hy = st.hy[o]
+					buffer.writeu32(hy, by * 4, buffer.readu32(hy, by * 4) + 1)
+					st.n[o] += 1
+				end
+			end
+		end
+	end
+	st.y = y1
+	if y1 < H then
+		return
+	end
+	-- the scan is done: new fits
+	local function pct(h: buffer, nb: number, total: number, q: number): number
+		local want, acc = total * q, 0
+		for b = 0, nb - 1 do
+			acc += buffer.readu32(h, b * 4)
+			if acc >= want then
+				return b
+			end
+		end
+		return nb - 1
+	end
+	for o, c in st.n do
+		local sk = skins[o]
+		if sk ~= nil and sk.fit ~= nil and c >= 4 then
+			local x0 = pct(st.hx[o], bw, c, 0.03) * BIN
+			local x1 = (pct(st.hx[o], bw, c, 0.97) + 1) * BIN
+			local y0 = pct(st.hy[o], bh, c, 0.03) * BIN
+			local y1b = (pct(st.hy[o], bh, c, 0.97) + 1) * BIN
+			local sc = math.max((x1 - x0) / 30, (y1b - y0) / 20, 0.2)
+			local fit = { ox = (x0 + x1) * 0.5 - 15 * sc, oy = (y0 + y1b) * 0.5 - 10 * sc, s = sc }
+			local old = sk.fit
+			local size = math.max(old.s, sc) * 30
+			if
+				math.abs(sc - old.s) / old.s > MapSurface.REFIT_CHANGE
+				or math.abs(fit.ox - old.ox) > size * MapSurface.REFIT_CHANGE
+				or math.abs(fit.oy - old.oy) > size * MapSurface.REFIT_CHANGE
+			then
+				sk.fit = fit
+				self:repaint_owner(o)
+			end
+		end
+	end
+	self._refit = nil
 end
 
 --- Owners' skins changed (GameState.cosmetics_changed): their land repaints.
@@ -1583,6 +1672,9 @@ function MapSurface.step(self: MapSurface, budget_tiles: number?, repaint_tiles:
 	-- (what they find is painted from the next step on)
 	if #self._sweeps > 0 and own ~= nil then
 		run_sweeps(self, repaint, deadline)
+	end
+	if own ~= nil and not self._rebuild_active then
+		self:_refit_step()
 	end
 	if self._rebuild_active and own ~= nil then
 		local i0 = self._rebuild_i
