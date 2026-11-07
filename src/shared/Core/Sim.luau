@@ -40,8 +40,6 @@ local WorldMap = require("./WorldMap")
 local Nations = require("../Data/Nations")
 local Coop = require("../Net/Coop")
 local Provinces = require("./Provinces")
-local SimArmies = require("./SimArmies")
-local SimLogistics = require("./SimLogistics")
 local Countries = require("../Data/Countries")
 
 local STRUCT_KINDS = SimState.STRUCT_KINDS
@@ -60,8 +58,6 @@ SimWarships.install(Sim)
 SimNukes.install(Sim)
 SimArsenal.install(Sim)
 Provinces.install(Sim) -- (Take Over the World!: provinces over the tile grid)
-SimArmies.install(Sim) -- (Take Over the World!: armies and ground warfare)
-SimLogistics.install(Sim) -- (Take Over the World!: supply, logistics, strategic resources)
 
 Sim.TICK_RATE = TICK_RATE
 --- Owners whose start lies within these many tiles (of the original 1024-wide grid; scaled by the
@@ -162,7 +158,6 @@ function Sim.new(p_map: any, config: { [string]: any }?): any
 	self:_init_warships()
 	self:_init_nukes()
 	self:_init_arsenal()
-	self:_init_armies()
 	Coop.check()
 	if type(cfg.defense_posts_shoot) == "boolean" then
 		self.defense_posts_shoot = cfg.defense_posts_shoot
@@ -444,8 +439,6 @@ function Sim.step(self: any): { [string]: any }
 			end
 		end
 		if self.phase == Defs.PHASE_PLAYING then
-			self:_logistics_tick() -- (Take Over the World!: resources, construction, supply networks)
-			self:_armies_tick() -- (Take Over the World!: army movement, battles, supply)
 			self:_provinces_tick() -- (Take Over the World!: occupation / annexation / capitals)
 		end
 	else
@@ -560,8 +553,6 @@ function Sim.snapshot(self: any): { [string]: any }
 		structs = self:struct_rows(),
 		roads = self:road_rows(),
 		units = self:unit_rows(),
-		armies = self:army_rows(), -- (Take Over the World!: Core/SimArmies)
-		logistics = self:logistics_rows(), -- (Take Over the World!: Core/SimLogistics)
 		nukes = self:nuke_rows(),
 		shells = self:shell_rows(),
 		sam_missiles = self:sam_rows(),
@@ -709,7 +700,6 @@ function Sim._init_countries(self: any)
 		self.o_troops[id] = def.military.troops
 		self.o_gold[id] = def.resources.gold
 	end
-	self:_init_logistics() -- (Take Over the World!: resources, infrastructure, supply networks)
 end
 
 --- (Take Over the World!: a human (`id`: their placeholder, or the country they picked earlier this spawn
@@ -1180,23 +1170,6 @@ function Sim._apply_intent(self: any, id: number, it: { [string]: any })
 		self:donate(id, _int(it, "target", 0), _int(it, "troops", 0))
 	elseif kind == "reinforce" then
 		self:reinforce(id)
-	-- (Take Over the World!: army orders; each is validated against the sender: only its own armies)
-	elseif kind == "army_recruit" then
-		self:army_recruit(id, _int(it, "uid", 0), tile, _str(it, "kind"), _int(it, "troops", 1))
-	elseif kind == "army_move" then
-		self:army_move(id, _int(it, "uid", 0), tile)
-	elseif kind == "army_attack" then
-		self:army_attack(id, _int(it, "uid", 0), tile)
-	elseif kind == "army_retreat" then
-		self:army_retreat(id, _int(it, "uid", 0))
-	elseif kind == "army_disband" then
-		self:army_disband(id, _int(it, "uid", 0))
-	elseif kind == "army_merge" then
-		self:army_merge(id, _int(it, "uid", 0), _int(it, "target", 0))
-	elseif kind == "army_reinforce" then
-		self:army_reinforce(id, _int(it, "uid", 0))
-	elseif kind == "build_infra" then
-		self:build_infra(id, _str(it, "kind"), tile) -- (Take Over the World!: Core/SimLogistics)
 	end
 end
 

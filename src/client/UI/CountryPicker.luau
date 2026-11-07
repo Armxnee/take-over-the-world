@@ -328,7 +328,7 @@ function CountryPicker._reset(self)
 			end,
 			start_gold = 0,
 		})
-		return { defs = defs, list = list, P = P }
+		return { defs = defs, list = list }
 	end)
 end
 
@@ -345,7 +345,6 @@ function CountryPicker._process(self, dt: number)
 			if job.ok then
 				self.defs = job.result.defs
 				self.list = job.result.list
-				self.P = job.result.P -- (province names for the army panel)
 				self:_build_rows()
 			else
 				warn("[CountryPicker] " .. tostring(job.err))

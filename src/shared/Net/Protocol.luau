@@ -133,15 +133,6 @@ Protocol.INTENT_TYPES = {
 	"donate",
 	"ally_extend", -- {target}: ask to renew the alliance with `target` (last 30 s before it expires)
 	"reinforce", -- {}: the Arsenal's Reinforcements (gold for troops; Sim.reinforce)
-	-- (Take Over the World!: army orders, Core/SimArmies; uid = the army, kind = unit type, troops = count)
-	"army_recruit", -- {uid (0 = new army), tile, kind, troops}
-	"army_move", -- {uid, tile}
-	"army_attack", -- {uid, tile}
-	"army_retreat", -- {uid}
-	"army_disband", -- {uid}
-	"army_merge", -- {uid, target}: army `target` joins army `uid`
-	"army_reinforce", -- {uid}
-	"build_infra", -- {kind, tile}: (Take Over the World!: road, rail, depot, farm, steel, oil, port)
 }
 local INTENT_INDEX: { [string]: number } = {}
 for i, name in Protocol.INTENT_TYPES do

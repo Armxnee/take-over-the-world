@@ -69,8 +69,7 @@ Defs.U_TRANSPORT = 0
 Defs.U_TRADE = 1
 Defs.U_WARSHIP = 2
 Defs.U_TRUCK = 3
-Defs.U_ARMY = 4 -- (Take Over the World!: a ground army, Core/SimArmies)
-Defs.UNIT_KIND_COUNT = 5
+Defs.UNIT_KIND_COUNT = 4
 
 -- Nuke kinds
 Defs.N_ATOM = 0

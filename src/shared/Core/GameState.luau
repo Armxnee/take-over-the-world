@@ -216,12 +216,6 @@ function GameState.new(world: any?)
 	self.structures = {} :: { [number]: StructInfo }
 	self.roads = {} :: { [number]: RoadInfo }
 	self.units = {} :: { [number]: UnitInfo }
-	--- (Take Over the World!: armies by unit id: composition and condition, Ev.ARMY / snapshot `armies`)
-	self.armies = {} :: { [number]: any }
-	--- (Take Over the World!: logistics: players' stocks, province infrastructure, supply networks)
-	self.resources = {} :: { [number]: any }
-	self.infra = {} :: { [number]: any }
-	self.supplynet = {} :: { [number]: any }
 	self.nukes = {} :: { [number]: NukeInfo }
 	--- owner id -> the tick its next Reinforcements call is ready (Ev.REINFORCE; absent: now)
 	self.reinforce_ready = {} :: { [number]: number }
@@ -919,23 +913,6 @@ function GameState.load_snapshot(self: GameState, snap: { [string]: any })
 	for _, row in snap.roads or {} do
 		self:_add_road(row[1], row[2], row[3], row[4])
 	end
-	local lg = snap.logistics
-	self.resources, self.infra, self.supplynet = {}, {}, {}
-	if type(lg) == "table" then
-		for _, r in lg.res or {} do
-			self:_set_res(r, 0)
-		end
-		for _, r in lg.infra or {} do
-			self:_set_infra(r, 0)
-		end
-		for _, r in lg.nets or {} do
-			self:_set_net(r[1], r[2])
-		end
-	end
-	self.armies = {}
-	for _, row in snap.armies or {} do
-		self:_set_army(row, 0)
-	end
 	for _, row in snap.units or {} do
 		self:_add_unit(row, 0)
 	end
@@ -1268,73 +1245,7 @@ HANDLERS[Ev.UNIT_PATH] = function(self, e)
 	end
 end
 
--- (Take Over the World!: army composition and condition)
-function GameState._set_army(self: any, r: { any }, o: number)
-	local id = r[o + 1]
-	self.armies[id] = {
-		id = id,
-		owner = r[o + 2],
-		seq = r[o + 3],
-		infantry = r[o + 4],
-		tank = r[o + 5],
-		artillery = r[o + 6],
-		health = r[o + 7],
-		morale = r[o + 8],
-		org = r[o + 9],
-		supply = r[o + 10],
-		status = r[o + 11],
-		dest_tile = r[o + 12],
-		target_province = r[o + 13],
-		province = r[o + 14],
-		connected = r[o + 15] == 1,
-		consumption = (r[o + 16] or 0) / 10,
-		source = r[o + 17] or 0,
-	}
-end
-
-function GameState._set_res(self: any, r: { any }, o: number)
-	self.resources[r[o + 1]] = {
-		food = r[o + 2], steel = r[o + 3], oil = r[o + 4], aluminum = r[o + 5], rare = r[o + 6],
-		rate = { food = r[o + 7] / 10, steel = r[o + 8] / 10, oil = r[o + 9] / 10, aluminum = r[o + 10] / 10, rare = r[o + 11] / 10 },
-		cap = r[o + 12],
-	}
-end
-
-function GameState._set_infra(self: any, r: { any }, o: number)
-	self.infra[r[o + 1]] = {
-		road = r[o + 2], rail = r[o + 3], depot = r[o + 4], farm = r[o + 5], steel = r[o + 6], oil = r[o + 7],
-		building = r[o + 8], finish = r[o + 9], stock = r[o + 10],
-	}
-end
-
-function GameState._set_net(self: any, owner: number, packed: { number })
-	local net = {}
-	for _, v in packed or {} do
-		net[v // 4096] = v % 4096
-	end
-	self.supplynet[owner] = net
-end
-
-HANDLERS[Ev.RES] = function(self, e)
-	self:_set_res(e, 1)
-end
-
-HANDLERS[Ev.INFRA] = function(self, e)
-	self:_set_infra(e, 1)
-end
-
-HANDLERS[Ev.SUPPLYNET] = function(self, e)
-	self:_set_net(e[2], e[3])
-end
-
-HANDLERS[Ev.ARMY] = function(self, e)
-	self:_set_army(e, 1)
-end
-
 HANDLERS[Ev.UNIT_DEL] = function(self, e)
-	if self.armies then
-		self.armies[e[2]] = nil
-	end
 	self._removed_now[e[2]] = e[3]
 	if self.units[e[2]] ~= nil then
 		self.unit_removed:Fire(e[2], e[3])
