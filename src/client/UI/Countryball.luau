@@ -66,8 +66,8 @@ end
 --- white eyes with a grey glint, and the gear it wears (Data/Gear). Hats and beards are fitted to the
 --- ball (2026-11-08, after the user's references): a hat fills the top down to a brim line over the
 --- eyes, a beard the lower half under them; both stay inside the outline. An empire's ball looks
---- evil (Data/GearSprites.empire): angry eyes, the spiked helmet and a black handlebar moustache,
---- unless it wears gear of its own in that place.
+--- evil (Data/GearSprites.empire): angry eyes, the spiked helmet and a black handlebar moustache;
+--- the player's own gear replaces each one (glasses the eyes, a hat the helmet, a beard the moustache).
 Countryball.G = 32
 Countryball.OX, Countryball.OY = 0, 0
 local G, OX, OY = Countryball.G, Countryball.OX, Countryball.OY
@@ -187,8 +187,10 @@ function Countryball.ball_content(code: string?, name: string?, gear: any): Cont
 	-- empire's helmet)
 	local beard = Gear.item(worn.beard) or (if evil then Gear.item(Countryball.EMPIRE_BEARD) else nil)
 	sprite(beard, 0, if evil and worn.beard == nil then 1 else 0)
-	if evil then
-		-- (Take Over the World!: the empire's angry eyes, from the user's evil ball)
+	if evil and worn.glasses == nil then
+		-- (Take Over the World!: the empire's angry eyes, from the user's evil ball; glasses the player
+		-- wears replace them, as their hat replaces the helmet and their beard the moustache, so the
+		-- empire's own pieces never sit under the player's: the glasses fit the ball's usual eyes)
 		sprite(GearSprites.empire.eyes)
 	else
 		for _, spec in { { 8, false }, { 17, true } } do

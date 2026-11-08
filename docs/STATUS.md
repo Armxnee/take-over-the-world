@@ -428,3 +428,4 @@ An original real-time territory-conquest game for Roblox. RoWorld is the gamepla
   monocle and eye patch drawn to fit; colours after the user's eyewear sheet). Moustaches are wider and
   clipped to the ball. The item shop never offers an item that is in a Robux bundle (Data/ItemShop); 15
   new boat / nuke / missile skins (Data/Gear) keep its unit skins varied.
+- (later) An empire's pieces give way to the player's gear, slot by slot: glasses replace the angry eyes (the ball's usual eyes go under them), a hat the spiked helmet, a beard the handlebar moustache.
