@@ -294,6 +294,30 @@ task.spawn(function()
 	end
 	check("60 s AI war runs with provinces", errs == 0, string.format("%.1f ms/tick, %d provinces changed hands", (os.clock() - t1) * 1000 / 600, changed))
 
+	-- (2026-11-08) an AI nation founds its empire on its own once it holds the land; a tribe never does
+	local Empires = require(RS.Airfront.Data.Empires)
+	local nation, tribe = 0, 0
+	for id = 1, sim2.owner_total do
+		if sim2.o_alive[id] == 1 and not Empires.is_empire(sim2.o_name[id]) then
+			if nation == 0 and sim2.o_kind[id] == Defs.KIND_NATION then
+				nation = id
+			elseif tribe == 0 and sim2.o_kind[id] == Defs.KIND_TRIBE then
+				tribe = id
+			end
+		end
+	end
+	local before = sim2.o_name[nation]
+	local need = math.ceil(sim2.map.land_count * Empires.LAND_SHARE)
+	check("AI nation below the land share can't found", nation > 0 and not sim2:can_form_empire(nation) or sim2.o_tiles[nation] >= need)
+	sim2.o_tiles[nation] = need
+	sim2.ai:_think_nation(sim2, nation)
+	check("AI nation founds its empire", sim2.o_name[nation] == Empires.of(before).name, tostring(before) .. " -> " .. tostring(sim2.o_name[nation]))
+	check("an empire founds only once", not sim2:can_form_empire(nation))
+	if tribe > 0 then
+		sim2.o_tiles[tribe] = need
+		check("a tribe can't found an empire", not sim2:can_form_empire(tribe))
+	end
+
 	local summary = string.format("%d passed, %d failed", pass, fail)
 	print("[CountryTests] " .. summary)
 	workspace:SetAttribute("CountryTestsResult", summary .. "\n" .. table.concat(lines, "\n"))

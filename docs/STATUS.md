@@ -390,3 +390,13 @@ An original real-time territory-conquest game for Roblox. RoWorld is the gamepla
 - Every country's Countryball by its name (NameLayer: any owner with a flag); nation colours = their
   flag's main colour (FlagPix.main_color, kept exactly in Sim._create_nations).
 - US flag hand-drawn (FlagPix.OVERRIDES).
+
+## 2026-11-08: empire card, AI empires, evil empire balls, US flag
+- UI/EmpireButton: a HUD glass card (UITheme GLASS / LINE / AMBER tokens, HUD scale) under the top bar:
+  the empire's Countryball, its name, the % of the land needed and an amber bar like the world-control bar.
+  Ready: an amber button with dark INK text and no text outline ("FOUND THE <EMPIRE>!"), readable.
+- AI nations found their empires too: Sim.can_form_empire takes KIND_NATION; SimAI._think_nation founds it
+  as soon as it can (everyone gets the "<country> founded the <empire>!" message). CountryTests 32/32.
+- Empire Countryballs look evil (Countryball EVIL_EYE / EVIL_MOUTH: angry brows, red eyes, curled
+  moustache, fanged grin) instead of the beard.
+- US flag (FlagPix.OVERRIDES.us): 25 staggered one-pixel stars; a star on every pixel read as a checkerboard.

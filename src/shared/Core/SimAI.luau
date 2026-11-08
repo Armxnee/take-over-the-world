@@ -374,6 +374,10 @@ function SimAI:_think_nation(sim, id: number)
 	if self:_consider_capitulation(sim, id, age) then
 		return
 	end
+	-- (Take Over the World!: an AI nation founds its empire as soon as it holds the land for it)
+	if sim:can_form_empire(id) then
+		sim:form_empire(id)
+	end
 	local defended = self:_defend(sim, id)
 	local due = self:_attack_due(sim, id)
 	-- Expansion into unclaimed land: everything above expandRatio of max troops.

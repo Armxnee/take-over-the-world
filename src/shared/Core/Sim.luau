@@ -1216,10 +1216,14 @@ function Sim._apply_intent(self: any, id: number, it: { [string]: any })
 	end
 end
 
---- (Take Over the World!: may `id` found its empire now? A country's leader (a person) holding
---- Empires.LAND_SHARE of the map's land, once.)
+--- (Take Over the World!: may `id` found its empire now? A country's leader (a person, or an AI
+--- nation since 2026-11-08) holding Empires.LAND_SHARE of the map's land, once.)
 function Sim.can_form_empire(self: any, id: number): boolean
-	if not self.countries or id <= 0 or self.o_alive[id] ~= 1 or self.o_kind[id] ~= Defs.KIND_HUMAN then
+	if not self.countries or id <= 0 or self.o_alive[id] ~= 1 then
+		return false
+	end
+	local kind = self.o_kind[id]
+	if kind ~= Defs.KIND_HUMAN and kind ~= Defs.KIND_NATION then
 		return false
 	end
 	self._empire = self._empire or {}

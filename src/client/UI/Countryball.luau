@@ -1,7 +1,8 @@
 --!nonstrict
 -- (Take Over the World!: the Countryball, 2026-11-06.)
 -- A country's mascot: its flag (Data/FlagPix: this game's pixel flags, public-domain artwork) as a
--- pixel-art ball (2026-11-06 redesign after the user's reference): dark outline, shaded rim, two eyes.
+-- pixel-art ball (2026-11-06 redesign after the user's reference): dark outline, shaded rim, two eyes
+-- (an empire's ball: an evil face).
 -- Drawn into an EditableImage (no upload): Countryball.new(flag_code, px, name) returns a Frame.
 -- A definition's `ball` field ("countryball:<code>", Data/Countries) names one.
 local AssetService = game:GetService("AssetService")
@@ -72,7 +73,35 @@ local EYE = {
 	"kwwwwwk",
 	".kkkkk.",
 }
-local EYE_COL = { k = OUT, w = Color3.new(1, 1, 1), g = Color3.fromRGB(200, 200, 205) }
+local EYE_COL = {
+	k = OUT,
+	w = Color3.new(1, 1, 1),
+	g = Color3.fromRGB(200, 200, 205),
+	r = Color3.fromRGB(226, 28, 40),
+	h = Color3.fromRGB(255, 150, 150),
+	m = Color3.fromRGB(120, 10, 22),
+}
+--- (Take Over the World!: an empire's face: the left eye (the right one is mirrored), brows slanting
+--- down to the middle, the pupils looking in; under it a curled moustache over a fanged grin.)
+local EVIL_EYE = {
+	"kk.....",
+	"kkkk...",
+	".kkkkkk",
+	"kwwwrhk",
+	"kwwrrrk",
+	".kkkkk.",
+}
+local EVIL_MOUTH = {
+	"kk..........kk",
+	".kkk.kkkk.kkk.",
+	"..kkkkkkkkkk..",
+	"..............",
+	"k............k",
+	".kkkkkkkkkkkk.",
+	".kwmwmwmwmwmk.",
+	"..kmmmmmmmmk..",
+	"...kkkkkkkk...",
+}
 local balls: { [string]: any } = {}
 
 function Countryball.ball_content(code: string?, name: string?, hat: string?): Content?
@@ -122,41 +151,28 @@ function Countryball.ball_content(code: string?, name: string?, hat: string?): C
 			end
 		end
 	end
+	-- (Take Over the World!: an empire's Countryball looks evil: angry brows over red eyes, a curled
+	-- villain moustache and a fanged grin, 2026-11-08)
+	local evil = Empires.is_empire(name) or (type(code) == "string" and string.sub(code, 1, 4) == "emp_")
+	local eye = if evil then EVIL_EYE else EYE
+	local y0 = if evil then 10 else 11
 	for _, spec in { { 8, false }, { 17, true } } do
-		for j, row in EYE do
+		for j, row in eye do
 			for i = 1, #row do
 				local ch = string.sub(row, if spec[2] then #row - i + 1 else i, if spec[2] then #row - i + 1 else i)
 				local c = EYE_COL[ch]
 				if c then
-					put(spec[1] + i - 1, 11 + j, c)
+					put(spec[1] + i - 1, y0 + j, c)
 				end
 			end
 		end
 	end
-	-- (Take Over the World!: an empire's Countryball wears a moustache and a beard)
-	if Empires.is_empire(name) or (type(code) == "string" and string.sub(code, 1, 4) == "emp_") then
-		local HAIR = {
-			k = Color3.fromRGB(58, 34, 18),
-			b = Color3.fromRGB(94, 60, 32),
-			s = Color3.fromRGB(70, 44, 22),
-		}
-		local BEARD = {
-			".kkkk....kkkk.",
-			"kkkkkkkkkkkkkk",
-			"kks.kkkkkk.skk",
-			".sbbbbbbbbbbs.",
-			".sbbbbbbbbbbs.",
-			"..sbbbbbbbbs..",
-			"..sbbbbbbbbs..",
-			"...sbbbbbbs...",
-			"....sbbbbs....",
-			".....ssss.....",
-		}
-		for j, row in BEARD do
+	if evil then
+		for j, row in EVIL_MOUTH do
 			for i = 1, #row do
-				local c = HAIR[string.sub(row, i, i)]
+				local c = EYE_COL[string.sub(row, i, i)]
 				if c ~= nil then
-					put(8 + i, 18 + j, c)
+					put(8 + i, 17 + j, c)
 				end
 			end
 		end
