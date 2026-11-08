@@ -11,6 +11,15 @@ local Empires = {}
 
 --- the share of the map's land a country must hold to found its empire
 Empires.LAND_SHARE = 0.05
+--- (2026-11-08) and the share of the map it must have conquered beyond its own country: a country that
+--- starts big (Russia, China...) still has to take land first, the AI's as much as a player's
+Empires.CONQUER_SHARE = 0.02
+
+--- The land (tiles) a country needs to found its empire: LAND_SHARE of the map's `land`, and at
+--- least its own `home` country's land (Data/Countries def.tiles) plus CONQUER_SHARE of the map.
+function Empires.need(land: number, home: number?): number
+	return math.max(land * Empires.LAND_SHARE, (home or 0) + land * Empires.CONQUER_SHARE)
+end
 
 --- country (CountryGrid / Natural Earth name) -> { empire name, flag key (FlagData/Empires "emp_<key>") }
 Empires.HISTORICAL = {

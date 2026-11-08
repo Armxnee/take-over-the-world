@@ -429,3 +429,16 @@ An original real-time territory-conquest game for Roblox. RoWorld is the gamepla
   clipped to the ball. The item shop never offers an item that is in a Robux bundle (Data/ItemShop); 15
   new boat / nuke / missile skins (Data/Gear) keep its unit skins varied.
 - (later) An empire's pieces give way to the player's gear, slot by slot: glasses replace the angry eyes (the ball's usual eyes go under them), a hat the spiked helmet, a beard the handlebar moustache.
+
+## 2026-11-08 (3): empire rule, empire circle, picker info, front-line soldiers
+- Empires.need(land, home) = max(LAND_SHARE 5% of the map, the country's own land (def.tiles) +
+  CONQUER_SHARE 2% of the map): big countries (Antarctica 30%, Russia, China...) no longer found an
+  empire at the start; AI and players alike must conquer. Sim.can_form_empire uses it; CountryTests 32/32.
+- UI/EmpireButton is now a progress ring (EditableImage, amber arc; gold + pulsing glow when full)
+  with the empire's Countryball inside, placed right of the top status pill (UIRoot passes
+  top.panel.gui). Hover / tap shows "<EMPIRE> · n% done · m% to go"; click founds it when full.
+- CountryPicker card: an EMPIRE row (evil empire ball, name, "Hold x% of the map · conquer y% more").
+- FrontLayer: at each front label two of the player's soldiers face two of the enemy's (Countryball
+  with combat helmet, an empire's with its spiked helmet; rifle cut from the user's soldier image,
+  GearSprites.soldier.rifle, mirrored by facing), firing: muzzle flash, tracer, spark, recoil.
+  Facing comes from front_dir (owners in an 11x11 window). Countryball.ball_content(code, name, gear, pose).

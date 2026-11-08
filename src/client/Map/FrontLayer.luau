@@ -19,6 +19,9 @@ local Defs = require(Core:WaitForChild("Defs")) :: any
 local Rules = require(Core:WaitForChild("Rules")) :: any
 local NumberFormat = require(Core:WaitForChild("NumberFormat")) :: any
 local FrameClock = require(script.Parent:WaitForChild("FrameClock")) :: any
+local Countries = require(Airfront:WaitForChild("Data"):WaitForChild("Countries")) :: any -- (Take Over the World!: soldiers)
+local Empires = require(Airfront:WaitForChild("Data"):WaitForChild("Empires")) :: any
+local Countryball = require("../UI/Countryball")
 
 local FrontLayer = {}
 FrontLayer.__index = FrontLayer
@@ -33,6 +36,15 @@ FrontLayer.INCOMING = Color3.fromRGB(0xf8, 0x71, 0x71)
 FrontLayer.TEXT_PX = 17
 FrontLayer.FONT = Font.fromId(12187365977, Enum.FontWeight.Bold)
 FrontLayer.Z = 24
+-- (Take Over the World!, 2026-11-08: a battle at every front label: two of the player's Countryball
+-- soldiers face two of the other country's across the border, rifles out, firing at each other)
+FrontLayer.SOLDIER_PX = 26
+FrontLayer.SOLDIER_GAP = 24 -- px from the front to each side's line
+FrontLayer.SOLDIER_SPREAD = 18 -- px between the two soldiers of a side
+FrontLayer.FIRE_MIN, FrontLayer.FIRE_MAX = 0.6, 1.5 -- seconds between a soldier's shots
+FrontLayer.TRACER_S = 0.11
+FrontLayer.FLASH_S = 0.07
+FrontLayer.SOLDIER_HAT = "hat_combat_helmet" -- (an empire's soldiers wear its spiked helmet)
 
 type Slot = { cx: number, cy: number, sx: number, sy: number, dx: number, dy: number, t0: number }
 type Entry = { text: string, incoming: boolean, slots: { Slot }, seen: boolean }
@@ -56,6 +68,9 @@ function FrontLayer.new(parent: Instance, view: any)
 	--- aid -> label entry
 	self._entries = {} :: { [number]: Entry }
 	self._labels = {} :: { Label }
+	self._battles = {} -- (Take Over the World!: the soldiers at each shown front, and the shots)
+	self._fx = {}
+	self._fx_free = {}
 	self._poll = 0.0
 	--- (a poll's working tables: the owners wanted, the attacks (records reused), owner -> front
 	--- tiles (an empty list: none))
@@ -231,6 +246,44 @@ local function clusters(tiles: { number }, W: number, min_size: number, max_n: n
 	return out
 end
 
+--- (Take Over the World!) Which way the front faces at tile `t`: the unit vector from the player's
+--- land around it to the other owner's (an 11 x 11 window), so each side's soldiers stand on their
+--- own land facing the enemy.
+local function front_dir(st: any, t: number, W: number, me: number, other: number): (number, number)
+	local N = st.map.N or (W * (st.map.H or Defs.H))
+	local tx, ty = t % W, t // W
+	local mx, my, mn, ex, ey, en = 0, 0, 0, 0, 0, 0
+	for dy = -5, 5 do
+		for dx = -5, 5 do
+			local x, y = tx + dx, ty + dy
+			if x >= 0 and x < W and y >= 0 then
+				local i = y * W + x
+				if i < N then
+					local o = st:tile_owner(i)
+					if o == me then
+						mx += dx
+						my += dy
+						mn += 1
+					elseif o == other then
+						ex += dx
+						ey += dy
+						en += 1
+					end
+				end
+			end
+		end
+	end
+	if mn == 0 or en == 0 then
+		return 1, 0
+	end
+	local vx, vy = ex / en - mx / mn, ey / en - my / mn
+	local l = math.sqrt(vx * vx + vy * vy)
+	if l < 1e-3 then
+		return 1, 0
+	end
+	return vx / l, vy / l
+end
+
 --- A slot's distance to tile `t`'s centre (map units, Manhattan).
 local function slot_dist(s: Slot, t: number, W: number): number
 	return math.abs(s.dx - (t % W + 0.5)) + math.abs(s.dy - (t // W + 0.5))
@@ -295,6 +348,7 @@ function FrontLayer._poll_fronts(self: any, now: number)
 			end
 			e.seen = true
 			e.incoming = a.incoming
+			e.other = a.other
 			e.text = NumberFormat.render_troops(a.troops)
 			local slots = e.slots
 			-- keep two labels on their own clusters (swapped when that is shorter)
@@ -312,11 +366,14 @@ function FrontLayer._poll_fronts(self: any, now: number)
 			end
 			for i, t in reps do
 				local nx, ny = t % W + 0.5, t // W + 0.5
+				local ux, uy = front_dir(st, t, W, me, a.other)
 				local s = slots[i]
 				if s == nil then
-					slots[i] = { cx = nx, cy = ny, sx = nx, sy = ny, dx = nx, dy = ny, t0 = now }
+					slots[i] = { cx = nx, cy = ny, sx = nx, sy = ny, dx = nx, dy = ny, t0 = now, ux = ux, uy = uy } :: any
 					continue
 				end
+				local sa = s :: any
+				sa.ux, sa.uy = ux, uy
 				local f = math.min(1, (now - s.t0) / FrontLayer.ANIM_S)
 				local cx, cy = s.sx + (s.dx - s.sx) * f, s.sy + (s.dy - s.sy) * f
 				if math.sqrt((nx - cx) ^ 2 + (ny - cy) ^ 2) > snap then
@@ -359,6 +416,169 @@ local function label(self: any, n: number): Label
 	return rec :: Label
 end
 
+-- ===== (Take Over the World!) the battles: Countryball soldiers firing across each front =====
+
+--- An owner's soldier picture facing right or left (the rifle on its far side, aiming at the enemy).
+local function soldier_art(self: any, owner: number, right: boolean): Content?
+	local st = self._state
+	local o = st and st:get_owner(owner)
+	if o == nil then
+		return nil
+	end
+	if self._flags_map ~= st.map then
+		self._flags_map = st.map
+		local ok, f = pcall(Countries.flags_by_name, st.map)
+		self._flags = if ok then f else {}
+	end
+	local name = o.name
+	local gear = if Empires.is_empire(name) then {} else { hat = FrontLayer.SOLDIER_HAT }
+	return Countryball.ball_content(self._flags[name], name, gear, if right then "rifle_right" else "rifle_left")
+end
+
+local function fx_frame(self: any, color: Color3, w: number, h: number): Frame
+	local pool = self._fx_free
+	local f = table.remove(pool)
+	if f == nil then
+		f = Instance.new("Frame")
+		f.Name = "Shot"
+		f.BorderSizePixel = 0
+		f.AnchorPoint = Vector2.new(0.5, 0.5)
+		f.ZIndex = FrontLayer.Z
+		f.Parent = self.root
+	end
+	f.BackgroundColor3 = color
+	f.BackgroundTransparency = 0
+	f.Size = UDim2.fromOffset(w, h)
+	f.Rotation = 0
+	f.Visible = true
+	return f
+end
+
+--- One shot from (x0, y0) to (x1, y1): a muzzle flash, a tracer flying across, a spark where it lands.
+local function fire(self: any, now: number, x0: number, y0: number, x1: number, y1: number)
+	local flash = fx_frame(self, Color3.fromRGB(255, 236, 150), 7, 7)
+	flash.Position = UDim2.fromOffset(x0, y0)
+	table.insert(self._fx, { f = flash, kind = "flash", t0 = now, x = x0, y = y0 })
+	local tr = fx_frame(self, Color3.fromRGB(255, 214, 90), 9, 2)
+	tr.Rotation = math.deg(math.atan2(y1 - y0, x1 - x0))
+	tr.Position = UDim2.fromOffset(x0, y0)
+	table.insert(self._fx, { f = tr, kind = "tracer", t0 = now, x = x0, y = y0, x1 = x1, y1 = y1 })
+end
+
+local function fx_tick(self: any, now: number)
+	local list = self._fx
+	local i = 1
+	while i <= #list do
+		local fx = list[i]
+		local age = now - fx.t0
+		local done = false
+		if fx.kind == "flash" then
+			local k = age / FrontLayer.FLASH_S
+			fx.f.BackgroundTransparency = math.clamp(k, 0, 1)
+			fx.f.Size = UDim2.fromOffset(7 - 3 * math.clamp(k, 0, 1), 7 - 3 * math.clamp(k, 0, 1))
+			done = k >= 1
+		elseif fx.kind == "tracer" then
+			local k = age / FrontLayer.TRACER_S
+			if k >= 1 then
+				-- it lands: a little spark
+				fx.kind, fx.t0 = "spark", now
+				fx.f.Rotation = 45
+				fx.f.Size = UDim2.fromOffset(5, 5)
+				fx.f.BackgroundColor3 = Color3.fromRGB(255, 250, 220)
+				fx.f.Position = UDim2.fromOffset(fx.x1, fx.y1)
+			else
+				fx.f.Position = UDim2.fromOffset(fx.x + (fx.x1 - fx.x) * k, fx.y + (fx.y1 - fx.y) * k)
+			end
+		else -- spark
+			local k = age / 0.16
+			fx.f.BackgroundTransparency = math.clamp(k, 0, 1)
+			fx.f.BackgroundColor3 = Color3.fromRGB(255, 250, 220):Lerp(Color3.fromRGB(120, 120, 120), math.clamp(k, 0, 1))
+			done = k >= 1
+		end
+		if done then
+			fx.f.Visible = false
+			table.insert(self._fx_free, fx.f)
+			list[i] = list[#list]
+			list[#list] = nil
+		else
+			i += 1
+		end
+	end
+end
+
+--- Battle `n` at the front point (x, y) on screen: the player's two soldiers on their side of the
+--- front, the other owner's two on theirs, each line facing the other and firing now and then.
+local function battle(self: any, n: number, now: number, x: number, y: number, s: any, e: any)
+	local st = self._state
+	local me = st and st.local_owner or 0
+	local b = self._battles[n]
+	if b == nil then
+		b = { soldiers = {}, key = "" }
+		for i = 1, 4 do
+			local img = Instance.new("ImageLabel")
+			img.Name = "Soldier"
+			img.BackgroundTransparency = 1
+			img.AnchorPoint = Vector2.new(0.5, 0.5)
+			img.ResampleMode = Enum.ResamplerMode.Pixelated
+			img.Size = UDim2.fromOffset(FrontLayer.SOLDIER_PX, FrontLayer.SOLDIER_PX)
+			img.ZIndex = FrontLayer.Z - 1
+			img.Parent = self.root
+			b.soldiers[i] = { img = img, next = now + math.random() * FrontLayer.FIRE_MAX, kick = 0, x = 0, y = 0 }
+		end
+		self._battles[n] = b
+	end
+	local ux, uy = s.ux or 1, s.uy or 0
+	local right = ux >= 0 -- the player's soldiers face right when the enemy lies to the right
+	local key = string.format("%d|%d|%s", me, e.other or 0, tostring(right))
+	if b.key ~= key then
+		b.key = key
+		local mine, theirs = soldier_art(self, me, right), soldier_art(self, e.other or 0, not right)
+		for i, sd in b.soldiers do
+			local c = if i <= 2 then mine else theirs
+			if c ~= nil then
+				sd.img.ImageContent = c
+			end
+		end
+	end
+	local px, py = -uy, ux
+	local gap, spread = FrontLayer.SOLDIER_GAP, FrontLayer.SOLDIER_SPREAD / 2
+	for i, sd in b.soldiers do
+		local side = if i <= 2 then -1 else 1 -- -1: the player's side of the front
+		local lane = if i % 2 == 1 then -1 else 1
+		local back = if lane > 0 then 4 else 0 -- (the second soldier a step behind)
+		local bob = math.sin(now * 5 + i * 1.7) * 1.2
+		local faces = if side < 0 then (if right then 1 else -1) else (if right then -1 else 1)
+		sd.kick = math.max(0, sd.kick - 0.12)
+		local sx = x + ux * side * (gap + back) + px * lane * spread - faces * sd.kick * 3
+		local sy = y + uy * side * (gap + back) + py * lane * spread + bob
+		sd.x, sd.y, sd.faces = sx, sy, faces
+		sd.img.Position = UDim2.fromOffset(sx, sy)
+		sd.img.Visible = true
+	end
+	for i, sd in b.soldiers do
+		if now >= sd.next then
+			sd.next = now + FrontLayer.FIRE_MIN + math.random() * (FrontLayer.FIRE_MAX - FrontLayer.FIRE_MIN)
+			sd.kick = 1
+			local foe = b.soldiers[(if i <= 2 then 2 else 0) + math.random(1, 2)]
+			-- (the muzzle: the barrel's tip, just past the middle of the ball on the aiming side)
+			local S = FrontLayer.SOLDIER_PX
+			fire(self, now, sd.x + sd.faces * S * 0.14, sd.y + S * 0.13, foe.x + (math.random() - 0.5) * 6, foe.y + (math.random() - 0.5) * 6)
+		end
+	end
+end
+
+local function hide_battles(self: any, from: number)
+	for j = from, #self._battles do
+		local b = self._battles[j]
+		for _, sd in b.soldiers do
+			if sd.img.Visible then
+				sd.img.Visible = false
+			end
+		end
+		b.key = "" -- (drawn again when it shows)
+	end
+end
+
 function FrontLayer.tick(self: any, dt: number)
 	local now = FrameClock.now()
 	self._poll -= dt
@@ -397,8 +617,11 @@ function FrontLayer.tick(self: any, dt: number)
 				rec.x, rec.y = x, y
 				l.Position = UDim2.fromOffset(x, y)
 			end
+			battle(self, n, now, x, y, s, e) -- (Take Over the World!: the soldiers at this front)
 		end
 	end
+	hide_battles(self, n + 1)
+	fx_tick(self, now)
 	for j = n + 1, #self._labels do
 		local rec = self._labels[j]
 		if rec.vis then

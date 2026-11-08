@@ -21,6 +21,7 @@ local Countries = require(Airfront.Data.Countries)
 local CountryGrid = require(Airfront.Data.CountryGrid)
 local Rules = require(Airfront.Core.Rules)
 local Countryball = require("./Countryball")
+local Empires = require(Airfront.Data.Empires) -- (Take Over the World!: the empire a country can found)
 local UITheme = require("./UITheme")
 
 local CountryPicker = {}
@@ -214,6 +215,32 @@ function CountryPicker.new(ctx: any, gui: Instance)
 		TextTruncate = Enum.TextTruncate.None,
 		TextYAlignment = Enum.TextYAlignment.Top,
 	})
+	-- (Take Over the World!: the empire this country can found, and the land it takes)
+	local emp = make("Frame", {
+		Name = "Empire",
+		BackgroundColor3 = Color3.fromHex("FFB547"),
+		BackgroundTransparency = 0.88,
+		Position = UDim2.fromOffset(0, 250),
+		Size = UDim2.new(1, 0, 0, 48),
+	}, card)
+	make("UICorner", { CornerRadius = UDim.new(0, 10) }, emp)
+	make("UIStroke", { Color = Color3.fromHex("FFB547"), Transparency = 0.6 }, emp)
+	self.empire_ball = make("Frame", {
+		BackgroundTransparency = 1,
+		Position = UDim2.fromOffset(6, 6),
+		Size = UDim2.fromOffset(36, 36),
+	}, emp)
+	self.empire_name = label(emp, "", 13, Enum.FontWeight.Heavy, AMBER, {
+		Position = UDim2.fromOffset(48, 6),
+		Size = UDim2.new(1, -54, 0, 16),
+		TextTruncate = Enum.TextTruncate.AtEnd,
+	})
+	self.empire_need = label(emp, "", 11, Enum.FontWeight.Medium, TEXT2, {
+		Position = UDim2.fromOffset(48, 24),
+		Size = UDim2.new(1, -54, 0, 18),
+		TextWrapped = true,
+		TextTruncate = Enum.TextTruncate.None,
+	})
 	local btn = make("TextButton", {
 		Name = "Confirm",
 		Text = "CONFIRM",
@@ -249,7 +276,7 @@ function CountryPicker.apply_layout(self)
 	local lw = if compact then 230 else 300
 	self.list_panel.Size = UDim2.new(0, lw, 0, math.max(200, vp.Y - 76 - 16))
 	local cw = if compact then 300 else 360
-	self.card.Size = UDim2.fromOffset(cw, 318)
+	self.card.Size = UDim2.fromOffset(cw, 372)
 	self.card.Position = UDim2.new(1, -16, 1, -16)
 end
 
@@ -508,6 +535,20 @@ function CountryPicker.select_owner(self, owner: number, focus: boolean?)
 	self.stats.Provinces.Text = tostring(#d.provinces)
 	self.bonus.Text = "★ " .. d.bonuses.label
 	self.bonus_text.Text = d.bonuses.text
+	-- (Take Over the World!: the empire it can found: its Countryball, its name, the land it takes)
+	local e = Empires.of(d.name)
+	self.empire_ball:ClearAllChildren()
+	local eb = Countryball.new(e.flag or d.flag, 36, e.name)
+	eb.Parent = self.empire_ball
+	self.empire_name.Text = "EMPIRE: " .. string.upper(e.name)
+	local land = self.ctx.state and self.ctx.state.map and self.ctx.state.map.land_count or 0
+	if land > 0 then
+		local share = Empires.need(land, d.tiles) / land * 100
+		local more = math.max(0, Empires.need(land, d.tiles) - d.tiles) / land * 100
+		self.empire_need.Text = string.format("Hold %.1f%% of the map · conquer %.1f%% more", share, more)
+	else
+		self.empire_need.Text = "Conquer land to found it"
+	end
 	self:_refresh_rows()
 	self:_refresh_card()
 end

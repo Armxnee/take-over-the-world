@@ -306,9 +306,22 @@ task.spawn(function()
 			end
 		end
 	end
+	-- (2026-11-08) the biggest country starts over the land share, yet holding only its own land it
+	-- can't found: it has to conquer Empires.CONQUER_SHARE of the map first
+	local land = sim2.map.land_count
+	local big, home = 0, 0
+	for id, d in sim2.country_defs do
+		if sim2.o_alive[id] == 1 and sim2.o_kind[id] == Defs.KIND_NATION and not Empires.is_empire(sim2.o_name[id]) and d.tiles > home then
+			big, home = id, d.tiles
+		end
+	end
+	if big > 0 then
+		nation = big
+	end
+	sim2.o_tiles[nation] = home
+	check("a big country with only its own land can't found", big > 0 and home >= land * Empires.LAND_SHARE and not sim2:can_form_empire(nation), tostring(sim2.o_name[nation]) .. string.format(" %.1f%% of the map", home / land * 100))
 	local before = sim2.o_name[nation]
-	local need = math.ceil(sim2.map.land_count * Empires.LAND_SHARE)
-	check("AI nation below the land share can't found", nation > 0 and not sim2:can_form_empire(nation) or sim2.o_tiles[nation] >= need)
+	local need = math.ceil(Empires.need(land, home))
 	sim2.o_tiles[nation] = need
 	sim2.ai:_think_nation(sim2, nation)
 	check("AI nation founds its empire", sim2.o_name[nation] == Empires.of(before).name, tostring(before) .. " -> " .. tostring(sim2.o_name[nation]))

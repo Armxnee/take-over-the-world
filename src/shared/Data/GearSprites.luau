@@ -694,4 +694,23 @@ GearSprites.empire = {
 	},
 }
 
+--- the front-line soldier's rifle (Countryball.ball_content pose), aiming left
+GearSprites.soldier = {
+	rifle = {
+		x = 11,
+		y = 19,
+		pal = { a = { 18, 20, 28 }, b = { 92, 112, 125 }, c = { 42, 58, 66 }, d = { 124, 82, 58 }, e = { 92, 55, 26 }, f = { 138, 164, 176 }, g = { 55, 76, 87 }, h = { 90, 54, 25 }, i = { 90, 55, 27 }, j = { 23, 24, 28 } },
+		rows = {
+			"...........aaa.....",
+			".ab....aaaabbcaaaa.",
+			".acaaaaadeacccaddea",
+			"abfbbggaeea..aaheea",
+			"aag....aaaa.aceaaia",
+			"......a..ag.aaha.a.",
+			".........ag..ja....",
+			"........ag.a.j.....",
+		},
+	},
+}
+
 return GearSprites

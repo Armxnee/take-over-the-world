@@ -1,13 +1,15 @@
 --!nonstrict
--- (Take Over the World!: founding an empire, 2026-11-07; restyled as a HUD glass card 2026-11-08.)
--- In a match, under the top bar: how close the player's country is to the land an empire needs
--- (Data/Empires.LAND_SHARE of the map's land), then, once it has it, an amber FOUND button. Pressing it
--- sends the "empire" intent; the Sim checks again and renames the nation (Sim.form_empire), and its
--- flag, its Countryball (an evil face) and its name on the map follow.
--- The card uses the HUD's own tokens (UITheme: GLASS panel, LINE border, AMBER progress like the top
--- status's world-control bar, TEXT / INK labels) and shows the empire's Countryball on its left.
+-- (Take Over the World!: founding an empire, 2026-11-07; a progress circle beside the top bar
+-- 2026-11-08.)
+-- In a match, right of the top status bar: a ring that fills as the player's country nears the land
+-- its empire needs (Data/Empires.need: LAND_SHARE of the map, and CONQUER_SHARE of it beyond the
+-- country's own land), with the empire's Countryball in the middle. Hovering it (or tapping it) shows
+-- how far along it is and what is left; once it is full the ring turns gold and pulses, and a click
+-- sends the "empire" intent: the Sim checks again and renames the nation (Sim.form_empire), and its
+-- flag, its Countryball and its name on the map follow.
 local RunService = game:GetService("RunService")
-local GuiService = game:GetService("GuiService")
+local AssetService = game:GetService("AssetService")
+local TweenService = game:GetService("TweenService")
 local Airfront = game:GetService("ReplicatedStorage"):WaitForChild("Airfront")
 local Defs = require(Airfront.Core.Defs)
 local Empires = require(Airfront.Data.Empires)
@@ -20,11 +22,12 @@ local Anim = require("./Anim")
 local EmpireButton = {}
 EmpireButton.__index = EmpireButton
 
---- the progress shows from this share of the requirement on
-EmpireButton.SHOW_FROM = 0.4
+--- the circle shows from this share of the requirement on
+EmpireButton.SHOW_FROM = 0.0
+--- the gap (px) between the top bar and the circle
+EmpireButton.GAP = 10
 
-local W, H = 340, 52
-local BALL = 38
+local RING = 64 -- the ring's pixels
 local FONT = "rbxassetid://" .. tostring(UITheme.FONT_ID)
 local GLASS = UITheme.color3(UITheme.GLASS)
 local GLASS_T = 1 - UITheme.alpha(UITheme.GLASS)
@@ -44,106 +47,104 @@ end
 local function label(props: { [string]: any }, parent: Instance): TextLabel
 	props.BackgroundTransparency = 1
 	props.FontFace = props.FontFace or Font.new(FONT, Enum.FontWeight.Bold)
-	props.ZIndex = 32
+	props.ZIndex = 34
 	return make("TextLabel", props, parent)
 end
 
-function EmpireButton.new(ctx: any, gui: Instance)
+--- `top`: () -> the top status bar's GuiObject (the circle sits right of it).
+function EmpireButton.new(ctx: any, gui: Instance, top: (() -> GuiObject?)?)
 	local self = setmetatable({}, EmpireButton)
 	self.ctx = ctx
 	self.ready = false
-	local top = GuiService:GetGuiInset().Y
-	-- (the holder carries the HUD's scale; the button's own UIScale is the pop / hover one)
+	self.top = top
 	local holder = make("Frame", {
-		Name = "EmpireCard",
+		Name = "EmpireCircle",
 		BackgroundTransparency = 1,
-		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.new(0.5, 0, 0, top + 76),
-		Size = UDim2.fromOffset(W, H),
+		Size = UDim2.fromOffset(56, 56),
 		Visible = false,
 		ZIndex = 30,
 	}, gui)
 	self.holder = holder
-	self.hud_scale = make("UIScale", { Name = "HudScale", Scale = UITheme.scale or 1 }, holder)
-	local root = make("TextButton", {
-		Name = "EmpireButton",
-		Text = "",
-		AutoButtonColor = false,
+	self.disk = make("Frame", {
 		BackgroundColor3 = GLASS,
 		BackgroundTransparency = GLASS_T,
-		BorderSizePixel = 0,
 		Size = UDim2.fromScale(1, 1),
 		ZIndex = 30,
 	}, holder)
-	self.root = root
-	make("UICorner", { CornerRadius = UDim.new(0, UITheme.R_MD) }, root)
-	self.stroke = make("UIStroke", {
-		Color = Color3.new(1, 1, 1),
-		Transparency = 0.88,
-		Thickness = 1,
-		ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
-	}, root)
-	self.grad = make("UIGradient", { Rotation = 90, Enabled = false }, root)
+	make("UICorner", { CornerRadius = UDim.new(1, 0) }, self.disk)
+	self.glow = make("UIStroke", { Color = UITheme.GOLD, Thickness = 0, Transparency = 1 }, self.disk)
+	-- the ring, drawn into its own pixels (Countryball style: no uploaded art)
+	self.ring = make("ImageLabel", {
+		BackgroundTransparency = 1,
+		Size = UDim2.fromScale(1, 1),
+		ZIndex = 31,
+	}, holder)
+	local ok, img = pcall(function()
+		return AssetService:CreateEditableImage({ Size = Vector2.new(RING, RING) })
+	end)
+	if ok and img then
+		self.img = img
+		self.ring.ImageContent = Content.fromObject(img)
+	end
 	self.ball_holder = make("Frame", {
 		BackgroundTransparency = 1,
-		AnchorPoint = Vector2.new(0, 0.5),
-		Position = UDim2.new(0, 8, 0.5, 0),
-		Size = UDim2.fromOffset(BALL, BALL),
-		ZIndex = 31,
-	}, root)
-	local left = 8 + BALL + 10
-	self.title = label({
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.fromScale(0.64, 0.64),
+		ZIndex = 32,
+	}, holder)
+	self.hit = make("TextButton", {
+		Text = "",
+		BackgroundTransparency = 1,
+		AutoButtonColor = false,
+		Size = UDim2.fromScale(1, 1),
+		ZIndex = 35,
+	}, holder)
+	-- the tip under the circle: the empire and how far along it is
+	local tip = make("Frame", {
+		BackgroundColor3 = GLASS,
+		BackgroundTransparency = GLASS_T,
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 1, 8),
+		Size = UDim2.fromOffset(210, 50),
+		Visible = false,
+		ZIndex = 33,
+	}, holder)
+	self.tip = tip
+	make("UICorner", { CornerRadius = UDim.new(0, UITheme.R_MD) }, tip)
+	make("UIStroke", { Color = Color3.new(1, 1, 1), Transparency = 0.88 }, tip)
+	self.tip_title = label({
+		Text = "",
+		TextColor3 = UITheme.TEXT,
+		TextSize = 15,
+		TextTruncate = Enum.TextTruncate.AtEnd,
+		Position = UDim2.fromOffset(10, 6),
+		Size = UDim2.new(1, -20, 0, 18),
+	}, tip)
+	self.tip_line = label({
 		Text = "",
 		RichText = true,
-		TextColor3 = UITheme.TEXT,
-		TextXAlignment = Enum.TextXAlignment.Left,
-		TextTruncate = Enum.TextTruncate.AtEnd,
-		TextSize = 16,
-		Position = UDim2.fromOffset(left, 7),
-		Size = UDim2.new(1, -left - 64, 0, 20),
-	}, root)
-	self.pct = label({
-		Text = "",
-		FontFace = Font.new(FONT, Enum.FontWeight.Heavy),
-		TextColor3 = UITheme.AMBER,
-		TextXAlignment = Enum.TextXAlignment.Right,
-		TextSize = 17,
-		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.new(1, -12, 0, 7),
-		Size = UDim2.fromOffset(56, 20),
-	}, root)
-	-- the progress bar: a faint track and an amber fill (the top status's world-control bar)
-	self.track = make("Frame", {
-		BackgroundColor3 = Color3.new(1, 1, 1),
-		BackgroundTransparency = 0.9,
-		BorderSizePixel = 0,
-		Position = UDim2.fromOffset(left, 33),
-		Size = UDim2.new(1, -left - 12, 0, 7),
-		ZIndex = 31,
-	}, root)
-	make("UICorner", { CornerRadius = UDim.new(1, 0) }, self.track)
-	self.fill = make("Frame", {
-		BackgroundColor3 = Color3.new(1, 1, 1),
-		BorderSizePixel = 0,
-		Size = UDim2.fromScale(0, 1),
-		ZIndex = 32,
-	}, self.track)
-	make("UICorner", { CornerRadius = UDim.new(1, 0) }, self.fill)
-	make("UIGradient", { Color = ColorSequence.new(UITheme.AMBER_HI, UITheme.AMBER) }, self.fill)
-	-- the ready state: one centred call to action, dark ink on amber (no outline: it stays crisp)
-	self.cta = label({
-		Text = "",
-		FontFace = Font.new(FONT, Enum.FontWeight.Heavy),
-		TextColor3 = UITheme.INK,
-		TextScaled = true,
-		Position = UDim2.fromOffset(left, 0),
-		Size = UDim2.new(1, -left - 12, 1, 0),
-		Visible = false,
-	}, root)
-	make("UITextSizeConstraint", { MaxTextSize = 18, MinTextSize = 10 }, self.cta)
-	Anim.button(root)
-	root.Activated:Connect(function()
+		TextColor3 = MUTED,
+		TextSize = 13,
+		Position = UDim2.fromOffset(10, 26),
+		Size = UDim2.new(1, -20, 0, 16),
+	}, tip)
+	self.hovered = false
+	self.pinned = false
+	self.hit.MouseEnter:Connect(function()
+		self.hovered = true
+		self:_tip()
+	end)
+	self.hit.MouseLeave:Connect(function()
+		self.hovered = false
+		self:_tip()
+	end)
+	Anim.button(self.hit, holder, 1.08)
+	self.hit.Activated:Connect(function()
 		if not self.ready then
+			-- (a tap shows the tip on touch screens; another hides it)
+			self.pinned = not self.pinned
+			self:_tip()
 			return
 		end
 		local se = self.ctx.session
@@ -155,6 +156,7 @@ function EmpireButton.new(ctx: any, gui: Instance)
 		end
 	end)
 	self._acc = 0
+	self._k = -1
 	RunService.Heartbeat:Connect(function(dt)
 		self._acc += dt
 		if self._acc >= 0.25 then
@@ -165,7 +167,56 @@ function EmpireButton.new(ctx: any, gui: Instance)
 	return self
 end
 
---- The empire's Countryball (evil face, its flag) on the card's left; drawn again only when it changes.
+function EmpireButton._tip(self)
+	local on = (self.hovered or self.pinned) and self.holder.Visible
+	if on and not self.tip.Visible then
+		self.tip.Visible = true
+		Anim.pop(self.tip, 0, 0.8)
+	elseif not on then
+		self.tip.Visible = false
+	end
+end
+
+--- The ring at `k` (0..1): a dark track with an amber arc from the top, clockwise; gold when full.
+function EmpireButton._draw(self, k: number, ready: boolean)
+	local img = self.img
+	if img == nil then
+		return
+	end
+	local b = buffer.create(RING * RING * 4)
+	local c = (RING - 1) / 2
+	local R1, R0 = RING / 2 - 1, RING / 2 - 8 -- the ring's outer and inner radius
+	local fill = if ready then Color3.fromRGB(255, 214, 102) else UITheme.AMBER
+	local hi = if ready then Color3.fromRGB(255, 240, 180) else UITheme.AMBER_HI
+	for y = 0, RING - 1 do
+		for x = 0, RING - 1 do
+			local dx, dy = x - c, y - c
+			local d = math.sqrt(dx * dx + dy * dy)
+			if d <= R1 + 0.5 and d >= R0 - 0.5 then
+				local o = (y * RING + x) * 4
+				local a = math.atan2(dx, -dy)
+				if a < 0 then
+					a += 2 * math.pi
+				end
+				local col, alpha
+				if d > R1 - 0.6 or d < R0 + 0.6 then
+					col, alpha = Color3.fromRGB(10, 12, 20), 230 -- the dark edges
+				elseif a / (2 * math.pi) <= k then
+					col, alpha = if d > (R0 + R1) / 2 + 1 then hi else fill, 255
+				else
+					col, alpha = Color3.new(1, 1, 1), 34 -- the track
+				end
+				buffer.writeu8(b, o, math.floor(col.R * 255 + 0.5))
+				buffer.writeu8(b, o + 1, math.floor(col.G * 255 + 0.5))
+				buffer.writeu8(b, o + 2, math.floor(col.B * 255 + 0.5))
+				buffer.writeu8(b, o + 3, alpha)
+			end
+		end
+	end
+	img:WritePixelsBuffer(Vector2.zero, Vector2.new(RING, RING), b)
+end
+
+--- The empire's Countryball in the middle; drawn again only when it changes.
 function EmpireButton._ball(self, st: any, country: string, e: any)
 	local key = tostring(st.map and st.map.id) .. "|" .. e.name
 	if self._ball_key == key then
@@ -181,9 +232,10 @@ function EmpireButton._ball(self, st: any, country: string, e: any)
 		end
 	end
 	self.ball_holder:ClearAllChildren()
-	local ok, ball = pcall(Countryball.new, code, BALL, e.name)
+	local ok, ball = pcall(Countryball.new, code, 32, e.name)
 	if ok and ball then
-		ball.ZIndex = 31
+		ball.Size = UDim2.fromScale(1, 1)
+		ball.ZIndex = 32
 		for _, d in ball:GetDescendants() do
 			if d:IsA("GuiObject") then
 				d.ZIndex = 32
@@ -193,24 +245,29 @@ function EmpireButton._ball(self, st: any, country: string, e: any)
 	end
 end
 
-function EmpireButton._set_ready(self, ready: boolean, name: string)
-	self.title.Visible = not ready
-	self.pct.Visible = not ready
-	self.track.Visible = not ready
-	self.cta.Visible = ready
-	self.grad.Enabled = ready
-	if ready then
-		self.cta.Text = "FOUND THE " .. string.upper(name) .. "!"
-		self.root.BackgroundColor3 = Color3.new(1, 1, 1)
-		self.root.BackgroundTransparency = 0
-		self.grad.Color = ColorSequence.new(UITheme.AMBER_HI, UITheme.AMBER_LO)
-		self.stroke.Color = UITheme.AMBER_LO
-		self.stroke.Transparency = 0
-	else
-		self.root.BackgroundColor3 = GLASS
-		self.root.BackgroundTransparency = GLASS_T
-		self.stroke.Color = Color3.new(1, 1, 1)
-		self.stroke.Transparency = 0.88
+--- The home land of the local player's country (Data/Countries def.tiles), as the Sim counts it.
+function EmpireButton._home(self, st: any): number?
+	local picker = self.ctx.country_picker
+	local defs = picker and picker.defs
+	local d = defs and defs[st.local_owner]
+	return d and d.tiles or nil
+end
+
+--- Right of the top status bar, as tall as it.
+function EmpireButton._place(self)
+	local top = self.top and self.top()
+	local parent = self.holder.Parent
+	if top == nil or parent == nil or not parent:IsA("GuiBase2d") then
+		return
+	end
+	local size = math.clamp(math.floor(top.AbsoluteSize.Y + 0.5), 44, 72)
+	local p = top.AbsolutePosition - (parent :: any).AbsolutePosition
+	local x = p.X + top.AbsoluteSize.X + EmpireButton.GAP
+	local y = p.Y + (top.AbsoluteSize.Y - size) / 2
+	if self._px ~= x or self._py ~= y or self._ps ~= size then
+		self._px, self._py, self._ps = x, y, size
+		self.holder.Position = UDim2.fromOffset(x, y)
+		self.holder.Size = UDim2.fromOffset(size, size)
 	end
 end
 
@@ -222,41 +279,57 @@ function EmpireButton.refresh(self)
 	local show = false
 	if o ~= nil and o.alive and o.kind == Defs.KIND_HUMAN and st.phase == Defs.PHASE_PLAYING and land > 0 then
 		if not Empires.is_empire(o.name) then
-			local need = land * Empires.LAND_SHARE
+			local need = Empires.need(land, self:_home(st))
 			local k = math.clamp(o.tiles / need, 0, 1)
 			if k >= EmpireButton.SHOW_FROM then
 				show = true
 				local e = Empires.of(o.name)
 				self:_ball(st, o.name, e)
-				self.hud_scale.Scale = UITheme.scale or 1
+				self:_place()
 				local was = self.ready
 				self.ready = k >= 1
-				if self.ready ~= was or self._shown_name ~= e.name then
-					self._shown_name = e.name
-					self:_set_ready(self.ready, e.name)
+				local pct = math.floor(k * 100)
+				if pct ~= self._k or self.ready ~= was then
+					self._k = pct
+					self:_draw(k, self.ready)
 				end
+				self.tip_title.Text = string.upper(e.name)
 				if self.ready then
-					if not was then
-						Anim.pop(self.root, 0, 0.6)
-						self.ctx:sfx("unlock")
-					end
+					self.tip_line.Text = '<font color="#FFD666">Ready!</font> Click to found it'
 				else
-					-- (a long empire name keeps the whole line; the muted note only fits after a short one)
-					self.title.Text = string.upper(e.name)
-						.. if #e.name <= 16
-							then ' <font color="#' .. MUTED:ToHex() .. '" size="13">· land needed</font>'
-							else ""
-					self.pct.Text = string.format("%d%%", math.floor(k * 100))
-					self.fill.Size = UDim2.fromScale(k, 1)
+					self.tip_line.Text = string.format('<font color="#FFB547">%d%%</font> done · %d%% to go', pct, 100 - pct)
+				end
+				if self.ready and not was then
+					Anim.pop(self.holder, 0, 0.6)
+					self.ctx:sfx("unlock")
+					self.glow.Thickness = 3
+					self._pulse = TweenService:Create(
+						self.glow,
+						TweenInfo.new(0.8, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
+						{ Transparency = 0.1 }
+					)
+					self.glow.Transparency = 0.8
+					self._pulse:Play()
+				elseif not self.ready and was then
+					if self._pulse then
+						self._pulse:Cancel()
+					end
+					self.glow.Transparency = 1
 				end
 			end
 		end
 	end
 	if not show then
 		self.ready = false
-		self._shown_name = nil
+		self._k = -1
+		if self._pulse then
+			self._pulse:Cancel()
+			self._pulse = nil
+		end
+		self.glow.Transparency = 1
 	end
 	self.holder.Visible = show
+	self:_tip()
 end
 
 return EmpireButton

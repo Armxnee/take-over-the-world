@@ -106,7 +106,8 @@ function Countryball.gear_of(gear: any): { [string]: string }
 	return out
 end
 
-function Countryball.ball_content(code: string?, name: string?, gear: any): Content?
+--- `pose`: nil, or "rifle_left" / "rifle_right" (a soldier on a front: Map/FrontLayer).
+function Countryball.ball_content(code: string?, name: string?, gear: any, pose: string?): Content?
 	local worn = Countryball.gear_of(gear)
 	local key = tostring(code)
 		.. "|"
@@ -117,6 +118,8 @@ function Countryball.ball_content(code: string?, name: string?, gear: any): Cont
 		.. tostring(worn.beard)
 		.. "|"
 		.. tostring(worn.glasses)
+		.. "|"
+		.. tostring(pose)
 	local hit = balls[key]
 	if hit ~= nil then
 		return hit or nil
@@ -143,7 +146,7 @@ function Countryball.ball_content(code: string?, name: string?, gear: any): Cont
 		buffer.writeu8(b, o + 3, 255)
 	end
 	--- a pixel sprite { x, y, pal = { ch = {r, g, b} }, rows } at its canvas place
-	local function sprite(s: any, dx: number?, dy: number?)
+	local function sprite(s: any, dx: number?, dy: number?, mirror: boolean?)
 		if s == nil or s.rows == nil then
 			return
 		end
@@ -151,10 +154,14 @@ function Countryball.ball_content(code: string?, name: string?, gear: any): Cont
 			for i = 1, #row do
 				local ch = string.sub(row, i, i)
 				local rgb = s.pal[ch]
+				local x = s.x + i - 1 + (dx or 0)
+				if mirror then
+					x = G - 1 - x
+				end
 				if rgb ~= nil then
-					put(s.x + i - 1 + (dx or 0), s.y + j - 1 + (dy or 0), Color3.fromRGB(rgb[1], rgb[2], rgb[3]))
+					put(x, s.y + j - 1 + (dy or 0), Color3.fromRGB(rgb[1], rgb[2], rgb[3]))
 				elseif ch == "o" then
-					put(s.x + i - 1 + (dx or 0), s.y + j - 1 + (dy or 0), OUT)
+					put(x, s.y + j - 1 + (dy or 0), OUT)
 				end
 			end
 		end
@@ -210,6 +217,11 @@ function Countryball.ball_content(code: string?, name: string?, gear: any): Cont
 		sprite(Gear.item(worn.hat))
 	elseif evil then
 		sprite(GearSprites.empire.helmet)
+	end
+	-- (Take Over the World!: a front-line soldier's rifle, after the user's soldier balls: aiming left
+	-- it rests on the ball's right side, aiming right (mirrored) on its left)
+	if pose == "rifle_left" or pose == "rifle_right" then
+		sprite(GearSprites.soldier.rifle, 0, 0, pose == "rifle_right")
 	end
 	img:WritePixelsBuffer(Vector2.zero, Vector2.new(G, G), b)
 	local content = Content.fromObject(img)

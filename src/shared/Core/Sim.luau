@@ -1231,7 +1231,9 @@ function Sim.can_form_empire(self: any, id: number): boolean
 		return false
 	end
 	local land = self.map.land_count
-	return land > 0 and self.o_tiles[id] >= land * Empires.LAND_SHARE
+	-- (it must have conquered land beyond its own country: Empires.need)
+	local def = self.country_defs and self.country_defs[id]
+	return land > 0 and self.o_tiles[id] >= Empires.need(land, def and def.tiles)
 end
 
 --- (Take Over the World!: found the empire: the nation takes the empire's name (its flag follows the

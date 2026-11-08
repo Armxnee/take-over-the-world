@@ -533,6 +533,28 @@ def empire():
     return lua_item("helmet", quantise(helmet, 8), OX, OY) + "\n" + lua_item("eyes", quantise(eyes, 3), OX, OY + 14)
 
 
+RIFLE = "rifle on right side.webp"  # the user's soldier ball, rifle on its right, aiming left
+
+
+def rifle():
+    """The soldier's rifle, cut 1:1 from the user's soldier ball (32 x 32 at 32 px a pixel): every
+    pixel of rows 19..26, x 11..30 that is not the ball's red, its rim or the background. This one
+    aims left; Countryball mirrors it to aim right."""
+    im = load(RIFLE)
+    grid = [[None] * 32 for _ in range(32)]
+    for j in range(19, 27):
+        for i in range(11, 31):
+            c = tuple(int(v) for v in np.median(im[32 * j + 10 : 32 * j + 22, 32 * i + 10 : 32 * i + 22].reshape(-1, 3), axis=0))
+            red = c[0] > 100 and c[1] < 40 and c[2] < 60
+            navy = sum(abs(p - q) for p, q in zip(c, NAVY)) < 40
+            rim = sum(abs(p - q) for p, q in zip(c, (23, 24, 28))) < 12 and i < 13
+            stray = j >= 24 and i < 17  # (bits of the mouth line under the barrel)
+            if not (red or navy or rim or stray):
+                grid[j][i] = OUTLINE if sum(c) < 40 else c
+    rows, x, y = trim(grid)
+    return lua_item("rifle", quantise(rows, 10), x, y)
+
+
 def main():
     sheets = {}
     made = {}
@@ -573,6 +595,8 @@ def main():
         "GearSprites.art = {\n" + "\n".join(chunks) + "\n}\n\n"
         "--- the empire's look (Countryball): the spiked helmet and the angry eyes of the user's evil ball\n"
         "GearSprites.empire = {\n" + empire() + "\n}\n\n"
+        "--- the front-line soldier's rifle (Countryball.ball_content pose), aiming left\n"
+        "GearSprites.soldier = {\n" + rifle() + "\n}\n\n"
         "return GearSprites\n"
     )
     with open(LUA, "w", encoding="utf-8", newline="\r\n") as f:
