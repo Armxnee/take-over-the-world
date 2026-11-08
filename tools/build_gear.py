@@ -28,28 +28,35 @@ FACE = "dd91cbb2-f9e4-4b94-9f12-2042f27daf0c.webp"
 EYES = "a96a34ee-b6af-45fb-97c1-6e987df3a1cf.webp"
 EVIL = "00855ec0-e183-4423-8c39-cd3c8aff58eb.webp"  # the user's evil empire ball, 32 x 32 at 32 px a pixel
 
-# id, kind, name, rarity, sheet, box (x0, y0, x1, y1 around the sprite), worn width (px), anchor
-#   anchor: "top" = the hat's bottom edge sits on the brow line y=BROW; "eyes" = centred on the
-#   eye line; "mouth" = its top on the mouth line; "eye_r" = centred on the right eye; "horns"
-# The ball's canvas is 40 x 40 with the 32 x 32 ball at (OX, OY): headroom for hats (Countryball.G).
-G = 40
-OX, OY = 4, 7
-BROW = OY + 12  # a hat's brim sits here, just over the eyes
-MAXH = {"top": BROW + 1, "horns": 18, "eyes": 9, "eye_r": 12, "mouth": G - (OY + 18)}
+# id, kind, name, rarity, sheet, box (x0, y0, x1, y1 around the sprite), sampled width (px), fit
+#   fit (2026-11-08, after the user's fitted references): the gear takes the ball's own round shape
+#   and stays inside its outline.
+#     "cap"   a hat: fills the ball's top down to a dark brim line just over the eyes
+#     "beard" a full beard: fills the ball's lower half (rising at the cheeks) with a mouth
+#     "chin"  a goatee: the chin only;  "strap" a chinstrap: a band along the lower rim
+#     "mouth" a moustache: a sprite under the eyes;  "horns": a sprite on the top corners
+#     "eyes" / "eye_r": glasses over both eyes / the right eye
+# The canvas is the ball's own 32 x 32 (Countryball.G); OX, OY = where the ball sits on it.
+G = 32
+OX, OY = 0, 0
+CX, CY, R = 15.5, 15.5, 13.6  # the ball (Countryball)
+BRIM = 11  # a cap's dark brim line (the eyes start at 12)
+MAXH = {"horns": 13, "eyes": 9, "eye_r": 12, "mouth": 6}
+FITTED = ("cap", "beard", "chin", "strap")
 ITEMS = [
-    ("hat_combat_helmet", "hat", "Combat Helmet", "common", HATS, (26, 34, 246, 214), 26, "top"),
-    ("hat_officer_cap", "hat", "Officer Cap", "rare", HATS, (282, 42, 486, 215), 25, "top"),
-    ("hat_sailor_cap", "hat", "Sailor Cap", "common", HATS, (538, 58, 742, 199), 25, "top"),
-    ("hat_peacekeeper", "hat", "Peacekeeper Helmet", "rare", HATS, (794, 42, 998, 198), 25, "top"),
-    ("hat_boonie", "hat", "Jungle Boonie", "common", HATS, (18, 562, 254, 702), 29, "top"),
-    ("hat_side_cap", "hat", "Side Cap", "common", HATS, (298, 566, 486, 715), 24, "top"),
-    ("hat_steel_helmet", "hat", "Steel Helmet", "rare", HATS, (530, 550, 750, 702), 28, "top"),
-    ("hat_aviator", "hat", "Aviator Cap", "epic", HATS, (786, 530, 998, 750), 27, "top"),
-    ("hat_horns", "hat", "Devil Horns", "epic", FACE, (274, 562, 502, 734), 26, "horns"),
-    ("beard_full", "beard", "Full Beard", "common", FACE, (26, 74, 254, 254), 18, "mouth"),
-    ("beard_goatee", "beard", "Goatee", "common", FACE, (322, 98, 454, 238), 11, "mouth"),
-    ("beard_chinstrap", "beard", "Chinstrap", "rare", FACE, (530, 82, 750, 215), 19, "mouth"),
-    ("beard_elder", "beard", "Elder Beard", "legendary", FACE, (786, 74, 998, 446), 12, "mouth"),
+    ("hat_combat_helmet", "hat", "Combat Helmet", "common", HATS, (26, 34, 246, 214), 28, "cap"),
+    ("hat_officer_cap", "hat", "Officer Cap", "rare", HATS, (282, 42, 486, 215), 28, "cap"),
+    ("hat_sailor_cap", "hat", "Sailor Cap", "common", HATS, (538, 58, 742, 199), 28, "cap"),
+    ("hat_peacekeeper", "hat", "Peacekeeper Helmet", "rare", HATS, (794, 42, 998, 198), 28, "cap"),
+    ("hat_boonie", "hat", "Jungle Boonie", "common", HATS, (18, 562, 254, 702), 28, "cap"),
+    ("hat_side_cap", "hat", "Side Cap", "common", HATS, (298, 566, 486, 715), 28, "cap"),
+    ("hat_steel_helmet", "hat", "Steel Helmet", "rare", HATS, (530, 550, 750, 702), 28, "cap"),
+    ("hat_aviator", "hat", "Aviator Cap", "epic", HATS, (786, 530, 998, 750), 28, "cap"),
+    ("hat_horns", "hat", "Devil Horns", "epic", FACE, (274, 562, 502, 734), 32, "horns"),
+    ("beard_full", "beard", "Full Beard", "common", FACE, (26, 74, 254, 254), 28, "beard"),
+    ("beard_goatee", "beard", "Goatee", "common", FACE, (322, 98, 454, 238), 16, "chin"),
+    ("beard_chinstrap", "beard", "Chinstrap", "rare", FACE, (530, 82, 750, 215), 28, "strap"),
+    ("beard_elder", "beard", "Elder Beard", "legendary", FACE, (786, 74, 998, 446), 28, "beard"),
     ("beard_handlebar", "beard", "Handlebar Moustache", "rare", FACE, (18, 610, 262, 686), 18, "mouth"),
     ("beard_curled", "beard", "Curled Moustache", "rare", FACE, (521, 610, 758, 742), 18, "mouth"),
     ("beard_horseshoe", "beard", "Horseshoe Moustache", "common", FACE, (802, 594, 990, 727), 14, "mouth"),
@@ -156,7 +163,7 @@ def quantise(rows, k=9):
 
 def recolour(rows, how):
     def f(c):
-        if c is None or sum(c) < 70:
+        if c is None or sum(c) < 70 or c in (MOUTH, MOUTH_D):  # (the mouth keeps its red)
             return c
         r, g, b = (v / 255 for v in c)
         h, l, s = colorsys.rgb_to_hls(r, g, b)
@@ -188,12 +195,11 @@ def recolour(rows, how):
 
 
 def place(rows, anchor):
+    """Where a free sprite (moustache, horns, glasses) goes on the canvas."""
     h, w = len(rows), len(rows[0])
     x = (G - w) // 2
-    if anchor == "top":
-        y = BROW + 1 - h
-    elif anchor == "horns":
-        y = OY + 10 - h
+    if anchor == "horns":
+        y = OY
     elif anchor == "eyes":
         y = OY + 15 - h // 2
     elif anchor == "eye_r":
@@ -201,6 +207,87 @@ def place(rows, anchor):
     else:  # mouth
         y = OY + 18
     return x, y
+
+
+OUTLINE = (18, 20, 28)
+NAVY = (24, 34, 60)  # the sheets' background
+MOUTH, MOUTH_D = (196, 22, 44), (120, 12, 28)
+# the open mouth under a full beard (after the user's bearded ball): k = outline, m = mouth
+MOUTH_ROWS = [".kkkkkk.", "kmmmmmmk", "kmmkkmmk", ".kk..kk."]
+
+
+def inside(x, y):
+    return ((x - CX) ** 2 + (y - CY) ** 2) ** 0.5 <= R - 0.6
+
+
+def filled(rows):
+    """The sprite's paint with the outline, the clear cells and the sheet's navy filled in by the
+    nearest paint: a texture to stretch over a region of the ball."""
+    h, w = len(rows), len(rows[0])
+    a = np.zeros((h, w, 3))
+    ok = np.zeros((h, w), bool)
+    for j, r in enumerate(rows):
+        for i, c in enumerate(r):
+            if c is not None and sum(c) > 75 and sum(abs(p - q) for p, q in zip(c, NAVY)) > 40:
+                a[j, i] = c
+                ok[j, i] = True
+    ys, xs = np.where(ok)
+    a, ok = a[ys.min() : ys.max() + 1, xs.min() : xs.max() + 1], ok[ys.min() : ys.max() + 1, xs.min() : xs.max() + 1]
+    _, (iy, ix) = ndimage.distance_transform_edt(~ok, return_indices=True)
+    return a[iy, ix]
+
+
+def shade(c, k):
+    return tuple(int(min(255, max(0, v * k))) for v in c)
+
+
+def fit(rows, how):
+    """A hat / beard sampled into the ball's own shape (inside its outline): (rows, x, y)."""
+    tex = filled(rows)
+    th, tw = tex.shape[:2]
+    if how == "cap":
+        region = lambda x, y: y < BRIM
+    elif how == "beard":
+        region = lambda x, y: y >= round(15 + 4 * (1 - ((x - CX) / 13) ** 2))
+    elif how == "chin":
+        region = lambda x, y: y >= 22 and abs(x - CX) <= 4.6
+    else:  # strap: a band along the lower rim
+        region = lambda x, y: y >= 14 and (R - 0.6) - ((x - CX) ** 2 + (y - CY) ** 2) ** 0.5 <= 2.6
+    cells = [(x, y) for y in range(32) for x in range(32) if inside(x, y) and region(x, y)]
+    x0, x1 = min(c[0] for c in cells), max(c[0] for c in cells)
+    y0, y1 = min(c[1] for c in cells), max(c[1] for c in cells)
+    grid = [[None] * 32 for _ in range(32)]
+    for x, y in cells:
+        u = (x - x0) / max(1, x1 - x0)
+        v = (y - y0) / max(1, y1 - y0)
+        c = tuple(int(t) for t in tex[min(th - 1, int(v * th)), min(tw - 1, int(u * tw))])
+        k = 1.0
+        if how == "cap":
+            if x - CX > 8:  # the shaded right side, as on the ball itself
+                k = 0.82
+            elif x < 11 and y < 6:  # light on the upper left
+                k = 1.12
+            if y == BRIM - 1:
+                k *= 0.8  # the band's shadow over the brim
+        else:
+            if y == round(15 + 4 * (1 - ((x - CX) / 13) ** 2)) or y == y0:
+                k = 0.78  # its top edge
+            elif y >= 27 or x - CX > 9:
+                k = 0.82
+        grid[y][x] = shade(c, k)
+    if how == "cap":
+        for x in range(32):
+            if inside(x, BRIM):
+                grid[BRIM][x] = OUTLINE
+    if how in ("beard", "chin"):
+        for j, row in enumerate(MOUTH_ROWS):
+            for i, ch in enumerate(row):
+                if ch != ".":
+                    grid[20 + j][12 + i] = OUTLINE if ch == "k" else MOUTH
+    ys = [y for y in range(32) if any(c is not None for c in grid[y])]
+    xs = [x for x in range(32) if any(grid[y][x] is not None for y in range(32))]
+    out = [row[min(xs) : max(xs) + 1] for row in grid[min(ys) : max(ys) + 1]]
+    return quantise(out, 12), OX + min(xs), OY + min(ys)
 
 
 def lua_item(key, rows, x, y):
@@ -221,23 +308,36 @@ def lua_item(key, rows, x, y):
     return '\t%s = {\n\t\tx = %d,\n\t\ty = %d,\n\t\tpal = { %s },\n\t\trows = {\n%s\n\t\t},\n\t},' % (key, x, y, pal_s, body)
 
 
-def ball_preview(rows, x, y, scale=8):
-    img = Image.new("RGB", (G, G), (24, 34, 60))
-    cx, cy = 15.5 + OX, 15.5 + OY
+EYE = ["..kkk..", ".kgwwk.", "kgwwwwk", "kwwwwwk", "kwwwwwk", ".kkkkk."]  # Countryball's eye
+EYE_COL = {"k": OUTLINE, "w": (255, 255, 255), "g": (200, 200, 205)}
+
+
+def ball_preview(rows, x, y, anchor, scale=8):
+    """The gear on a Polish ball, drawn in Countryball's order (beards under the eyes)."""
+    img = Image.new("RGB", (G, G), NAVY)
     for py in range(G):
         for px in range(G):
-            d = ((px - cx) ** 2 + (py - cy) ** 2) ** 0.5
-            if d <= 14.1:
-                img.putpixel((px, py), (18, 20, 28) if d > 13.0 else ((255, 255, 255) if py < cy else (220, 40, 50)))
-    for ex in (OX + 8, OX + 17):  # the eyes, for scale
-        for yy in range(OY + 13, OY + 17):
-            for xx in range(ex + 1, ex + 6):
-                img.putpixel((xx, yy), (60, 60, 70))
-    for j, r in enumerate(rows):
-        for i, c in enumerate(r):
-            if c is not None and 0 <= x + i < G and 0 <= y + j < G:
-                img.putpixel((x + i, y + j), c)
-    return img.resize((G * scale, G * scale), Image.NEAREST)  # 320 px
+            d = ((px - CX - OX) ** 2 + (py - CY - OY) ** 2) ** 0.5
+            if d <= R + 0.5:
+                img.putpixel((px, py), OUTLINE if d > R - 0.6 else ((255, 255, 255) if py < CY + OY else (220, 40, 50)))
+
+    def gear():
+        for j, r in enumerate(rows):
+            for i, c in enumerate(r):
+                if c is not None and 0 <= x + i < G and 0 <= y + j < G:
+                    img.putpixel((x + i, y + j), c)
+
+    if anchor in ("beard", "chin", "strap", "mouth"):
+        gear()
+    for ex, flip in ((8, False), (17, True)):
+        for j, row in enumerate(EYE):
+            for i in range(len(row)):
+                ch = row[len(row) - 1 - i] if flip else row[i]
+                if ch in EYE_COL:
+                    img.putpixel((OX + ex + i, OY + 12 + j), EYE_COL[ch])
+    if anchor not in ("beard", "chin", "strap", "mouth"):
+        gear()
+    return img.resize((G * scale, G * scale), Image.NEAREST)  # 256 px
 
 
 def backdrop():
@@ -316,15 +416,19 @@ def main():
         key, kind, name, rarity, sheet, box, width, anchor = it
         if sheet not in sheets:
             sheets[sheet] = load(sheet)
-        rows = quantise(sprite(sheets[sheet], box, width, MAXH[anchor]))
-        made[key] = (rows, anchor)
+        if anchor in FITTED:
+            rows, x, y = fit(quantise(sprite(sheets[sheet], box, width)), anchor)
+        else:
+            rows = quantise(sprite(sheets[sheet], box, width, MAXH[anchor]))
+            x, y = place(rows, anchor)
+        made[key] = (rows, anchor, x, y)
     for key, base, name, rarity, how in VARIANTS:
-        made[key] = (recolour(made[base][0], how), made[base][1])
+        rows, anchor, x, y = made[base]
+        made[key] = (recolour(rows, how), anchor, x, y)
     chunks, previews = [], []
-    for key, (rows, anchor) in made.items():
-        x, y = place(rows, anchor)
+    for key, (rows, anchor, x, y) in made.items():
         chunks.append(lua_item(key, rows, x, y))
-        previews.append(ball_preview(rows, x, y))
+        previews.append(ball_preview(rows, x, y, anchor))
     names = {it[0]: it for it in ITEMS}
     meta = []
     for it in ITEMS:
@@ -334,7 +438,7 @@ def main():
     src = (
         "--!strict\n"
         "-- GENERATED by tools/build_gear.py from the user's reference sheets (2026-11-08). Do not edit.\n"
-        "-- Countryball gear sprites: x / y = where row 1's first pixel lands on the 40 x 40 ball canvas,\n"
+        "-- Countryball gear sprites: x / y = where row 1's first pixel lands on the 32 x 32 ball canvas,\n"
         "-- pal = character -> {r, g, b}, rows top to bottom (\".\" = clear).\n"
         "local GearSprites = {}\n\n"
         "GearSprites.items = {\n" + "\n".join(meta) + "\n}\n\n"
@@ -346,9 +450,9 @@ def main():
     with open(LUA, "w", encoding="utf-8", newline="\r\n") as f:
         f.write(src)
     cols = 8
-    sheet = Image.new("RGB", (cols * 320, ((len(previews) + cols - 1) // cols) * 320), (24, 34, 60))
+    sheet = Image.new("RGB", (cols * 256, ((len(previews) + cols - 1) // cols) * 256), (24, 34, 60))
     for i, p in enumerate(previews):
-        sheet.paste(p, ((i % cols) * 320, (i // cols) * 320))
+        sheet.paste(p, ((i % cols) * 256, (i // cols) * 256))
     sheet.save(os.path.join(OUT, "gear_preview.png"))
     backdrop()
     icon()

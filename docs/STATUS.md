@@ -418,3 +418,8 @@ An original real-time territory-conquest game for Roblox. RoWorld is the gamepla
   in a diagonal wave with their art fading in; closing sinks + fades and resets.
 - Studio sync note: GameState, CountryPicker and a few others hold CRLF in Studio; multi-line anchors
   fail there (use single-line edits). Studio's Session has the cosmetics line on one line (same code).
+- (later, same day) Gear fitted to the ball after the user's references: hats fill the ball's top down to a
+  dark brim line at y=11 (just over the eyes), full beards / elder / ginger fill the lower half (rising at
+  the cheeks) with an open mouth, the goatee the chin, the chinstrap a band on the lower rim; all inside the
+  outline (build_gear.py `fit`). Moustaches, horns and glasses stay free sprites. Countryball is back to a
+  32 x 32 canvas (no headroom); beards draw under the eyes.

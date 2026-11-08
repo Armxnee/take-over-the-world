@@ -61,14 +61,15 @@ function Countryball.code_of(ref: string?): string?
 	return string.match(ref, "^countryball:(%w+)$")
 end
 
---- The ball as one pixel sprite on a G x G canvas: the 32 x 32 ball sits at (OX, OY), with room
---- above it for a hat (2026-11-08). A dark outline, the flag across the body, a darker rim band on
---- the upper right and along the bottom, two round-topped white eyes with a grey glint; then the
---- gear it wears (Data/Gear: a beard, glasses, a hat). An empire's ball looks evil (the user's
---- reference, Data/GearSprites.empire): angry eyes, the spiked helmet and a black handlebar
---- moustache, unless it wears gear of its own in that place.
-Countryball.G = 40
-Countryball.OX, Countryball.OY = 4, 7
+--- The ball as one pixel sprite on a G x G canvas (the ball at OX, OY). A dark outline, the flag
+--- across the body, a darker rim band on the upper right and along the bottom, two round-topped
+--- white eyes with a grey glint, and the gear it wears (Data/Gear). Hats and beards are fitted to the
+--- ball (2026-11-08, after the user's references): a hat fills the top down to a brim line over the
+--- eyes, a beard the lower half under them; both stay inside the outline. An empire's ball looks
+--- evil (Data/GearSprites.empire): angry eyes, the spiked helmet and a black handlebar moustache,
+--- unless it wears gear of its own in that place.
+Countryball.G = 32
+Countryball.OX, Countryball.OY = 0, 0
 local G, OX, OY = Countryball.G, Countryball.OX, Countryball.OY
 local OUT = Color3.fromRGB(18, 20, 28)
 local EYE = {
@@ -182,6 +183,10 @@ function Countryball.ball_content(code: string?, name: string?, gear: any): Cont
 		end
 	end
 	local evil = Empires.is_empire(name) or (type(code) == "string" and string.sub(code, 1, 4) == "emp_")
+	-- the beard (an empire's moustache) under the eyes, then the eyes, the glasses and the hat (an
+	-- empire's helmet)
+	local beard = Gear.item(worn.beard) or (if evil then Gear.item(Countryball.EMPIRE_BEARD) else nil)
+	sprite(beard, 0, if evil and worn.beard == nil then 1 else 0)
 	if evil then
 		-- (Take Over the World!: the empire's angry eyes, from the user's evil ball)
 		sprite(GearSprites.empire.eyes)
@@ -198,9 +203,6 @@ function Countryball.ball_content(code: string?, name: string?, gear: any): Cont
 			end
 		end
 	end
-	-- the gear: the beard (an empire's moustache), the glasses, then the hat (an empire's helmet)
-	local beard = Gear.item(worn.beard) or (if evil then Gear.item(Countryball.EMPIRE_BEARD) else nil)
-	sprite(beard, 0, if evil and worn.beard == nil then 1 else 0)
 	sprite(Gear.item(worn.glasses))
 	if worn.hat ~= nil then
 		sprite(Gear.item(worn.hat))

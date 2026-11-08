@@ -6,7 +6,7 @@
 -- boats, nukes or missiles wear instead of the owner's: Map/UnitLayer). Sold in the item shop
 -- (Data/ItemShop) and given by crates. Data/Cosmetics resolves them by id like any item.
 --   hat / beard / glasses: rows (top to bottom; "." = clear), x / y = where row 1's first character
---         lands on the 40 x 40 ball canvas (Countryball.G), pal = character -> {r, g, b}
+--         lands on the 32 x 32 ball (Countryball.G); hats and beards fit the ball's shape
 --   boat / nuke / missile: color = {r, g, b}
 local GearSprites = require(script.Parent.GearSprites)
 
