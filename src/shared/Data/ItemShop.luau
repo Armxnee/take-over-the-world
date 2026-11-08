@@ -4,6 +4,7 @@
 -- opened as before (server/Purchases.open_crate). The featured items are cosmetics (Data/Cosmetics)
 -- and the gear (Data/Gear: hats, boat / nuke / missile skins) picked by the UTC day, priced by rarity.
 local Cosmetics = require("./Cosmetics")
+local Bundles = require("./Bundles")
 
 local ItemShop = {}
 
@@ -22,8 +23,18 @@ local pools: any = nil
 local function items(): any
 	if pools == nil then
 		local all, big = {}, {}
-		-- (gear only: hats and boat / nuke / missile skins; no territory skins, a country wears its flag)
+		-- (gear only: hats and boat / nuke / missile skins; no territory skins, a country wears its flag.
+		-- 2026-11-08: nothing that comes in a Robux bundle; the shop always sells other things)
+		local in_bundle = {}
+		for _, b in Bundles.LIST do
+			for _, id in b.items do
+				in_bundle[id] = true
+			end
+		end
 		for _, it in Cosmetics.gear() do
+			if in_bundle[it.id] then
+				continue
+			end
 			table.insert(all, it)
 			if it.rarity == "rare" or it.rarity == "epic" or it.rarity == "legendary" then
 				table.insert(big, it)

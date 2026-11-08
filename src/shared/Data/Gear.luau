@@ -31,16 +31,32 @@ Gear.items = {
 	{ id = "boat_crimson", kind = "boat", name = "Crimson Fleet", rarity = "rare", color = { 200, 36, 48 } },
 	{ id = "boat_stealth", kind = "boat", name = "Stealth Fleet", rarity = "epic", color = { 44, 48, 58 } },
 	{ id = "boat_gold", kind = "boat", name = "Golden Fleet", rarity = "legendary", color = { 255, 196, 40 } },
+	-- (2026-11-08: more boat / nuke / missile skins, so the item shop has its own beside the bundles)
+	{ id = "boat_jungle", kind = "boat", name = "Jungle Fleet", rarity = "common", color = { 84, 120, 62 } },
+	{ id = "boat_ocean", kind = "boat", name = "Ocean Blue Fleet", rarity = "common", color = { 46, 120, 200 } },
+	{ id = "boat_rust", kind = "boat", name = "Rusty Fleet", rarity = "common", color = { 160, 84, 44 } },
+	{ id = "boat_royal", kind = "boat", name = "Royal Purple Fleet", rarity = "rare", color = { 120, 64, 190 } },
+	{ id = "boat_neon", kind = "boat", name = "Neon Fleet", rarity = "epic", color = { 60, 255, 200 } },
+	{ id = "boat_ivory", kind = "boat", name = "Ivory Fleet", rarity = "epic", color = { 240, 232, 210 } },
 	-- nuke skins
 	{ id = "nuke_hazard", kind = "nuke", name = "Hazard Warhead", rarity = "common", color = { 250, 214, 30 } },
 	{ id = "nuke_black_ops", kind = "nuke", name = "Black Ops Warhead", rarity = "rare", color = { 36, 36, 42 } },
 	{ id = "nuke_toxic", kind = "nuke", name = "Toxic Warhead", rarity = "epic", color = { 120, 255, 60 } },
 	{ id = "nuke_gold", kind = "nuke", name = "Golden Warhead", rarity = "legendary", color = { 255, 200, 50 } },
+	{ id = "nuke_camo", kind = "nuke", name = "Camo Warhead", rarity = "common", color = { 96, 112, 70 } },
+	{ id = "nuke_ice", kind = "nuke", name = "Frost Warhead", rarity = "common", color = { 170, 220, 250 } },
+	{ id = "nuke_crimson", kind = "nuke", name = "Crimson Warhead", rarity = "rare", color = { 196, 30, 44 } },
+	{ id = "nuke_plasma", kind = "nuke", name = "Plasma Warhead", rarity = "epic", color = { 180, 80, 255 } },
+	{ id = "nuke_candy", kind = "nuke", name = "Candy Warhead", rarity = "rare", color = { 255, 120, 190 } },
 	-- missile skins
 	{ id = "missile_red_streak", kind = "missile", name = "Red Streak", rarity = "common", color = { 236, 50, 50 } },
 	{ id = "missile_ice", kind = "missile", name = "Ice Missile", rarity = "common", color = { 140, 220, 255 } },
 	{ id = "missile_plasma", kind = "missile", name = "Plasma Missile", rarity = "epic", color = { 190, 90, 255 } },
 	{ id = "missile_gold", kind = "missile", name = "Golden Missile", rarity = "legendary", color = { 255, 206, 60 } },
+	{ id = "missile_jungle", kind = "missile", name = "Jungle Missile", rarity = "common", color = { 90, 130, 64 } },
+	{ id = "missile_shadow", kind = "missile", name = "Shadow Missile", rarity = "rare", color = { 40, 42, 52 } },
+	{ id = "missile_neon", kind = "missile", name = "Neon Missile", rarity = "rare", color = { 60, 255, 140 } },
+	{ id = "missile_inferno", kind = "missile", name = "Inferno Missile", rarity = "epic", color = { 255, 110, 30 } },
 }
 
 -- the Countryball gear goes first (hats, beards, glasses: Data/GearSprites)

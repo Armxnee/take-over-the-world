@@ -423,3 +423,8 @@ An original real-time territory-conquest game for Roblox. RoWorld is the gamepla
   the cheeks) with an open mouth, the goatee the chin, the chinstrap a band on the lower rim; all inside the
   outline (build_gear.py `fit`). Moustaches, horns and glasses stay free sprites. Countryball is back to a
   32 x 32 canvas (no headroom); beards draw under the eyes.
+- (later) Glasses are drawn around the ball's own eyes by build_gear.py `glasses()` (frames over x 7..15 /
+  16..24 from row 11, arms on row 12 out to the ball's edge, clear lenses where the eyes show; VR, NVG,
+  monocle and eye patch drawn to fit; colours after the user's eyewear sheet). Moustaches are wider and
+  clipped to the ball. The item shop never offers an item that is in a Robux bundle (Data/ItemShop); 15
+  new boat / nuke / missile skins (Data/Gear) keep its unit skins varied.

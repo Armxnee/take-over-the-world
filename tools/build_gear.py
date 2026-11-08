@@ -41,7 +41,7 @@ G = 32
 OX, OY = 0, 0
 CX, CY, R = 15.5, 15.5, 13.6  # the ball (Countryball)
 BRIM = 11  # a cap's dark brim line (the eyes start at 12)
-MAXH = {"horns": 13, "eyes": 9, "eye_r": 12, "mouth": 6}
+MAXH = {"horns": 13, "mouth": 11}
 FITTED = ("cap", "beard", "chin", "strap")
 ITEMS = [
     ("hat_combat_helmet", "hat", "Combat Helmet", "common", HATS, (26, 34, 246, 214), 28, "cap"),
@@ -57,17 +57,18 @@ ITEMS = [
     ("beard_goatee", "beard", "Goatee", "common", FACE, (322, 98, 454, 238), 16, "chin"),
     ("beard_chinstrap", "beard", "Chinstrap", "rare", FACE, (530, 82, 750, 215), 28, "strap"),
     ("beard_elder", "beard", "Elder Beard", "legendary", FACE, (786, 74, 998, 446), 28, "beard"),
-    ("beard_handlebar", "beard", "Handlebar Moustache", "rare", FACE, (18, 610, 262, 686), 18, "mouth"),
-    ("beard_curled", "beard", "Curled Moustache", "rare", FACE, (521, 610, 758, 742), 18, "mouth"),
-    ("beard_horseshoe", "beard", "Horseshoe Moustache", "common", FACE, (802, 594, 990, 727), 14, "mouth"),
-    ("glasses_shades", "glasses", "Shades", "common", EYES, (26, 98, 238, 182), 22, "eyes"),
-    ("glasses_aviators", "glasses", "Aviators", "rare", EYES, (274, 89, 494, 190), 22, "eyes"),
-    ("glasses_monocle", "glasses", "Monocle", "epic", EYES, (594, 74, 735, 231), 9, "eye_r"),
-    ("glasses_eyepatch", "glasses", "Eye Patch", "rare", EYES, (786, 34, 974, 222), 20, "eye_r"),
-    ("glasses_3d", "glasses", "3D Glasses", "common", EYES, (26, 322, 238, 438), 22, "eyes"),
-    ("glasses_nerd", "glasses", "Nerd Glasses", "common", EYES, (274, 322, 494, 446), 22, "eyes"),
-    ("glasses_vr", "glasses", "VR Headset", "epic", EYES, (538, 290, 750, 446), 22, "eyes"),
-    ("glasses_nvg", "glasses", "Night Vision", "legendary", EYES, (786, 290, 998, 446), 22, "eyes"),
+    ("beard_handlebar", "beard", "Handlebar Moustache", "rare", FACE, (18, 610, 262, 686), 22, "mouth"),
+    ("beard_curled", "beard", "Curled Moustache", "rare", FACE, (521, 610, 758, 742), 20, "mouth"),
+    ("beard_horseshoe", "beard", "Horseshoe Moustache", "common", FACE, (802, 594, 990, 727), 16, "mouth"),
+    # glasses are drawn around the ball's own eyes (colours after the user's eyewear sheet)
+    ("glasses_shades", "glasses", "Shades", "common", EYES, None, 0, "glasses:shades"),
+    ("glasses_aviators", "glasses", "Aviators", "rare", EYES, None, 0, "glasses:aviators"),
+    ("glasses_monocle", "glasses", "Monocle", "epic", EYES, None, 0, "glasses:monocle"),
+    ("glasses_eyepatch", "glasses", "Eye Patch", "rare", EYES, None, 0, "glasses:eyepatch"),
+    ("glasses_3d", "glasses", "3D Glasses", "common", EYES, None, 0, "glasses:3d"),
+    ("glasses_nerd", "glasses", "Nerd Glasses", "common", EYES, None, 0, "glasses:nerd"),
+    ("glasses_vr", "glasses", "VR Headset", "epic", EYES, None, 0, "glasses:vr"),
+    ("glasses_nvg", "glasses", "Night Vision", "legendary", EYES, None, 0, "glasses:nvg"),
 ]
 
 # more like these: recoloured variants (id, base, name, rarity, recolour)
@@ -284,10 +285,133 @@ def fit(rows, how):
             for i, ch in enumerate(row):
                 if ch != ".":
                     grid[20 + j][12 + i] = OUTLINE if ch == "k" else MOUTH
+    out, x, y = trim(grid)
+    return quantise(out, 12), x, y
+
+
+def trim(grid):
+    """A 32 x 32 grid cut to what is drawn: (rows, x, y)."""
     ys = [y for y in range(32) if any(c is not None for c in grid[y])]
     xs = [x for x in range(32) if any(grid[y][x] is not None for y in range(32))]
     out = [row[min(xs) : max(xs) + 1] for row in grid[min(ys) : max(ys) + 1]]
-    return quantise(out, 12), OX + min(xs), OY + min(ys)
+    return out, OX + min(xs), OY + min(ys)
+
+
+def clip(rows, x, y):
+    """A free sprite kept inside the ball's outline (a moustache): (rows, x, y)."""
+    grid = [[None] * 32 for _ in range(32)]
+    for j, r in enumerate(rows):
+        for i, c in enumerate(r):
+            if c is not None and 0 <= x + i < 32 and 0 <= y + j < 32 and inside(x + i, y + j):
+                grid[y + j][x + i] = c
+    return trim(grid)
+
+
+# Glasses drawn around the ball's own eyes (left eye x 8..14, right x 17..23, rows 12..17): a 9-wide
+# frame per eye (x 7..15 and 16..24, from row 11), mirrored for the right one, arms along row 12 out
+# to the ball's edge. "." clear (the eye shows through), other letters from each style's palette.
+LENS = {
+    "shades": ["kkkkkkkkk", "kllllllgk", "klllllllk", "klllllllk", "klllllllk", ".kllllllk", "..kkkkkk."],
+    "aviators": [".fffffff.", "flllllglf", "flllllllf", "flllllllf", ".fllllllf", "..flllff.", "...fff..."],
+    "3d": ["wwwwwwwww", "wlllllllw", "wlllllllw", "wlllllllw", "wlllllllw", "wwwwwwwww"],
+    "nerd": ["kkkkkkkkk", "k.......k", "k.......k", "k.......k", "k.......k", "k.......k", "k.......k", "kkkkkkkkk"],
+}
+GLASS_PAL = {
+    "shades": {"k": OUTLINE, "l": (40, 42, 48), "g": (236, 238, 242), "arm": OUTLINE},
+    "aviators": {"f": (214, 172, 66), "l": (58, 60, 72), "g": (150, 156, 170), "arm": (214, 172, 66)},
+    "3d": {"w": (236, 234, 230), "l": (30, 140, 210), "r": (220, 40, 44), "arm": (236, 234, 230)},
+    "nerd": {"k": (30, 32, 36), "arm": (30, 32, 36)},
+}
+
+
+def glasses(style):
+    grid = [[None] * 32 for _ in range(32)]
+
+    def put(x, y, c):
+        if 0 <= x < 32 and 0 <= y < 32 and inside(x, y):
+            grid[y][x] = c
+
+    def arms(y, c):
+        for x in range(0, 7):
+            put(x, y, c)
+        for x in range(25, 32):
+            put(x, y, c)
+
+    if style in LENS:
+        pal = GLASS_PAL[style]
+        for side, x0 in ((0, 7), (1, 16)):
+            for j, row in enumerate(LENS[style]):
+                for i in range(9):
+                    ch = row[8 - i] if side else row[i]
+                    if ch == ".":
+                        continue
+                    if style == "3d" and ch == "l" and side == 1:
+                        ch = "r"  # red on the right, blue on the left
+                    put(x0 + i, 11 + j, pal[ch])
+        arms(12, pal["arm"])
+        if style == "aviators":
+            put(15, 11, pal["f"])  # the bridge
+            put(16, 11, pal["f"])
+    elif style == "monocle":
+        gold, chain = (214, 172, 66), (176, 136, 46)
+        ring = ["..fffff..", ".f.....f.", "f.......f", "f.......f", "f.......f", "f.......f", ".f.....f.", "..fffff.."]
+        for j, row in enumerate(ring):
+            for i, ch in enumerate(row):
+                if ch == "f":
+                    put(16 + i, 11 + j, gold)
+        for x, y in ((24, 19), (24, 20), (25, 21), (25, 22), (26, 23), (26, 24)):
+            put(x, y, chain)
+    elif style == "eyepatch":
+        patch = ["..kkkkk..", ".kpppppk.", "kpppppppk", "kpppppppk", "kpppppppk", ".kpppppk.", "..kkkkk.."]
+        for j, row in enumerate(patch):
+            for i, ch in enumerate(row):
+                if ch != ".":
+                    put(16 + i, 11 + j, OUTLINE if ch == "k" else (46, 46, 50))
+        for d in range(1, 16):  # the strap: up over the forehead to the left, and round to the right
+            put(17 - d, 11 - d // 2, OUTLINE)
+        for x in range(25, 32):
+            put(x, 14, OUTLINE)
+    elif style == "vr":
+        body, edge, hi, led, strap = (58, 62, 76), (24, 26, 34), (96, 104, 124), (120, 220, 255), (40, 42, 50)
+        for y in range(11, 19):
+            for x in range(5, 27):
+                top = y in (11, 18)
+                side = x in (5, 26)
+                if top and side:
+                    continue
+                c = edge if (top or side) else body
+                if not (top or side) and y == 12 and 7 <= x <= 20:
+                    c = hi  # the shine along the top
+                put(x, y, c)
+        for x in (22, 24):
+            put(x, 16, led)
+        for y in (13, 14):
+            for x in list(range(0, 5)) + list(range(27, 32)):
+                put(x, y, strap)
+        for y in range(3, 11):  # the strap over the top of the head
+            put(15, y, strap)
+            put(16, y, strap)
+    elif style == "nvg":
+        body, edge, lens, glow, strap = (70, 84, 60), (28, 32, 26), (60, 190, 90), (170, 255, 170), (46, 54, 40)
+        for y in range(12, 19):
+            for x in range(7, 25):
+                top = y in (12, 18)
+                side = x in (7, 24)
+                if top and side:
+                    continue
+                put(x, y, edge if (top or side) else body)
+        for cx in (11, 20):  # the two lenses, over the eyes
+            for y in range(13, 18):
+                for x in range(cx - 2, cx + 2):
+                    ring = y in (13, 17) or x in (cx - 2, cx + 1)
+                    put(x, y, edge if ring else lens)
+            put(cx - 1, 14, glow)
+        for y in range(7, 12):  # the mount
+            put(15, y, edge)
+            put(16, y, body)
+        for x in list(range(0, 7)) + list(range(25, 32)):
+            put(x, 13, strap)
+    return trim(grid)
 
 
 def lua_item(key, rows, x, y):
@@ -416,11 +540,15 @@ def main():
         key, kind, name, rarity, sheet, box, width, anchor = it
         if sheet not in sheets:
             sheets[sheet] = load(sheet)
-        if anchor in FITTED:
+        if anchor.startswith("glasses:"):
+            rows, x, y = glasses(anchor[8:])
+        elif anchor in FITTED:
             rows, x, y = fit(quantise(sprite(sheets[sheet], box, width)), anchor)
         else:
             rows = quantise(sprite(sheets[sheet], box, width, MAXH[anchor]))
             x, y = place(rows, anchor)
+            if anchor == "mouth":
+                rows, x, y = clip(rows, x, y)
         made[key] = (rows, anchor, x, y)
     for key, base, name, rarity, how in VARIANTS:
         rows, anchor, x, y = made[base]
