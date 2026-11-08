@@ -229,6 +229,190 @@ function Countryball.ball_content(code: string?, name: string?, gear: any, pose:
 	return content
 end
 
+-- ===== (Take Over the World!, 2026-11-08) the map's little fighters =====
+
+local function write_rgb(b: buffer, o: number, c: Color3, k: number?)
+	local m = k or 1
+	buffer.writeu8(b, o, math.floor(math.clamp(c.R * m, 0, 1) * 255 + 0.5))
+	buffer.writeu8(b, o + 1, math.floor(math.clamp(c.G * m, 0, 1) * 255 + 0.5))
+	buffer.writeu8(b, o + 2, math.floor(math.clamp(c.B * m, 0, 1) * 255 + 0.5))
+	buffer.writeu8(b, o + 3, 255)
+end
+
+local function flag_at(g: any, u: number, v: number): Color3
+	if g == nil then
+		return Color3.fromRGB(150, 156, 170)
+	end
+	local FW, FH = FlagPix.W, FlagPix.H
+	local x = math.clamp(math.floor(u * FW), 0, FW - 1)
+	local y = math.clamp(math.floor(v * FH), 0, FH - 1)
+	return g.pal[buffer.readu8(g.idx, y * FW + x) + 1] or Color3.fromRGB(150, 156, 170)
+end
+
+--- the mini soldier: a 16 x 16 sprite, shown at exactly 2x (Map/FrontLayer) so its circle stays round
+Countryball.MINI = 16
+local MINI_HELMET = {
+	base = Color3.fromRGB(104, 113, 63),
+	hi = Color3.fromRGB(126, 141, 75),
+	dark = Color3.fromRGB(69, 81, 43),
+}
+local MINI_EMPIRE = {
+	base = Color3.fromRGB(82, 82, 87),
+	hi = Color3.fromRGB(129, 135, 146),
+	dark = Color3.fromRGB(52, 52, 59),
+	band = Color3.fromRGB(213, 165, 53),
+}
+local minis: { [string]: any } = {}
+
+--- A front-line soldier as a little round Countryball (16 x 16): the flag, a helmet (an empire's
+--- spiked one), eyes looking the way it faces and a rifle held across, aiming that way.
+function Countryball.mini_content(code: string?, name: string?, right: boolean): Content?
+	local key = tostring(code) .. "|" .. tostring(name) .. "|" .. tostring(right)
+	local hit = minis[key]
+	if hit ~= nil then
+		return hit or nil
+	end
+	minis[key] = false
+	local S = Countryball.MINI
+	local ok, img = pcall(function()
+		return AssetService:CreateEditableImage({ Size = Vector2.new(S, S) })
+	end)
+	if not ok or img == nil then
+		return nil
+	end
+	local g = FlagPix.forCode(code, name)
+	local evil = Empires.is_empire(name) or (type(code) == "string" and string.sub(code, 1, 4) == "emp_")
+	local hm = if evil then MINI_EMPIRE else MINI_HELMET
+	local b = buffer.create(S * S * 4)
+	local function put(x: number, y: number, c: Color3, k: number?)
+		if x >= 0 and y >= 0 and x < S and y < S then
+			write_rgb(b, (y * S + x) * 4, c, k)
+		end
+	end
+	local cx, cy, R = 7.5, 8.5, 6.6
+	for y = 0, S - 1 do
+		for x = 0, S - 1 do
+			local dx, dy = x - cx, y - cy
+			local d = math.sqrt(dx * dx + dy * dy)
+			if d <= R + 0.5 then
+				if d > R - 0.7 then
+					put(x, y, OUT)
+				elseif y <= 5 then -- the helmet over the top
+					local c = if x - cx > 3 then hm.dark elseif x < 6 and y <= 3 then hm.hi else hm.base
+					put(x, y, c)
+				elseif y == 6 then -- its brim (an empire's gold band)
+					put(x, y, if evil then hm.band else OUT)
+				else
+					local u = (x - (cx - R)) / (2 * R)
+					local v = (y - (cy - R)) / (2 * R)
+					local nx, ny = dx / math.max(d, 1e-6), dy / math.max(d, 1e-6)
+					local shade = (R - d) < 1.8 and (nx * 0.8 - ny * 0.3 > 0.4 or ny > 0.6)
+					put(x, y, flag_at(g, u, v), if shade then 0.8 else 1)
+				end
+			end
+		end
+	end
+	if evil then -- the spike
+		put(7, 0, OUT)
+		put(7, 1, hm.hi)
+		put(8, 1, hm.base)
+	end
+	-- the eyes: white with the pupil on the side it faces
+	local white = Color3.new(1, 1, 1)
+	for _, ex in { 4, 9 } do
+		for i = 0, 2 do
+			put(ex + i, 7, OUT)
+		end
+		for y = 8, 9 do
+			put(ex, y, if right then white else OUT)
+			put(ex + 1, y, white)
+			put(ex + 2, y, if right then OUT else white)
+		end
+	end
+	-- the rifle, across the lower half (drawn aiming right, mirrored to aim left)
+	local stock, body, steel, dark = Color3.fromRGB(110, 66, 32), Color3.fromRGB(55, 60, 66), Color3.fromRGB(120, 140, 152), Color3.fromRGB(34, 40, 46)
+	local function rp(x: number, y: number, c: Color3)
+		put(if right then x else S - 1 - x, y, c)
+	end
+	for x = 2, 4 do
+		rp(x, 10, OUT)
+		rp(x, 11, stock)
+		rp(x, 12, OUT)
+	end
+	rp(1, 11, OUT)
+	for x = 5, 10 do
+		rp(x, 11, body)
+	end
+	rp(9, 10, OUT)
+	rp(6, 12, dark)
+	rp(7, 12, dark)
+	for x = 11, 15 do
+		rp(x, 11, steel)
+	end
+	img:WritePixelsBuffer(Vector2.zero, Vector2.new(S, S), b)
+	local content = Content.fromObject(img)
+	minis[key] = content
+	return content
+end
+
+local vehicles_drawn: { [string]: any } = {}
+--- A Countryball vehicle (GearSprites.vehicles: "jet", "tank"), its ball in the owner's flag, facing
+--- right or left (the art faces left: mirrored for right). 32 x 32.
+function Countryball.vehicle_content(kind: string, code: string?, name: string?, right: boolean): Content?
+	local key = kind .. "|" .. tostring(code) .. "|" .. tostring(name) .. "|" .. tostring(right)
+	local hit = vehicles_drawn[key]
+	if hit ~= nil then
+		return hit or nil
+	end
+	vehicles_drawn[key] = false
+	local v = GearSprites.vehicles and GearSprites.vehicles[kind]
+	if v == nil then
+		return nil
+	end
+	local S = 32
+	local ok, img = pcall(function()
+		return AssetService:CreateEditableImage({ Size = Vector2.new(S, S) })
+	end)
+	if not ok or img == nil then
+		return nil
+	end
+	local g = FlagPix.forCode(code, name)
+	local b = buffer.create(S * S * 4)
+	local bx0, by0, bx1, by1 = v.ball[1], v.ball[2], v.ball[3], v.ball[4]
+	for j, row in v.rows do
+		local frow = v.flag[j]
+		for i = 1, #row do
+			local ch = string.sub(row, i, i)
+			local x, y = v.x + i - 1, v.y + j - 1
+			local c: Color3? = nil
+			local k = 1
+			local fc = if frow then string.sub(frow, i, i) else "."
+			if fc == "F" or fc == "f" then
+				-- the ball's flag (its lower part shows under the helmet)
+				local u = (x - bx0) / math.max(1, bx1 - bx0)
+				local vv = 0.3 + 0.7 * (y - by0) / math.max(1, by1 - by0)
+				c = flag_at(g, u, vv)
+				k = if fc == "f" then 0.72 else 1
+			else
+				local rgb = v.pal[ch]
+				if rgb ~= nil then
+					c = Color3.fromRGB(rgb[1], rgb[2], rgb[3])
+				end
+			end
+			if c ~= nil then
+				local px = if right then S - 1 - x else x
+				if px >= 0 and px < S and y >= 0 and y < S then
+					write_rgb(b, (y * S + px) * 4, c, k)
+				end
+			end
+		end
+	end
+	img:WritePixelsBuffer(Vector2.zero, Vector2.new(S, S), b)
+	local content = Content.fromObject(img)
+	vehicles_drawn[key] = content
+	return content
+end
+
 --- A Countryball `px` wide for flag `code` (or the country `name`; a grey ball when unknown): one
 --- crisp pixel sprite. `gear`: a hat id, or { hat?, beard?, glasses? }.
 function Countryball.new(code: string?, px: number?, name: string?, gear: any): Frame

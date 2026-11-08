@@ -22,6 +22,7 @@ local FrameClock = require(script.Parent:WaitForChild("FrameClock")) :: any
 local Countries = require(Airfront:WaitForChild("Data"):WaitForChild("Countries")) :: any -- (Take Over the World!: soldiers)
 local Empires = require(Airfront:WaitForChild("Data"):WaitForChild("Empires")) :: any
 local Countryball = require("../UI/Countryball")
+local BattleFx = require(script.Parent:WaitForChild("BattleFx")) :: any -- (the shots and blasts)
 
 local FrontLayer = {}
 FrontLayer.__index = FrontLayer
@@ -38,9 +39,12 @@ FrontLayer.FONT = Font.fromId(12187365977, Enum.FontWeight.Bold)
 FrontLayer.Z = 24
 -- (Take Over the World!, 2026-11-08: a battle at every front label: two of the player's Countryball
 -- soldiers face two of the other country's across the border, rifles out, firing at each other)
-FrontLayer.SOLDIER_PX = 26
-FrontLayer.SOLDIER_GAP = 24 -- px from the front to each side's line
-FrontLayer.SOLDIER_SPREAD = 18 -- px between the two soldiers of a side
+FrontLayer.SOLDIER_PX = 32 -- (Countryball.MINI 16 px at exactly 2x: a round ball)
+FrontLayer.TANK_PX = 64 -- (the 32 px tank at 2x)
+FrontLayer.TANK_BACK = 40 -- px behind its side's soldiers
+FrontLayer.TANK_FIRE_MIN, FrontLayer.TANK_FIRE_MAX = 2.2, 4.0
+FrontLayer.SOLDIER_GAP = 30 -- px from the front to each side's line
+FrontLayer.SOLDIER_SPREAD = 24 -- px between the two soldiers of a side
 FrontLayer.FIRE_MIN, FrontLayer.FIRE_MAX = 0.6, 1.5 -- seconds between a soldier's shots
 FrontLayer.TRACER_S = 0.11
 FrontLayer.FLASH_S = 0.07
@@ -77,8 +81,7 @@ function FrontLayer.new(parent: Instance, view: any)
 	self._entries = {} :: { [number]: Entry }
 	self._labels = {} :: { Label }
 	self._battles = {} -- (Take Over the World!: the soldiers at each shown front, and the shots)
-	self._fx = {}
-	self._fx_free = {}
+	self._bfx = BattleFx.new(root, FrontLayer.Z) -- (the shots, shells and blasts)
 	self._posts = {} -- (the border posts)
 	self._post_poll = 0.0
 	self._battle_pts = {} -- (where the battles are on screen this frame)
@@ -110,6 +113,7 @@ function FrontLayer.unbind(self: any)
 		end
 	end
 	table.clear(self._posts)
+	self._bfx:clear()
 end
 
 function FrontLayer.destroy(self: any)
@@ -435,92 +439,59 @@ end
 
 -- ===== (Take Over the World!) the battles: Countryball soldiers firing across each front =====
 
---- An owner's soldier picture facing right or left (the rifle on its far side, aiming at the enemy).
-local function soldier_art(self: any, owner: number, right: boolean): Content?
+--- An owner's name and flag code (the flags by name are read once a map).
+local function owner_flag(self: any, owner: number): (string?, string?)
 	local st = self._state
 	local o = st and st:get_owner(owner)
 	if o == nil then
-		return nil
+		return nil, nil
 	end
 	if self._flags_map ~= st.map then
 		self._flags_map = st.map
 		local ok, f = pcall(Countries.flags_by_name, st.map)
 		self._flags = if ok then f else {}
 	end
-	local name = o.name
-	local gear = if Empires.is_empire(name) then {} else { hat = FrontLayer.SOLDIER_HAT }
-	return Countryball.ball_content(self._flags[name], name, gear, if right then "rifle_right" else "rifle_left")
+	return self._flags[o.name], o.name
 end
 
-local function fx_frame(self: any, color: Color3, w: number, h: number): Frame
-	local pool = self._fx_free
-	local f = table.remove(pool)
-	if f == nil then
-		f = Instance.new("Frame")
-		f.Name = "Shot"
-		f.BorderSizePixel = 0
-		f.AnchorPoint = Vector2.new(0.5, 0.5)
-		f.ZIndex = FrontLayer.Z
-		f.Parent = self.root
+--- An owner's soldier facing right or left: a little round Countryball (Countryball.mini_content,
+--- 16 px shown at exactly 2x so the circle stays round) with a helmet and a rifle aiming that way.
+local function soldier_art(self: any, owner: number, right: boolean): Content?
+	local code, name = owner_flag(self, owner)
+	if name == nil then
+		return nil
 	end
-	f.BackgroundColor3 = color
-	f.BackgroundTransparency = 0
-	f.Size = UDim2.fromOffset(w, h)
-	f.Rotation = 0
-	f.Visible = true
-	return f
+	return Countryball.mini_content(code, name, right)
 end
 
---- One shot from (x0, y0) to (x1, y1): a muzzle flash, a tracer flying across, a spark where it lands.
+--- An owner's tank (the user's Countryball tank, its ball in the owner's flag), facing right or left.
+local function tank_art(self: any, owner: number, right: boolean): Content?
+	local code, name = owner_flag(self, owner)
+	if name == nil then
+		return nil
+	end
+	return Countryball.vehicle_content("tank", code, name, right)
+end
+
+--- One rifle shot (Map/BattleFx): a muzzle flash, a tracer flying across, a spark where it lands.
 local function fire(self: any, now: number, x0: number, y0: number, x1: number, y1: number)
-	local flash = fx_frame(self, Color3.fromRGB(255, 236, 150), 7, 7)
-	flash.Position = UDim2.fromOffset(x0, y0)
-	table.insert(self._fx, { f = flash, kind = "flash", t0 = now, x = x0, y = y0 })
-	local tr = fx_frame(self, Color3.fromRGB(255, 214, 90), 9, 2)
-	tr.Rotation = math.deg(math.atan2(y1 - y0, x1 - x0))
-	tr.Position = UDim2.fromOffset(x0, y0)
-	table.insert(self._fx, { f = tr, kind = "tracer", t0 = now, x = x0, y = y0, x1 = x1, y1 = y1 })
+	self._bfx:shot(now, x0, y0, x1, y1)
 end
 
 local function fx_tick(self: any, now: number)
-	local list = self._fx
-	local i = 1
-	while i <= #list do
-		local fx = list[i]
-		local age = now - fx.t0
-		local done = false
-		if fx.kind == "flash" then
-			local k = age / FrontLayer.FLASH_S
-			fx.f.BackgroundTransparency = math.clamp(k, 0, 1)
-			fx.f.Size = UDim2.fromOffset(7 - 3 * math.clamp(k, 0, 1), 7 - 3 * math.clamp(k, 0, 1))
-			done = k >= 1
-		elseif fx.kind == "tracer" then
-			local k = age / FrontLayer.TRACER_S
-			if k >= 1 then
-				-- it lands: a little spark
-				fx.kind, fx.t0 = "spark", now
-				fx.f.Rotation = 45
-				fx.f.Size = UDim2.fromOffset(5, 5)
-				fx.f.BackgroundColor3 = Color3.fromRGB(255, 250, 220)
-				fx.f.Position = UDim2.fromOffset(fx.x1, fx.y1)
-			else
-				fx.f.Position = UDim2.fromOffset(fx.x + (fx.x1 - fx.x) * k, fx.y + (fx.y1 - fx.y) * k)
-			end
-		else -- spark
-			local k = age / 0.16
-			fx.f.BackgroundTransparency = math.clamp(k, 0, 1)
-			fx.f.BackgroundColor3 = Color3.fromRGB(255, 250, 220):Lerp(Color3.fromRGB(120, 120, 120), math.clamp(k, 0, 1))
-			done = k >= 1
-		end
-		if done then
-			fx.f.Visible = false
-			table.insert(self._fx_free, fx.f)
-			list[i] = list[#list]
-			list[#list] = nil
-		else
-			i += 1
-		end
-	end
+	self._bfx:tick(now)
+end
+
+local function pixel_image(self: any, name: string, px: number, z: number): ImageLabel
+	local img = Instance.new("ImageLabel")
+	img.Name = name
+	img.BackgroundTransparency = 1
+	img.AnchorPoint = Vector2.new(0.5, 0.5)
+	img.ResampleMode = Enum.ResamplerMode.Pixelated
+	img.Size = UDim2.fromOffset(px, px)
+	img.ZIndex = z
+	img.Parent = self.root
+	return img
 end
 
 --- Battle `n` at the front point (x, y) on screen: the player's two soldiers on their side of the
@@ -530,17 +501,24 @@ local function battle(self: any, n: number, now: number, x: number, y: number, s
 	local me = st and st.local_owner or 0
 	local b = self._battles[n]
 	if b == nil then
-		b = { soldiers = {}, key = "" }
+		b = { soldiers = {}, tanks = {}, key = "" }
 		for i = 1, 4 do
-			local img = Instance.new("ImageLabel")
-			img.Name = "Soldier"
-			img.BackgroundTransparency = 1
-			img.AnchorPoint = Vector2.new(0.5, 0.5)
-			img.ResampleMode = Enum.ResamplerMode.Pixelated
-			img.Size = UDim2.fromOffset(FrontLayer.SOLDIER_PX, FrontLayer.SOLDIER_PX)
-			img.ZIndex = FrontLayer.Z - 1
-			img.Parent = self.root
-			b.soldiers[i] = { img = img, next = now + math.random() * FrontLayer.FIRE_MAX, kick = 0, x = 0, y = 0 }
+			b.soldiers[i] = {
+				img = pixel_image(self, "Soldier", FrontLayer.SOLDIER_PX, FrontLayer.Z - 1),
+				next = now + math.random() * FrontLayer.FIRE_MAX,
+				kick = 0,
+				x = 0,
+				y = 0,
+			}
+		end
+		for i = 1, 2 do
+			b.tanks[i] = {
+				img = pixel_image(self, "Tank", FrontLayer.TANK_PX, FrontLayer.Z - 2),
+				next = now + 1 + math.random() * FrontLayer.TANK_FIRE_MAX,
+				kick = 0,
+				x = 0,
+				y = 0,
+			}
 		end
 		self._battles[n] = b
 	end
@@ -556,6 +534,13 @@ local function battle(self: any, n: number, now: number, x: number, y: number, s
 				sd.img.ImageContent = c
 			end
 		end
+		local tm, tt = tank_art(self, me, right), tank_art(self, e.other or 0, not right)
+		if tm then
+			b.tanks[1].img.ImageContent = tm
+		end
+		if tt then
+			b.tanks[2].img.ImageContent = tt
+		end
 	end
 	local px, py = -uy, ux
 	local gap, spread = FrontLayer.SOLDIER_GAP, FrontLayer.SOLDIER_SPREAD / 2
@@ -569,20 +554,42 @@ local function battle(self: any, n: number, now: number, x: number, y: number, s
 		local faces = if side < 0 then (if right then 1 else -1) else (if right then -1 else 1)
 		sd.kick = math.max(0, sd.kick - 0.12)
 		local d = gap + back - step
-		local sx = x + ux * side * d + px * lane * spread - faces * sd.kick * 3
-		local sy = y + uy * side * d + py * lane * spread + hop
+		local sx = math.round(x + ux * side * d + px * lane * spread - faces * sd.kick * 3)
+		local sy = math.round(y + uy * side * d + py * lane * spread + hop)
 		sd.x, sd.y, sd.faces = sx, sy, faces
 		sd.img.Position = UDim2.fromOffset(sx, sy)
 		sd.img.Visible = true
+	end
+	-- a tank behind each side's soldiers: rolling a little back and forth, rocking on its tracks
+	for i, tk in b.tanks do
+		local side = if i == 1 then -1 else 1
+		local faces = if side < 0 then (if right then 1 else -1) else (if right then -1 else 1)
+		tk.kick = math.max(0, tk.kick - 0.06)
+		local roll = math.sin(now * 0.7 + i * 2.5) * 5
+		local rock = if math.sin(now * 13 + i) > 0 then 0 else 1
+		local d = gap + FrontLayer.TANK_BACK + roll
+		local tx = math.round(x + ux * side * d - faces * tk.kick * 5)
+		local ty = math.round(y + uy * side * d + rock - 6)
+		tk.x, tk.y, tk.faces = tx, ty, faces
+		tk.img.Position = UDim2.fromOffset(tx, ty)
+		tk.img.Visible = true
 	end
 	for i, sd in b.soldiers do
 		if now >= sd.next then
 			sd.next = now + FrontLayer.FIRE_MIN + math.random() * (FrontLayer.FIRE_MAX - FrontLayer.FIRE_MIN)
 			sd.kick = 1
 			local foe = b.soldiers[(if i <= 2 then 2 else 0) + math.random(1, 2)]
-			-- (the muzzle: the barrel's tip, just past the middle of the ball on the aiming side)
-			local S = FrontLayer.SOLDIER_PX
-			fire(self, now, sd.x + sd.faces * S * 0.14, sd.y + S * 0.13, foe.x + (math.random() - 0.5) * 6, foe.y + (math.random() - 0.5) * 6)
+			-- (the muzzle: the rifle's tip on the mini ball, 2x: 15 px out, 7 px down from its middle)
+			fire(self, now, sd.x + sd.faces * 15, sd.y + 7, foe.x + (math.random() - 0.5) * 6, foe.y + (math.random() - 0.5) * 6)
+		end
+	end
+	for i, tk in b.tanks do
+		if now >= tk.next then
+			tk.next = now + FrontLayer.TANK_FIRE_MIN + math.random() * (FrontLayer.TANK_FIRE_MAX - FrontLayer.TANK_FIRE_MIN)
+			tk.kick = 1
+			-- (at the other side's tank or one of its soldiers)
+			local foe = if math.random() < 0.5 then b.tanks[3 - i] else b.soldiers[(if i == 1 then 2 else 0) + math.random(1, 2)]
+			self._bfx:cannon(now, tk.x + tk.faces * 28, tk.y - 1, foe.x + (math.random() - 0.5) * 10, foe.y + (math.random() - 0.5) * 8)
 		end
 	end
 end
@@ -595,6 +602,11 @@ local function hide_battles(self: any, from: number)
 				sd.img.Visible = false
 			end
 		end
+		for _, tk in b.tanks do
+			if tk.img.Visible then
+				tk.img.Visible = false
+			end
+		end
 		b.key = "" -- (drawn again when it shows)
 	end
 end
@@ -602,15 +614,7 @@ end
 -- ===== (Take Over the World!) the border posts: a few soldiers on borders everywhere on screen =====
 
 local function post_soldier(self: any): ImageLabel
-	local img = Instance.new("ImageLabel")
-	img.Name = "Patrol"
-	img.BackgroundTransparency = 1
-	img.AnchorPoint = Vector2.new(0.5, 0.5)
-	img.ResampleMode = Enum.ResamplerMode.Pixelated
-	img.Size = UDim2.fromOffset(FrontLayer.SOLDIER_PX, FrontLayer.SOLDIER_PX)
-	img.ZIndex = FrontLayer.Z - 2
-	img.Parent = self.root
-	return img
+	return pixel_image(self, "Patrol", FrontLayer.SOLDIER_PX, FrontLayer.Z - 2)
 end
 
 local function drop_post(self: any, i: number)
@@ -627,7 +631,8 @@ end
 local function post_poll(self: any, now: number, battles: { { number } })
 	local st = self._state
 	local cam = self.view.rig
-	if st == nil or st.map == nil or st.phase ~= Defs.PHASE_PLAYING then
+	-- (only in a match the player is in: not on the title screen's live world behind the menu)
+	if st == nil or st.map == nil or st.phase ~= Defs.PHASE_PLAYING or (st.local_owner or 0) == 0 then
 		for i = #self._posts, 1, -1 do
 			drop_post(self, i)
 		end
@@ -787,6 +792,7 @@ local function post_tick(self: any, now: number)
 					sd.img.ImageContent = c
 				end
 			end
+			x, y = math.round(x), math.round(y)
 			sd.x, sd.y, sd.faces = x, y, faces
 			sd.img.Position = UDim2.fromOffset(x, y)
 		end
@@ -796,8 +802,7 @@ local function post_tick(self: any, now: number)
 					sd.next = now + FrontLayer.FIRE_MIN + math.random() * (FrontLayer.FIRE_MAX - FrontLayer.FIRE_MIN) + 0.4
 					sd.kick = 1
 					local foe = p.soldiers[3 - s]
-					local S = FrontLayer.SOLDIER_PX
-					fire(self, now, sd.x + sd.faces * S * 0.14, sd.y + S * 0.13, foe.x + (math.random() - 0.5) * 6, foe.y + (math.random() - 0.5) * 6)
+					fire(self, now, sd.x + sd.faces * 15, sd.y + 7, foe.x + (math.random() - 0.5) * 6, foe.y + (math.random() - 0.5) * 6)
 				end
 			end
 		end

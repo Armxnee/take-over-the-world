@@ -44,6 +44,9 @@ local WakeRoute = require(script.Parent:WaitForChild("WakeRoute")) :: any
 local TrailBudget = require(script.Parent:WaitForChild("TrailBudget")) :: any
 local FrameClock = require(script.Parent:WaitForChild("FrameClock")) :: any
 local Gear = require(Airfront:WaitForChild("Data"):WaitForChild("Gear")) :: any
+local Countries = require(Airfront:WaitForChild("Data"):WaitForChild("Countries")) :: any -- (Take Over the World!: jets)
+local Countryball = require("../UI/Countryball")
+local BattleFx = require(script.Parent:WaitForChild("BattleFx")) :: any
 
 --- The one-image sprites (Sprites.units_one) are used once the atlas is known to have loaded: an image
 --- still in moderation would leave every unit invisible.
@@ -188,6 +191,9 @@ function UnitLayer.new(parent: Instance, view: any)
 	self._px_seen = -1
 	self._drawn = 0
 	self._drawn_at = 0.0
+	-- (Take Over the World!: air strikes fly as Countryball jets and strafe their target)
+	self._jets = {} :: { [number]: any }
+	self._bfx = BattleFx.new(root, UnitLayer.Z + 4)
 	return self
 end
 
@@ -216,6 +222,11 @@ function UnitLayer.unbind(self: any)
 	table.clear(self._wakes)
 	self._sel_ring.Visible = false
 	table.clear(self._screen)
+	for uid, j in self._jets do
+		j.img:Destroy()
+		self._jets[uid] = nil
+	end
+	self._bfx:clear()
 end
 
 function UnitLayer.destroy(self: any)
@@ -468,11 +479,72 @@ end
 -- Frame
 -- ---------------------------------------------------------------------------------------------
 
+--- (Take Over the World!) Air strike `uid` as a Countryball jet at (x, y): facing and tilting the way it
+--- flies; over the last stretch it strafes the target (tracers and sparks), and blows it up at the end.
+UnitLayer.JET_PX = 64 -- (the 32 px jet at 2x)
+UnitLayer.STRAFE_FROM = 0.55 -- of the flight
+UnitLayer.STRAFE_S = 0.07
+function UnitLayer._jet(self: any, uid: number, n: any, t: number, x: number, y: number, now: number)
+	local st = self._state
+	local cam = self.view.rig
+	local j = self._jets[uid]
+	if j == nil then
+		local img = Instance.new("ImageLabel")
+		img.Name = "Jet"
+		img.BackgroundTransparency = 1
+		img.AnchorPoint = Vector2.new(0.5, 0.5)
+		img.ResampleMode = Enum.ResamplerMode.Pixelated
+		img.Size = UDim2.fromOffset(UnitLayer.JET_PX, UnitLayer.JET_PX)
+		img.ZIndex = UnitLayer.Z + 3
+		img.Parent = self.root
+		j = { img = img, key = "", next = 0, boomed = false }
+		self._jets[uid] = j
+	end
+	local x2, y2 = cam:map_to_screen(UnitLayer.nuke_uv(st, n, math.min(1, t + 0.02)))
+	local dx, dy = x2 - x, y2 - y
+	local right = dx >= 0
+	local key = tostring(n.owner) .. (if right then "r" else "l")
+	if j.key ~= key then
+		if self._flags_map ~= st.map then
+			self._flags_map = st.map
+			local ok, f = pcall(Countries.flags_by_name, st.map)
+			self._flags = if ok then f else {}
+		end
+		local o = st:get_owner(n.owner)
+		local name = o and o.name
+		local c = Countryball.vehicle_content("jet", name and self._flags[name], name, right)
+		if c ~= nil then
+			j.key = key
+			j.img.ImageContent = c
+		end
+	end
+	local tilt = 0
+	if math.abs(dx) + math.abs(dy) > 0.01 then
+		tilt = math.clamp(math.deg(math.atan2(dy, math.abs(dx))), -30, 30) * (if right then 1 else -1)
+	end
+	j.img.Rotation = tilt
+	j.img.Position = UDim2.fromOffset(math.round(x), math.round(y))
+	j.img.Visible = cam:on_screen(x, y, UnitLayer.JET_PX)
+	local tx, ty = cam:tile_to_screen(n.to_tile)
+	if t >= UnitLayer.STRAFE_FROM and now >= j.next and j.img.Visible then
+		j.next = now + UnitLayer.STRAFE_S
+		local face = if right then 1 else -1
+		self._bfx:shot(now, x + face * 28, y + 5, tx + (math.random() - 0.5) * 22, ty + (math.random() - 0.5) * 22)
+	end
+	if t >= 0.97 and not j.boomed then
+		j.boomed = true
+		self._bfx:blast(now, tx, ty, 26)
+		self._bfx:blast(now + 0.1, tx + 10, ty - 6, 16)
+		self._bfx:blast(now + 0.18, tx - 9, ty + 5, 14)
+	end
+end
+
 function UnitLayer.tick(self: any, _dt: number)
 	local st = self._state
 	if st == nil then
 		return
 	end
+	self._bfx:tick(FrameClock.now()) -- (Take Over the World!: the jets' shots, every frame)
 	local cam = self.view.rig
 	local rt = st.render_tick or st.tick or 0
 	local k = tonumber(st.map and st.map.k_lin) or Rules.K_LIN
@@ -631,7 +703,10 @@ function UnitLayer.tick(self: any, _dt: number)
 			end
 			px0, py0 = tx, ty
 		end
-		if cam:on_screen(x, y, npx) then
+		if n.kind == Defs.N_AIRSTRIKE then
+			-- (Take Over the World!: an air strike is the owner's Countryball jet, strafing at the end)
+			self:_jet(uid, n, t, x, y, now)
+		elseif cam:on_screen(x, y, npx) then
 			self:_sprite(uid * 16 + KEY_NUKE, col, n.owner, x, y, npx, seen, ntint)
 		end
 		if n.kind == Defs.N_WARHEAD and not rings_for_warheads then
@@ -667,6 +742,12 @@ function UnitLayer.tick(self: any, _dt: number)
 		ring.BackgroundColor3 = rc
 		ring.BackgroundTransparency = 0.85
 		ring.Visible = true
+	end
+	for uid, j in self._jets do -- (the jets whose strike has landed)
+		if st.nukes[uid] == nil then
+			j.img:Destroy()
+			self._jets[uid] = nil
+		end
 	end
 	for uid, r in self._rings do
 		if not rings_seen[uid] then

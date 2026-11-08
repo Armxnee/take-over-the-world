@@ -87,7 +87,7 @@ VARIANTS = [
     ("glasses_nvg_red", "glasses_nvg", "Thermal Goggles", "epic", "thermal"),
 ]
 
-CHARS = "abcdefghijklmnpqrstuvwxyz"  # "o" stays the ball's outline in Countryball
+CHARS = "abcdefghijklmnpqrstuvwxyzABCDEGHIJKLMNPQRSTUVWXYZ0123456789"  # "o" stays the ball's outline
 
 
 def load(name):
@@ -555,6 +555,83 @@ def rifle():
     return lua_item("rifle", quantise(rows, 10), x, y)
 
 
+VEHICLES = {
+    # the user's Countryball vehicles (32 x 32 art at 32 px a pixel): its ball's flag pixels become the
+    # owner's flag in game (Countryball.vehicle_content); `ball` = the ball's box on the 32 x 32 grid
+    "jet": ("dff83b3d-ab09-413a-9db6-7e8708dc7113.webp", (12, 11, 20, 14)),
+    "tank": ("2a19444a-58e2-4956-8cb8-8aac2325cef1.webp", (12, 9, 20, 13)),
+}
+
+
+def merge_close(rows, tol):
+    """Colours within `tol` of one already kept take its value (no palette squeeze: the eye whites and
+    the exhaust flame keep their own colours)."""
+    kept = []
+    out = []
+    for r in rows:
+        row = []
+        for c in r:
+            if c is None:
+                row.append(None)
+                continue
+            for k in kept:
+                if sum(abs(a - b) for a, b in zip(c, k)) <= tol:
+                    c = k
+                    break
+            else:
+                kept.append(c)
+            row.append(c)
+        out.append(row)
+    return out
+
+
+def vehicles():
+    """Each vehicle as rows (its own colours) plus a `flag` mask: "F" a flag pixel, "f" a flag pixel in
+    shade (the reference's red, dark red and the white top's grey: the ball's flag)."""
+    out = []
+    for key, (name, box) in VEHICLES.items():
+        im = load(name)
+        grid = [[tuple(int(v) for v in np.median(im[32 * j + 8 : 32 * j + 24, 32 * i + 8 : 32 * i + 24].reshape(-1, 3), axis=0)) for i in range(32)] for j in range(32)]
+        # the background: the navy reaching the border (navy it encloses is a dark outline)
+        near = np.array([[sum(abs(p - q) for p, q in zip(c, NAVY)) < 30 for c in row] for row in grid])
+        lab, n = ndimage.label(near)
+        edge = set(np.unique(np.concatenate([lab[0], lab[-1], lab[:, 0], lab[:, -1]]))) - {0}
+        rows, flag = [], []
+        for j in range(32):
+            r, f = [], ""
+            for i in range(32):
+                c = grid[j][i]
+                if lab[j, i] in edge:
+                    r.append(None)
+                    f += "."
+                    continue
+                if near[j, i]:
+                    c = OUTLINE
+                x0, y0, x1, y1 = box
+                inb = x0 <= i <= x1 and y0 <= j <= y1
+                red = c[0] > 70 and c[1] < 60 and c[2] < 80 and c[0] > c[1] * 2
+                grey = max(c) - min(c) < 16 and 100 <= c[0] < 235  # (pure white stays: the eye whites)
+                if inb and (red or grey):
+                    f += "f" if max(c) < 150 else "F"
+                    r.append((128, 128, 128))
+                else:
+                    f += "."
+                    r.append(OUTLINE if sum(c) < 40 else c)
+            rows.append(r)
+            flag.append(f)
+        ys = [j for j in range(32) if any(c is not None for c in rows[j])]
+        xs = [i for i in range(32) if any(rows[j][i] is not None for j in range(32))]
+        X0, X1, Y0, Y1 = min(xs), max(xs), min(ys), max(ys)
+        rows = merge_close([r[X0 : X1 + 1] for r in rows[Y0 : Y1 + 1]], 14)
+        flag = [f[X0 : X1 + 1] for f in flag[Y0 : Y1 + 1]]
+        item = lua_item(key, rows, X0, Y0)
+        mask = "\n".join('\t\t\t"%s",' % f for f in flag)
+        bx0, by0, bx1, by1 = box
+        item = item[: item.rindex("\t},")] + '\t\tball = { %d, %d, %d, %d },\n\t\tflag = {\n%s\n\t\t},\n\t},' % (bx0, by0, bx1, by1, mask)
+        out.append(item)
+    return "\n".join(out)
+
+
 def main():
     sheets = {}
     made = {}
@@ -597,6 +674,9 @@ def main():
         "GearSprites.empire = {\n" + empire() + "\n}\n\n"
         "--- the front-line soldier's rifle (Countryball.ball_content pose), aiming left\n"
         "GearSprites.soldier = {\n" + rifle() + "\n}\n\n"
+        "--- the Countryball vehicles (Countryball.vehicle_content): `flag` marks the ball's flag pixels\n"
+        "--- (F lit, f in shade) on the same grid as `rows`; `ball` = the ball's box (x0, y0, x1, y1)\n"
+        "GearSprites.vehicles = {\n" + vehicles() + "\n}\n\n"
         "return GearSprites\n"
     )
     with open(LUA, "w", encoding="utf-8", newline="\r\n") as f:
