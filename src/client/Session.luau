@@ -613,7 +613,14 @@ function Session._apply_own_unlocks(self: any)
 		if self._sim ~= sim then
 			return
 		end
-		sim:set_unlocks(st.local_owner, Arsenal.mask(self.inventory.unlocks))
+		-- (Take Over the World!: the Arsenal shop is gone: every Arsenal item is open, as in public
+		-- matches (server/Purchases.unlock_mask). Its old purchases left most of it locked: no airfield,
+		-- no planes, no artillery or railgun)
+		local all = {}
+		for _, it in Arsenal.ITEMS do
+			all[it.key] = true
+		end
+		sim:set_unlocks(st.local_owner, Arsenal.mask(all))
 	end
 end
 

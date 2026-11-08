@@ -130,8 +130,8 @@ function ShopSlot._build(self)
 	self._shield = new("ImageLabel", {
 		Name = "Shield",
 		BackgroundTransparency = 1,
-		Image = UITheme.icon("arsenal") or "",
-		ImageColor3 = INK,
+		Image = "rbxassetid://110859228590510", -- (Take Over the World!: the quests icon: this slot opens the quests)
+		ImageColor3 = Color3.new(1, 1, 1),
 		ScaleType = Enum.ScaleType.Fit,
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Visible = false,
@@ -140,7 +140,7 @@ function ShopSlot._build(self)
 	self._cap = new("TextLabel", {
 		Name = "Caption",
 		BackgroundTransparency = 1,
-		Text = "SHOP",
+		Text = "QUESTS", -- (Take Over the World!: it opens the quests)
 		FontFace = FONT_H,
 		TextColor3 = INK,
 		AnchorPoint = Vector2.new(0.5, 1),

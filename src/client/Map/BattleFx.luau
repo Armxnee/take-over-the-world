@@ -22,6 +22,42 @@ local FIRE_HOT = Color3.fromRGB(255, 230, 120)
 local SMOKE = Color3.fromRGB(90, 90, 96)
 local SHELL = Color3.fromRGB(40, 40, 44)
 
+-- (the shots' sound: the Roblox-licensed shell fire (Assets/Audio shell_fire), its first half second,
+-- faster and quieter for a rifle; under the game's "SFX" sound group (Audio/AudioDirector) so the game's mute and volume apply)
+BattleFx.SHOT_SOUND = "rbxassetid://1846435334"
+BattleFx.SOUND_GAP_S = 0.09 -- at most one shot sound this often (a battle is many shots)
+local sounds: { Sound } = {}
+local sound_i, sound_at = 0, -1
+local function play(now: number, speed: number, volume: number)
+	if now - sound_at < BattleFx.SOUND_GAP_S then
+		return
+	end
+	sound_at = now
+	local SoundService = game:GetService("SoundService")
+	if #sounds == 0 then
+		local folder = SoundService:FindFirstChild("AirfrontAudio") -- (Audio/AudioDirector's)
+		local group = folder and folder:FindFirstChild("SFX")
+		for _ = 1, 4 do
+			local s = Instance.new("Sound")
+			s.Name = "BattleShot"
+			s.SoundId = BattleFx.SHOT_SOUND
+			s.PlaybackRegionsEnabled = true
+			s.PlaybackRegion = NumberRange.new(0, 0.5)
+			if group ~= nil and group:IsA("SoundGroup") then
+				s.SoundGroup = group
+			end
+			s.Parent = SoundService
+			table.insert(sounds, s)
+		end
+	end
+	sound_i = sound_i % #sounds + 1
+	local s = sounds[sound_i]
+	s.PlaybackSpeed = speed * (0.94 + math.random() * 0.12)
+	s.Volume = volume
+	s.TimePosition = 0
+	s:Play()
+end
+
 function BattleFx.new(parent: Instance, z: number)
 	local self = setmetatable({}, BattleFx)
 	self.parent = parent
@@ -59,8 +95,11 @@ function BattleFx._add(self, fx: any)
 	table.insert(self.live, fx)
 end
 
---- A rifle shot from (x0, y0) to (x1, y1).
-function BattleFx.shot(self, now: number, x0: number, y0: number, x1: number, y1: number)
+--- A rifle shot from (x0, y0) to (x1, y1) (`quiet`: no sound, as a jet's strafing burst after its first).
+function BattleFx.shot(self, now: number, x0: number, y0: number, x1: number, y1: number, quiet: boolean?)
+	if not quiet then
+		play(now, 1.7, 0.22)
+	end
 	local flash = self:_frame(FLASH, 7, 7)
 	flash.Position = UDim2.fromOffset(x0, y0)
 	self:_add({ f = flash, kind = "flash", t0 = now, size = 7 })
@@ -72,6 +111,7 @@ end
 
 --- A tank's cannon: a big flash and a puff at the muzzle, a shell, and an explosion where it lands.
 function BattleFx.cannon(self, now: number, x0: number, y0: number, x1: number, y1: number)
+	play(now, 1.0, 0.4)
 	local flash = self:_frame(FIRE_HOT, 13, 13, true)
 	flash.Position = UDim2.fromOffset(x0, y0)
 	self:_add({ f = flash, kind = "flash", t0 = now, size = 13, dur = 0.12 })

@@ -225,6 +225,7 @@ function MapView.new(): MapView
 			{ "glow", "FalloutGlow", overlay },
 			{ "roads", "RoadLayer", overlay },
 			{ "ranges", "RangeLayer", overlay },
+			{ "need", "NeedLayer", overlay }, -- (Take Over the World!: the land an empire needs, in red)
 			{ "structures", "StructureLayer", overlay },
 			{ "units", "UnitLayer", moving },
 			{ "fx", "FxLayer", moving },
@@ -750,8 +751,24 @@ function MapView.set_admin_bots(self: any, bots: { [number]: boolean }?)
 	end
 end
 
+--- (Take Over the World!) Shows in red the `left` tiles of land nearest the player's borders (the land
+--- their empire still needs: UI/EmpireButton), or hides it when it shows already. Returns true when shown.
+function MapView.show_empire_need(self: any, left: number): boolean
+	local layer = self.layers.need
+	if layer == nil then
+		return false
+	end
+	if layer:showing() then
+		layer:hide()
+		return false
+	end
+	local tr = self._borders
+	return layer:show(left, tr and tr.border) > 0
+end
+
 --- The UI's BorderTracker (the local player's border tiles) for the front troop labels.
 function MapView.set_borders(self: any, tracker: any)
+	self._borders = tracker -- (Take Over the World!: NeedLayer starts from the player's border)
 	call(self.layers.fronts, "set_borders", tracker)
 end
 

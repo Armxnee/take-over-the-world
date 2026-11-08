@@ -20,7 +20,6 @@ local Rules = require(Core:WaitForChild("Rules")) :: any
 local NumberFormat = require(Core:WaitForChild("NumberFormat")) :: any
 local FrameClock = require(script.Parent:WaitForChild("FrameClock")) :: any
 local Countries = require(Airfront:WaitForChild("Data"):WaitForChild("Countries")) :: any -- (Take Over the World!: soldiers)
-local Empires = require(Airfront:WaitForChild("Data"):WaitForChild("Empires")) :: any
 local Countryball = require("../UI/Countryball")
 local BattleFx = require(script.Parent:WaitForChild("BattleFx")) :: any -- (the shots and blasts)
 
@@ -37,24 +36,13 @@ FrontLayer.INCOMING = Color3.fromRGB(0xf8, 0x71, 0x71)
 FrontLayer.TEXT_PX = 17
 FrontLayer.FONT = Font.fromId(12187365977, Enum.FontWeight.Bold)
 FrontLayer.Z = 24
--- (Take Over the World!, 2026-11-08: a battle at every front label: two of the player's Countryball
--- soldiers face two of the other country's across the border, rifles out, firing at each other)
+-- (Take Over the World!, 2026-11-08: mini Countryball soldiers at the player's defense posts; they fire
+-- at the other country's across a border when the two are at war)
 FrontLayer.SOLDIER_PX = 32 -- (Countryball.MINI 16 px at exactly 2x: a round ball)
-FrontLayer.TANK_PX = 64 -- (the 32 px tank at 2x)
-FrontLayer.TANK_BACK = 40 -- px behind its side's soldiers
-FrontLayer.TANK_FIRE_MIN, FrontLayer.TANK_FIRE_MAX = 2.2, 4.0
-FrontLayer.SOLDIER_GAP = 30 -- px from the front to each side's line
-FrontLayer.SOLDIER_SPREAD = 24 -- px between the two soldiers of a side
 FrontLayer.FIRE_MIN, FrontLayer.FIRE_MAX = 0.6, 1.5 -- seconds between a soldier's shots
-FrontLayer.TRACER_S = 0.11
-FrontLayer.FLASH_S = 0.07
-FrontLayer.SOLDIER_HAT = "hat_combat_helmet" -- (an empire's soldiers wear its spiked helmet)
--- (and a few border posts everywhere on screen: a soldier of each country on its side of a border,
--- patrolling along it; when the two are at war they face each other and fire)
-FrontLayer.MAX_POSTS = 10
-FrontLayer.POST_SPACING = 120 -- px between posts (and from the front battles)
-FrontLayer.POST_POLL_S = 0.7
-FrontLayer.POST_SAMPLES = 24 -- random looks for a border, each poll
+FrontLayer.MAX_POSTS = 12
+FrontLayer.POST_POLL_S = 0.5
+FrontLayer.POST_REACH = 40 -- full-size tiles a post looks for another country's land
 FrontLayer.POST_GAP = 15 -- px from the border to each soldier
 FrontLayer.PATROL_PX = 10 -- how far a patrol walks either way along the border
 
@@ -80,11 +68,9 @@ function FrontLayer.new(parent: Instance, view: any)
 	--- aid -> label entry
 	self._entries = {} :: { [number]: Entry }
 	self._labels = {} :: { Label }
-	self._battles = {} -- (Take Over the World!: the soldiers at each shown front, and the shots)
 	self._bfx = BattleFx.new(root, FrontLayer.Z) -- (the shots, shells and blasts)
 	self._posts = {} -- (the border posts)
 	self._post_poll = 0.0
-	self._battle_pts = {} -- (where the battles are on screen this frame)
 	self._poll = 0.0
 	--- (a poll's working tables: the owners wanted, the attacks (records reused), owner -> front
 	--- tiles (an empty list: none))
@@ -437,7 +423,7 @@ local function label(self: any, n: number): Label
 	return rec :: Label
 end
 
--- ===== (Take Over the World!) the battles: Countryball soldiers firing across each front =====
+-- ===== (Take Over the World!) the soldiers: mini Countryballs and their shots =====
 
 --- An owner's name and flag code (the flags by name are read once a map).
 local function owner_flag(self: any, owner: number): (string?, string?)
@@ -464,15 +450,6 @@ local function soldier_art(self: any, owner: number, right: boolean): Content?
 	return Countryball.mini_content(code, name, right)
 end
 
---- An owner's tank (the user's Countryball tank, its ball in the owner's flag), facing right or left.
-local function tank_art(self: any, owner: number, right: boolean): Content?
-	local code, name = owner_flag(self, owner)
-	if name == nil then
-		return nil
-	end
-	return Countryball.vehicle_content("tank", code, name, right)
-end
-
 --- One rifle shot (Map/BattleFx): a muzzle flash, a tracer flying across, a spark where it lands.
 local function fire(self: any, now: number, x0: number, y0: number, x1: number, y1: number)
 	self._bfx:shot(now, x0, y0, x1, y1)
@@ -494,124 +471,11 @@ local function pixel_image(self: any, name: string, px: number, z: number): Imag
 	return img
 end
 
---- Battle `n` at the front point (x, y) on screen: the player's two soldiers on their side of the
---- front, the other owner's two on theirs, each line facing the other and firing now and then.
-local function battle(self: any, n: number, now: number, x: number, y: number, s: any, e: any)
-	local st = self._state
-	local me = st and st.local_owner or 0
-	local b = self._battles[n]
-	if b == nil then
-		b = { soldiers = {}, tanks = {}, key = "" }
-		for i = 1, 4 do
-			b.soldiers[i] = {
-				img = pixel_image(self, "Soldier", FrontLayer.SOLDIER_PX, FrontLayer.Z - 1),
-				next = now + math.random() * FrontLayer.FIRE_MAX,
-				kick = 0,
-				x = 0,
-				y = 0,
-			}
-		end
-		for i = 1, 2 do
-			b.tanks[i] = {
-				img = pixel_image(self, "Tank", FrontLayer.TANK_PX, FrontLayer.Z - 2),
-				next = now + 1 + math.random() * FrontLayer.TANK_FIRE_MAX,
-				kick = 0,
-				x = 0,
-				y = 0,
-			}
-		end
-		self._battles[n] = b
-	end
-	local ux, uy = s.ux or 1, s.uy or 0
-	local right = ux >= 0 -- the player's soldiers face right when the enemy lies to the right
-	local key = string.format("%d|%d|%s", me, e.other or 0, tostring(right))
-	if b.key ~= key then
-		b.key = key
-		local mine, theirs = soldier_art(self, me, right), soldier_art(self, e.other or 0, not right)
-		for i, sd in b.soldiers do
-			local c = if i <= 2 then mine else theirs
-			if c ~= nil then
-				sd.img.ImageContent = c
-			end
-		end
-		local tm, tt = tank_art(self, me, right), tank_art(self, e.other or 0, not right)
-		if tm then
-			b.tanks[1].img.ImageContent = tm
-		end
-		if tt then
-			b.tanks[2].img.ImageContent = tt
-		end
-	end
-	local px, py = -uy, ux
-	local gap, spread = FrontLayer.SOLDIER_GAP, FrontLayer.SOLDIER_SPREAD / 2
-	for i, sd in b.soldiers do
-		local side = if i <= 2 then -1 else 1 -- -1: the player's side of the front
-		local lane = if i % 2 == 1 then -1 else 1
-		local back = if lane > 0 then 4 else 0 -- (the second soldier a step behind)
-		-- (moving: each soldier steps up to the front and back again, hopping as it walks)
-		local step = (math.sin(now * 1.4 + i * 2.1) * 0.5 + 0.5) * 7
-		local hop = -math.abs(math.sin(now * 7 + i * 1.3)) * 2.5
-		local faces = if side < 0 then (if right then 1 else -1) else (if right then -1 else 1)
-		sd.kick = math.max(0, sd.kick - 0.12)
-		local d = gap + back - step
-		local sx = math.round(x + ux * side * d + px * lane * spread - faces * sd.kick * 3)
-		local sy = math.round(y + uy * side * d + py * lane * spread + hop)
-		sd.x, sd.y, sd.faces = sx, sy, faces
-		sd.img.Position = UDim2.fromOffset(sx, sy)
-		sd.img.Visible = true
-	end
-	-- a tank behind each side's soldiers: rolling a little back and forth, rocking on its tracks
-	for i, tk in b.tanks do
-		local side = if i == 1 then -1 else 1
-		local faces = if side < 0 then (if right then 1 else -1) else (if right then -1 else 1)
-		tk.kick = math.max(0, tk.kick - 0.06)
-		local roll = math.sin(now * 0.7 + i * 2.5) * 5
-		local rock = if math.sin(now * 13 + i) > 0 then 0 else 1
-		local d = gap + FrontLayer.TANK_BACK + roll
-		local tx = math.round(x + ux * side * d - faces * tk.kick * 5)
-		local ty = math.round(y + uy * side * d + rock - 6)
-		tk.x, tk.y, tk.faces = tx, ty, faces
-		tk.img.Position = UDim2.fromOffset(tx, ty)
-		tk.img.Visible = true
-	end
-	for i, sd in b.soldiers do
-		if now >= sd.next then
-			sd.next = now + FrontLayer.FIRE_MIN + math.random() * (FrontLayer.FIRE_MAX - FrontLayer.FIRE_MIN)
-			sd.kick = 1
-			local foe = b.soldiers[(if i <= 2 then 2 else 0) + math.random(1, 2)]
-			-- (the muzzle: the rifle's tip on the mini ball, 2x: 15 px out, 7 px down from its middle)
-			fire(self, now, sd.x + sd.faces * 15, sd.y + 7, foe.x + (math.random() - 0.5) * 6, foe.y + (math.random() - 0.5) * 6)
-		end
-	end
-	for i, tk in b.tanks do
-		if now >= tk.next then
-			tk.next = now + FrontLayer.TANK_FIRE_MIN + math.random() * (FrontLayer.TANK_FIRE_MAX - FrontLayer.TANK_FIRE_MIN)
-			tk.kick = 1
-			-- (at the other side's tank or one of its soldiers)
-			local foe = if math.random() < 0.5 then b.tanks[3 - i] else b.soldiers[(if i == 1 then 2 else 0) + math.random(1, 2)]
-			self._bfx:cannon(now, tk.x + tk.faces * 28, tk.y - 1, foe.x + (math.random() - 0.5) * 10, foe.y + (math.random() - 0.5) * 8)
-		end
-	end
-end
-
-local function hide_battles(self: any, from: number)
-	for j = from, #self._battles do
-		local b = self._battles[j]
-		for _, sd in b.soldiers do
-			if sd.img.Visible then
-				sd.img.Visible = false
-			end
-		end
-		for _, tk in b.tanks do
-			if tk.img.Visible then
-				tk.img.Visible = false
-			end
-		end
-		b.key = "" -- (drawn again when it shows)
-	end
-end
-
--- ===== (Take Over the World!) the border posts: a few soldiers on borders everywhere on screen =====
+-- ===== (Take Over the World!) the defense posts' soldiers =====
+-- (2026-11-08: only where the player has built a defense post) Each of the player's defense posts in
+-- view has a pair of mini Countryball soldiers: when another country's land is near, one of the
+-- player's faces one of theirs across that border (firing when the two are at war); otherwise two of
+-- the player's guard the post, patrolling beside it.
 
 local function post_soldier(self: any): ImageLabel
 	return pixel_image(self, "Patrol", FrontLayer.SOLDIER_PX, FrontLayer.Z - 2)
@@ -625,21 +489,58 @@ local function drop_post(self: any, i: number)
 	table.remove(self._posts, i)
 end
 
---- Keeps up to MAX_POSTS posts on borders between two owners' land in view: drops those that left
---- the screen or whose border moved, then looks for new ones (a random point walks a random way
---- until the owner changes: that is a border).
-local function post_poll(self: any, now: number, battles: { { number } })
+local function drop_posts(self: any)
+	for i = #self._posts, 1, -1 do
+		drop_post(self, i)
+	end
+end
+
+local DIRS = { { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 }, { 1, 1 }, { -1, 1 }, { 1, -1 }, { -1, -1 } }
+
+--- The other owner's land nearest defense post `tile` (8 ways, up to `reach` tiles): the player's last
+--- tile before it, that tile, and the owner; nil when none is near.
+local function nearest_border(st: any, tile: number, W: number, N: number, me: number, reach: number): (number?, number?, number?)
+	local best, bt1, bt2, bo = math.huge, nil, nil, nil
+	local tx, ty = tile % W, tile // W
+	for _, d in DIRS do
+		local prev = tile
+		for k = 1, reach do
+			local x, y = tx + d[1] * k, ty + d[2] * k
+			if x < 0 or x >= W or y < 0 then
+				break
+			end
+			local t = y * W + x
+			if t >= N then
+				break
+			end
+			local o = st:tile_owner(t)
+			if o ~= me then
+				if o ~= 0 and k < best then
+					best, bt1, bt2, bo = k, prev, t, o
+				end
+				break
+			end
+			prev = t
+		end
+	end
+	return bt1, bt2, bo
+end
+
+--- Keeps a post at each of the player's defense posts in view (up to MAX_POSTS) and finds the border
+--- each one watches.
+local function post_poll(self: any, now: number)
 	local st = self._state
 	local cam = self.view.rig
+	local me = if st ~= nil then st.local_owner or 0 else 0
 	-- (only in a match the player is in: not on the title screen's live world behind the menu)
-	if st == nil or st.map == nil or st.phase ~= Defs.PHASE_PLAYING or (st.local_owner or 0) == 0 then
-		for i = #self._posts, 1, -1 do
-			drop_post(self, i)
-		end
+	if st == nil or st.map == nil or st.phase ~= Defs.PHASE_PLAYING or me == 0 then
+		drop_posts(self)
 		return
 	end
 	local W = st.map.W or Defs.W
 	local N = st.map.N or (W * (st.map.H or Defs.H))
+	local k = tonumber(st.map.k_lin) or Rules.K_LIN
+	local reach = math.max(4, math.ceil(FrontLayer.POST_REACH / k))
 	-- the owners at war with each other (an attack either way)
 	local war = self._war or {}
 	self._war = war
@@ -650,123 +551,78 @@ local function post_poll(self: any, now: number, battles: { { number } })
 			war[a.target * 65536 + a.attacker] = true
 		end
 	end
-	local i = 1
-	while i <= #self._posts do
-		local p = self._posts[i]
-		local x, y = cam:tile_to_screen(p.t1)
-		if
-			not cam:on_screen(x, y, 30)
-			or st:tile_owner(p.t1) ~= p.a
-			or st:tile_owner(p.t2) ~= p.b
-		then
+	local wanted = {}
+	for sid, s in st.structures do
+		if s.kind == Defs.S_DEFENSE and s.owner == me then
+			local x, y = cam:tile_to_screen(s.tile)
+			if cam:on_screen(x, y, 30) then
+				wanted[sid] = s
+			end
+		end
+	end
+	for i = #self._posts, 1, -1 do
+		if wanted[self._posts[i].sid] == nil then
 			drop_post(self, i)
+		end
+	end
+	local have = {}
+	for _, p in self._posts do
+		have[p.sid] = p
+	end
+	for sid, s in wanted do
+		local p = have[sid]
+		if p == nil then
+			if #self._posts >= FrontLayer.MAX_POSTS then
+				continue
+			end
+			p = { sid = sid, phase = math.random() * 10, soldiers = {} }
+			for i = 1, 2 do
+				p.soldiers[i] = {
+					img = post_soldier(self),
+					key = "",
+					next = now + math.random() * FrontLayer.FIRE_MAX,
+					kick = 0,
+					x = 0,
+					y = 0,
+					faces = 1,
+				}
+			end
+			table.insert(self._posts, p)
+		end
+		p.a = me
+		local t1, t2, b = nearest_border(st, s.tile, W, N, me, reach)
+		if t1 ~= nil and t2 ~= nil and b ~= nil then
+			p.t1, p.t2, p.b = t1, t2, b
+			p.ux, p.uy = front_dir(st, t1, W, me, b)
+			p.war = war[me * 65536 + b] == true
 		else
-			p.war = war[p.a * 65536 + p.b] == true
-			i += 1
-		end
-	end
-	if #self._posts >= FrontLayer.MAX_POSTS then
-		return
-	end
-	local vp = cam:viewport_size()
-	local sp2 = FrontLayer.POST_SPACING ^ 2
-	local function free(x: number, y: number): boolean
-		for _, p in self._posts do
-			local px, py = cam:tile_to_screen(p.t1)
-			if (px - x) ^ 2 + (py - y) ^ 2 < sp2 then
-				return false
-			end
-		end
-		for _, b in battles do
-			if (b[1] - x) ^ 2 + (b[2] - y) ^ 2 < sp2 then
-				return false
-			end
-		end
-		return true
-	end
-	local tpp = math.max(cam:tiles_per_px(), 1e-3) -- tiles per screen px
-	for _ = 1, FrontLayer.POST_SAMPLES do
-		if #self._posts >= FrontLayer.MAX_POSTS then
-			break
-		end
-		local sx, sy = 40 + math.random() * (vp.X - 80), 90 + math.random() * (vp.Y - 220)
-		local u, v = cam:screen_to_map(sx, sy)
-		if u < 0 or v < 0 or u >= W then
-			continue
-		end
-		local t = math.floor(v) * W + math.floor(u)
-		if t < 0 or t >= N then
-			continue
-		end
-		local a = st:tile_owner(t)
-		if a == 0 then
-			continue
-		end
-		local ang = math.random() * 2 * math.pi
-		local dx, dy = math.cos(ang), math.sin(ang)
-		local stepl = math.max(1, 3 * tpp) -- (about 3 px a step)
-		local prev = t
-		for k = 1, 40 do
-			local uu, vv = u + dx * stepl * k, v + dy * stepl * k
-			if uu < 0 or vv < 0 or uu >= W then
-				break
-			end
-			local tt = math.floor(vv) * W + math.floor(uu)
-			if tt < 0 or tt >= N then
-				break
-			end
-			local b = st:tile_owner(tt)
-			if b ~= a then
-				if b ~= 0 then
-					local px, py = cam:tile_to_screen(prev)
-					if cam:on_screen(px, py, -40) and free(px, py) then
-						local ux, uy = front_dir(st, prev, W, a, b)
-						local p = {
-							t1 = prev,
-							t2 = tt,
-							a = a,
-							b = b,
-							ux = ux,
-							uy = uy,
-							war = war[a * 65536 + b] == true,
-							phase = math.random() * 10,
-							soldiers = {},
-						}
-						for s = 1, 2 do
-							p.soldiers[s] = {
-								img = post_soldier(self),
-								key = "",
-								next = now + math.random() * FrontLayer.FIRE_MAX,
-								kick = 0,
-								x = 0,
-								y = 0,
-								faces = 1,
-							}
-						end
-						table.insert(self._posts, p)
-					end
-				end
-				break
-			end
-			prev = tt
+			p.t1, p.t2, p.b, p.ux, p.uy, p.war = s.tile, nil, 0, 1, 0, false
 		end
 	end
 end
 
---- Draws the posts: at peace each soldier patrols along the border (walking, hopping, facing where
---- it walks); at war the two face each other across it, step in and out and fire.
+--- Draws the posts: guards patrol beside their post; at a border one soldier of each side stands on
+--- its own land, patrolling along it, or at war facing the other, stepping in and out and firing.
 local function post_tick(self: any, now: number)
 	local cam = self.view.rig
 	for _, p in self._posts do
+		local guard = p.b == 0
 		local bx, by = cam:tile_to_screen(p.t1)
 		local ux, uy = p.ux, p.uy
 		local px, py = -uy, ux
 		for s, sd in p.soldiers do
-			local owner = if s == 1 then p.a else p.b
+			local owner = if s == 1 or guard then p.a else p.b
 			local side = if s == 1 then -1 else 1
 			local ph = p.phase + s * 1.9
 			local x, y, faces
-			if p.war then
+			if guard then
+				-- two guards beside the post, walking a few steps either way
+				local w = math.sin(now * 0.9 + ph)
+				local vel = math.cos(now * 0.9 + ph)
+				faces = if vel >= 0 then 1 else -1
+				x = bx + side * 15 + w * 6
+				y = by + 10 - math.abs(math.sin(now * 6 + ph)) * 2 * math.min(1, math.abs(vel) * 2)
+			elseif p.war then
 				local toward = ux * -side -- (+: the enemy lies to the right)
 				faces = if toward >= 0 then 1 else -1
 				local step = (math.sin(now * 1.4 + ph) * 0.5 + 0.5) * 6
@@ -779,8 +635,7 @@ local function post_tick(self: any, now: number)
 				local w = math.sin(now * 0.8 + ph)
 				local along = w * FrontLayer.PATROL_PX
 				local vel = math.cos(now * 0.8 + ph) -- (its walking direction along the border)
-				local walk_x = px * vel
-				faces = if walk_x >= 0 then 1 else -1
+				faces = if px * vel >= 0 then 1 else -1
 				x = bx + ux * side * FrontLayer.POST_GAP + px * along
 				y = by + uy * side * FrontLayer.POST_GAP + py * along - math.abs(math.sin(now * 6 + ph)) * 2 * math.min(1, math.abs(vel) * 2)
 			end
@@ -796,7 +651,7 @@ local function post_tick(self: any, now: number)
 			sd.x, sd.y, sd.faces = x, y, faces
 			sd.img.Position = UDim2.fromOffset(x, y)
 		end
-		if p.war then
+		if p.war and not guard then
 			for s, sd in p.soldiers do
 				if now >= sd.next then
 					sd.next = now + FrontLayer.FIRE_MIN + math.random() * (FrontLayer.FIRE_MAX - FrontLayer.FIRE_MIN) + 0.4
@@ -847,24 +702,13 @@ function FrontLayer.tick(self: any, dt: number)
 				rec.x, rec.y = x, y
 				l.Position = UDim2.fromOffset(x, y)
 			end
-			battle(self, n, now, x, y, s, e) -- (Take Over the World!: the soldiers at this front)
-			local bp = self._battle_pts[n]
-			if bp == nil then
-				bp = {}
-				self._battle_pts[n] = bp
-			end
-			bp[1], bp[2] = x, y
 		end
 	end
-	hide_battles(self, n + 1)
-	-- (Take Over the World!: the border posts, kept clear of the battles)
-	for j = #self._battle_pts, n + 1, -1 do
-		self._battle_pts[j] = nil
-	end
+	-- (Take Over the World!: the soldiers at the player's defense posts)
 	self._post_poll -= dt
 	if self._post_poll <= 0 then
 		self._post_poll = FrontLayer.POST_POLL_S
-		post_poll(self, now, self._battle_pts)
+		post_poll(self, now)
 	end
 	post_tick(self, now)
 	fx_tick(self, now)

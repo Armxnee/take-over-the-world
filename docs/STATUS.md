@@ -444,3 +444,24 @@ An original real-time territory-conquest game for Roblox. RoWorld is the gamepla
   Facing comes from front_dir (owners in an 11x11 window). Countryball.ball_content(code, name, gear, pose).
 - (later) Border posts (FrontLayer post_poll / post_tick): up to 10 pairs of mini Countryball soldiers on any two countries' border in view, found by random walks until the owner changes, 120 px apart and clear of the front battles. At peace they patrol along the border (hopping walk, facing the way they walk); when the two countries are at war (an attack either way) they face each other, step in and out and fire. Front-battle soldiers now step and hop too. Only in the PLAYING phase (the title screen's live world shows them as well).
 - (later) Mini soldiers are Countryball.mini_content (16 px, drawn at exactly 2x: round, helmet, eyes looking the way they face, rifle across); positions rounded to whole px. No soldiers unless the player is in the match (the title screen's world has local_owner 0). Countryball.vehicle_content('jet'|'tank') from the user's vehicle images (GearSprites.vehicles, flag pixels repainted with the owner's flag). FrontLayer battles add a tank per side (64 px, rolling, cannon every 2-4 s). UnitLayer draws air strikes (N_AIRSTRIKE) as the owner's jet, facing and tilting with its flight, strafing the target from 55% of the flight and exploding at the end. Map/BattleFx: shared shots, cannon shells, blasts and smoke. Jets not yet seen on a live strike in a playtest.
+
+## 2026-11-08 (4): unlocks, defense-post soldiers, quests, Fortnite shop, Korea, no Antarctica, jets
+- Locked Arsenal items fixed: solo matches now unlock every Arsenal item (Session._apply_own_unlocks),
+  as public matches do; old purchases had left the airfield / artillery / railgun locked.
+- Tanks and front battles removed (FrontLayer). Mini Countryball soldiers now stand only at the local
+  player's defense posts (up to 12 in view): a pair across the nearest border, or two guards; they
+  patrol at peace and fire at war. Shots and cannon have a sound now (BattleFx.SHOT_SOUND, pooled, pitched).
+- Empire circle: clicking it paints the land still needed in red over the map for 8 s (Map/NeedLayer:
+  breadth-first out from the player's border; MapView.show_empire_need).
+- QuestPanel rebuilt: header band, DAILY / WEEKLY tabs with reset timers and claim badges, three cards
+  (icon tile, progress bar with count, coin chip, CLAIM / IN PROGRESS / CLAIMED). In-game slot says QUESTS.
+- Item shop restyled after Fortnite's: nav pills (ITEM SHOP / MY ITEMS / BUY COINS), FEATURED (5) and
+  DAILY (10) rows of tall rarity cards with "Refreshes in" timers, section dots; no character preview.
+- Antarctica removed from the World map (tools/remove_antarctica.py: ocean, grid and nation list).
+- Korean War map (tools/build_korea.py, Natural Earth 10m admin-1): 728 x 1333, all of North and South
+  Korea, 27 provinces (kr / kp flags). Lobbies: LobbyRules.FIXED_TEAM_GAMES.korea = 10 players, 2 teams.
+  Thumbnails: tools/assets/make_map_thumbs.py (korea + world re-rendered).
+- Jets: air strikes flew at 8 tiles/tick (gone in under a second); now 2.5 and at least 2.5 s
+  (Rules.AIRSTRIKE_MIN_TICKS), so the Countryball jet is seen crossing, strafing and hitting.
+- Studio sync of big modules without the bridge: pack the file into a lossless RGB PNG (len + crc32 header),
+  upload_image, read it back in Studio with EditableImage, check the crc, ScriptEditorService:UpdateSourceAsync.

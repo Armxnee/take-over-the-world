@@ -576,6 +576,11 @@ LobbyRules.SPECIAL_TEAM_COUNT = {
 	juandefucastrait = 3,
 }
 LobbyRules.SPECIAL_TEAM_CHANCE = 0.75
+--- (Take Over the World!, 2026-11-08) Maps whose team games are always this: the Korean War is North
+--- against South, 2 teams of 5.
+LobbyRules.FIXED_TEAM_GAMES = {
+	korea = { players = 10, teams = 2 },
+}
 --- A map's weight in team games; a map not listed weighs its multiplayer_frequency.
 LobbyRules.TEAM_FREQUENCY = {
 	babelmandebstrait = 10,
@@ -589,7 +594,7 @@ LobbyRules.TEAM_FREQUENCY = {
 	falklandislands = 8,
 	gulfofstlawrence = 8,
 	juandefucastrait = 8,
-	korea = 10,
+	korea = 60, -- (Take Over the World!: the Korean War, most team games)
 	madagascar = 10,
 	straitofgibraltar = 10,
 	straitofhormuz = 8,

@@ -812,8 +812,11 @@ local function build(K_LIN: number): any
 	Rules.SAM_MISSILE_SPEED_FULL = 12.0
 	Rules.NUKE_TARGETABLE_FULL = 150.0
 	--- nukeSpeed (full-size tiles per tick): atom / hydrogen 10, MIRV 15, warhead 22.
-	--- (Arsenal: mega / scattershot 10 like the bombs; shell 6, air strike 8, slug 80.)
-	Rules.NUKE_SPEED_FULL = f32t({ 10.0, 10.0, 15.0, 22.0, 10.0, 10.0, 6.0, 8.0, 80.0 })
+	--- (Arsenal: mega / scattershot 10 like the bombs; shell 6, air strike 2.5, slug 80.)
+	--- (Take Over the World!, 2026-11-08: the air strike's jet flew at 8, under a second, too fast to see;
+	--- now 2.5 and never under AIRSTRIKE_MIN_TICKS, so it takes off, crosses, strafes and hits.)
+	Rules.NUKE_SPEED_FULL = f32t({ 10.0, 10.0, 15.0, 22.0, 10.0, 10.0, 6.0, 2.5, 80.0 })
+	Rules.AIRSTRIKE_MIN_TICKS = 25
 	--- MIRV: 350 warheads within 1500 full-size tiles of the aim, on the target's land.
 	Rules.MIRV_WARHEADS = 350
 	Rules.MIRV_SPREAD = trunc(1500.0 / K_LIN)
@@ -912,7 +915,11 @@ local function build(K_LIN: number): any
 	--- Ticks to fly `arc`: a nuke moves nukeSpeed full-size tiles along the curve per tick.
 	function Rules.nuke_arc_ticks(arc: any, kind: number?): number
 		local speed = Rules.NUKE_SPEED_FULL[clampi(kind or Defs.N_ATOM, 0, Defs.NUKE_KIND_COUNT - 1)]
-		return math.max(1, trunc(math.ceil(arc.length * K_LIN / speed)))
+		local ticks = math.max(1, trunc(math.ceil(arc.length * K_LIN / speed)))
+		if kind == Defs.N_AIRSTRIKE then
+			return math.max(ticks, Rules.AIRSTRIKE_MIN_TICKS)
+		end
+		return ticks
 	end
 
 	-- ---------------------------------------------------------------------------------------------

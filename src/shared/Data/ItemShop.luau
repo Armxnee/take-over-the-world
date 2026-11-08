@@ -9,8 +9,8 @@ local Bundles = require("./Bundles")
 local ItemShop = {}
 
 ItemShop.CRATE_PRICE = 1500
-ItemShop.FEATURED = 3 -- the big cards (rare and up)
-ItemShop.DAILY = 6 -- the small cards (anything for sale)
+ItemShop.FEATURED = 5 -- the featured cards (rare and up), a row of five
+ItemShop.DAILY = 10 -- the daily cards (anything for sale), two rows of five
 ItemShop.PRICES = { common = 800, uncommon = 1500, rare = 2500, epic = 5000, legendary = 12000 }
 ItemShop.DEFAULT_PRICE = 2000
 

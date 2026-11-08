@@ -16,9 +16,10 @@ MapList.maps = {
 	{ id = "africa", name = "Africa", module = "Africa", width = 1489, height = 1332, k_lin = 1.0, categories = { "featured", "continental", "africa" }, multiplayer_frequency = 10, land_tiles = 963230, nations = 45 },
 	{ id = "asia", name = "Asia", module = "Asia", width = 1536, height = 1350, k_lin = 1.0, categories = { "featured", "continental", "asia" }, multiplayer_frequency = 10, land_tiles = 1202586, nations = 64 },
 	{ id = "europe", name = "Europe", module = "Europe", width = 1422, height = 1254, k_lin = 1.0, categories = { "featured", "continental", "europe" }, multiplayer_frequency = 10, land_tiles = 831821, nations = 48 },
+	{ id = "korea", name = "Korean War", module = "Korea", width = 728, height = 1333, k_lin = 1.0, categories = { "featured", "war", "asia" }, multiplayer_frequency = 0, land_tiles = 313345, nations = 27 },
 	{ id = "northamerica", name = "North America", module = "NorthAmerica", width = 1655, height = 1224, k_lin = 1.0, categories = { "featured", "continental", "north_america" }, multiplayer_frequency = 10, land_tiles = 738172, nations = 50 },
 	{ id = "southamerica", name = "South America", module = "SouthAmerica", width = 1165, height = 1420, k_lin = 1.0, categories = { "featured", "continental", "south_america" }, multiplayer_frequency = 10, land_tiles = 587124, nations = 36 },
-	{ id = "world", name = "World", module = "World", width = 2000, height = 1000, k_lin = 1.0, categories = { "featured", "world" }, multiplayer_frequency = 30, forced_modifiers = { "isCrowded:50" }, land_tiles = 689018, nations = 71, replicated = true },
+	{ id = "world", name = "World", module = "World", width = 2000, height = 1000, k_lin = 1.0, categories = { "featured", "world" }, multiplayer_frequency = 30, forced_modifiers = { "isCrowded:50" }, land_tiles = 481404, nations = 68, replicated = true },
 }
 
 local by_id: { [string]: any } = {}

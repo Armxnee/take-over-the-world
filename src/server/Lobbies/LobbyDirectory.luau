@@ -306,6 +306,10 @@ function LobbyDirectory.create(self: any, starts: number, mode: string?): LobbyR
 	local teams = nil
 	if team then
 		max, teams = LobbyRules.team_slots(max, LobbyRules.team_config(map_id, deps.rand(), deps.rand()))
+		local fixed = LobbyRules.FIXED_TEAM_GAMES[map_id] -- (Take Over the World!: the Korean War, 2 x 5)
+		if fixed ~= nil then
+			max, teams = fixed.players, fixed.teams
+		end
 	end
 	local code, psid = deps.teleport.reserve()
 	local now = deps.now()

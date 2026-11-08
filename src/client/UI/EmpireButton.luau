@@ -106,7 +106,7 @@ function EmpireButton.new(ctx: any, gui: Instance, top: (() -> GuiObject?)?)
 		BackgroundTransparency = GLASS_T,
 		AnchorPoint = Vector2.new(0.5, 0),
 		Position = UDim2.new(0.5, 0, 1, 8),
-		Size = UDim2.fromOffset(210, 50),
+		Size = UDim2.fromOffset(300, 50),
 		Visible = false,
 		ZIndex = 33,
 	}, holder)
@@ -142,9 +142,15 @@ function EmpireButton.new(ctx: any, gui: Instance, top: (() -> GuiObject?)?)
 	Anim.button(self.hit, holder, 1.08)
 	self.hit.Activated:Connect(function()
 		if not self.ready then
-			-- (a tap shows the tip on touch screens; another hides it)
+			-- (a click shows the land still needed in red on the map, and keeps the tip up; another
+			-- hides both)
 			self.pinned = not self.pinned
 			self:_tip()
+			local left = self._left or 0
+			if left > 0 then
+				self.ctx:world_call("show_empire_need", { left })
+				self.ctx:sfx("click")
+			end
 			return
 		end
 		local se = self.ctx.session
@@ -281,6 +287,7 @@ function EmpireButton.refresh(self)
 		if not Empires.is_empire(o.name) then
 			local need = Empires.need(land, self:_home(st))
 			local k = math.clamp(o.tiles / need, 0, 1)
+			self._left = math.max(0, math.ceil(need - o.tiles))
 			if k >= EmpireButton.SHOW_FROM then
 				show = true
 				local e = Empires.of(o.name)
@@ -297,7 +304,7 @@ function EmpireButton.refresh(self)
 				if self.ready then
 					self.tip_line.Text = '<font color="#FFD666">Ready!</font> Click to found it'
 				else
-					self.tip_line.Text = string.format('<font color="#FFB547">%d%%</font> done · %d%% to go', pct, 100 - pct)
+					self.tip_line.Text = string.format('<font color="#FFB547">%d%%</font> done · %d%% to go · <font color="#FF5C61">click: land to take</font>', pct, 100 - pct)
 				end
 				if self.ready and not was then
 					Anim.pop(self.holder, 0, 0.6)

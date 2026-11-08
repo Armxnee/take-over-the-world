@@ -31,7 +31,7 @@ ItemShopPanel.__index = ItemShopPanel
 
 --- the design canvas (scaled to the screen)
 ItemShopPanel.W, ItemShopPanel.H = 1280, 720
-ItemShopPanel.BACKDROP = "rbxassetid://109594632689836" -- tools/build_gear.py: the user's stormy city, pixelated
+ItemShopPanel.BACKDROP = "rbxassetid://80157115981891" -- tools/build_shop_bg_blue.py: a blue grid (the Fortnite-style shop)
 ItemShopPanel.ICON = "rbxassetid://85914348579343" -- tools/build_gear.py: the user's basket, pixelated
 
 local FONT = "rbxassetid://12187365977"
@@ -41,20 +41,21 @@ local TEXT = Color3.new(1, 1, 1)
 local TEXT2 = Color3.fromHex("C9D2EA")
 local GREEN = Color3.fromHex("5BE38E")
 local RED = Color3.fromHex("FF5C61")
---- rarity -> { light, dark, band, accent }
+--- rarity -> { top, foot, (unused), glow } (2026-11-08: the reference's card colours)
 local RARITY = {
-	common = { Color3.fromHex("8E9BB5"), Color3.fromHex("4A556E"), Color3.fromHex("37405A"), Color3.fromHex("D7DEEE") },
-	rare = { Color3.fromHex("49B6FF"), Color3.fromHex("1C5FC9"), Color3.fromHex("174A9E"), Color3.fromHex("A9E0FF") },
-	epic = { Color3.fromHex("C176FF"), Color3.fromHex("6A2BC4"), Color3.fromHex("52209A"), Color3.fromHex("E6C6FF") },
-	legendary = { Color3.fromHex("FFB13B"), Color3.fromHex("D2621A"), Color3.fromHex("A84A12"), Color3.fromHex("FFE3A1") },
+	common = { Color3.fromHex("A4ACBC"), Color3.fromHex("5C6578"), Color3.fromHex("37405A"), Color3.fromHex("E8ECF5") },
+	uncommon = { Color3.fromHex("6FD35A"), Color3.fromHex("2E7D2A"), Color3.fromHex("235E20"), Color3.fromHex("D2F7C4") },
+	rare = { Color3.fromHex("4AA8FF"), Color3.fromHex("1E5BD8"), Color3.fromHex("174A9E"), Color3.fromHex("BFE3FF") },
+	epic = { Color3.fromHex("B66BFF"), Color3.fromHex("5B22C2"), Color3.fromHex("52209A"), Color3.fromHex("ECD4FF") },
+	legendary = { Color3.fromHex("FFB347"), Color3.fromHex("C8531A"), Color3.fromHex("A84A12"), Color3.fromHex("FFE7B3") },
 }
 local KIND_TEXT = {
-	hat = "COUNTRYBALL HAT",
-	beard = "COUNTRYBALL BEARD",
-	glasses = "COUNTRYBALL GLASSES",
-	boat = "BOAT SKIN",
-	nuke = "NUKE SKIN",
-	missile = "MISSILE SKIN",
+	hat = "Countryball Hat",
+	beard = "Countryball Beard",
+	glasses = "Countryball Glasses",
+	boat = "Boat Skin",
+	nuke = "Nuke Skin",
+	missile = "Missile Skin",
 }
 --- the balls hats are shown on (a few flags, by card)
 local BALLS = { "gb", "fr", "de", "jp", "br", "us", "it", "ca", "mx" }
@@ -135,39 +136,6 @@ local function price_row(parent: Instance, size: number, y: number): any
 	return { row = row, coin = coin, text = text }
 end
 
---- A section banner: a slanted amber tab with the title, a long bar with the time left.
-local function banner(parent: Instance, x: number, y: number, w: number, title: string): (TextLabel, Frame, Frame)
-	local bar = make("Frame", {
-		BackgroundColor3 = Color3.new(1, 1, 1),
-		BackgroundTransparency = 0.1,
-		Position = UDim2.fromOffset(x + 8, y + 6),
-		Size = UDim2.fromOffset(w - 8, 34),
-		ZIndex = 42,
-	}, parent)
-	make("UIGradient", { Color = ColorSequence.new(Color3.fromHex("2D4BA8"), Color3.fromHex("1B2556")) }, bar)
-	local tab = make("Frame", {
-		BackgroundColor3 = Color3.new(1, 1, 1),
-		Position = UDim2.fromOffset(x, y),
-		Size = UDim2.fromOffset(250, 46),
-		ZIndex = 43,
-	}, parent)
-	make("UIGradient", { Color = ColorSequence.new(Color3.fromHex("FFE07A"), Color3.fromHex("FFA928")), Rotation = 90 }, tab)
-	make("UIStroke", { Color = INK, Thickness = 2, ApplyStrokeMode = Enum.ApplyStrokeMode.Border }, tab)
-	label(tab, title, 26, Enum.FontWeight.Heavy, INK, {
-		Position = UDim2.fromOffset(16, 8),
-		Size = UDim2.fromOffset(230, 30),
-		ZIndex = 45,
-	})
-	local timer = label(bar, "", 22, Enum.FontWeight.Heavy, TEXT, {
-		AnchorPoint = Vector2.new(1, 0.5),
-		Position = UDim2.new(1, -14, 0.5, 0),
-		Size = UDim2.fromOffset(160, 26),
-		TextXAlignment = Enum.TextXAlignment.Right,
-		ZIndex = 45,
-	})
-	return timer, tab, bar
-end
-
 function ItemShopPanel.new(ctx: any, gui: Instance, open_locker: () -> ())
 	local self = setmetatable({}, ItemShopPanel)
 	self.ctx = ctx
@@ -175,12 +143,13 @@ function ItemShopPanel.new(ctx: any, gui: Instance, open_locker: () -> ())
 	self.cards = {}
 	self.day = -1
 	self._pops = {}
-	-- the screen: the showroom backdrop (pixel art), dimmed at the top and bottom for the words
+	-- (2026-11-08: after the user's Fortnite item shop reference) the screen: a blue backdrop with a
+	-- glowing grid, nav pills along the top, section dots down the left, and rows of tall cards
 	local root = make("TextButton", {
 		Name = "ItemShop",
 		Text = "",
 		AutoButtonColor = false,
-		BackgroundColor3 = Color3.fromHex("05060C"),
+		BackgroundColor3 = Color3.fromHex("0C1660"),
 		Size = UDim2.fromScale(1, 1),
 		Visible = false,
 		ZIndex = 40,
@@ -189,7 +158,6 @@ function ItemShopPanel.new(ctx: any, gui: Instance, open_locker: () -> ())
 	self.backdrop = make("ImageLabel", {
 		BackgroundTransparency = 1,
 		Image = ItemShopPanel.BACKDROP,
-		ResampleMode = Enum.ResamplerMode.Pixelated,
 		ScaleType = Enum.ScaleType.Crop,
 		-- (centred, so the opening zoom and the slow drift scale about the middle)
 		AnchorPoint = Vector2.new(0.5, 0.5),
@@ -197,17 +165,16 @@ function ItemShopPanel.new(ctx: any, gui: Instance, open_locker: () -> ())
 		Size = UDim2.fromScale(1, 1),
 		ZIndex = 40,
 	}, root)
-	self.shade = make("Frame", {
-		BackgroundColor3 = Color3.new(0, 0, 0),
+	self.shade = make("Frame", { -- (a little darker under the nav, for the words)
+		BackgroundColor3 = Color3.fromHex("060B33"),
 		Size = UDim2.fromScale(1, 1),
 		ZIndex = 41,
 	}, root)
 	make("UIGradient", {
 		Transparency = NumberSequence.new({
-			NumberSequenceKeypoint.new(0, 0.2),
-			NumberSequenceKeypoint.new(0.22, 0.72),
-			NumberSequenceKeypoint.new(0.75, 0.8),
-			NumberSequenceKeypoint.new(1, 0.35),
+			NumberSequenceKeypoint.new(0, 0.35),
+			NumberSequenceKeypoint.new(0.14, 0.85),
+			NumberSequenceKeypoint.new(1, 0.95),
 		}),
 		Rotation = 90,
 	}, self.shade)
@@ -225,20 +192,57 @@ function ItemShopPanel.new(ctx: any, gui: Instance, open_locker: () -> ())
 		table.insert(self._pops, inst)
 		return inst
 	end
-	-- top bar: the title, coins, my items, the wallet, close
-	local head = pop(make("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(24, 10), Size = UDim2.fromOffset(420, 70), ZIndex = 43 }, canvas))
+	-- the nav: the basket, ITEM SHOP (this page, a lit pill), MY ITEMS, BUY COINS; the wallet, close
+	local nav = pop(make("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(28, 14), Size = UDim2.fromOffset(820, 48), ZIndex = 43 }, canvas))
+	make("UIListLayout", {
+		FillDirection = Enum.FillDirection.Horizontal,
+		VerticalAlignment = Enum.VerticalAlignment.Center,
+		Padding = UDim.new(0, 10),
+		SortOrder = Enum.SortOrder.LayoutOrder,
+	}, nav)
 	make("ImageLabel", {
 		BackgroundTransparency = 1,
 		Image = ItemShopPanel.ICON,
-		Size = UDim2.fromOffset(66, 66),
+		Size = UDim2.fromOffset(46, 46),
+		LayoutOrder = 0,
 		ZIndex = 44,
-	}, head)
-	local title = label(head, "ITEM SHOP", 44, Enum.FontWeight.Heavy, TEXT, {
-		Position = UDim2.fromOffset(76, 12),
-		Size = UDim2.fromOffset(340, 48),
-	})
-	make("UIStroke", { Color = Color3.fromHex("7A3E00"), Thickness = 3 }, title)
-	make("UIGradient", { Color = ColorSequence.new(Color3.fromHex("FFF1B8"), AMBER), Rotation = 90 }, title)
+	}, nav)
+	local function nav_pill(text: string, order: number, lit: boolean): TextButton
+		local b = make("TextButton", {
+			Text = text,
+			TextSize = 20,
+			FontFace = Font.new(FONT, Enum.FontWeight.Heavy),
+			TextColor3 = if lit then Color3.fromHex("1A1F4D") else TEXT,
+			BackgroundColor3 = Color3.fromHex("C9C8FF"),
+			BackgroundTransparency = if lit then 0 else 1,
+			AutomaticSize = Enum.AutomaticSize.X,
+			Size = UDim2.fromOffset(0, 40),
+			LayoutOrder = order,
+			ZIndex = 44,
+		}, nav)
+		make("UICorner", { CornerRadius = UDim.new(0, 10) }, b)
+		make("UIPadding", { PaddingLeft = UDim.new(0, 16), PaddingRight = UDim.new(0, 16) }, b)
+		if not lit then
+			b.MouseEnter:Connect(function()
+				b.BackgroundTransparency = 0.82
+			end)
+			b.MouseLeave:Connect(function()
+				b.BackgroundTransparency = 1
+			end)
+		end
+		Anim.button(b, nil, 1.04)
+		return b
+	end
+	nav_pill("ITEM SHOP", 1, true)
+	-- (no crates: coins are bought with Robux, owned gear is worn from MY ITEMS)
+	nav_pill("MY ITEMS", 2, false).Activated:Connect(function()
+		self.ctx:sfx("click")
+		self:_overlay("items")
+	end)
+	nav_pill("BUY COINS", 3, false).Activated:Connect(function()
+		self.ctx:sfx("click")
+		self:_overlay("coins")
+	end)
 	local close = pop(make("TextButton", {
 		Text = "X",
 		TextSize = 22,
@@ -246,93 +250,65 @@ function ItemShopPanel.new(ctx: any, gui: Instance, open_locker: () -> ())
 		TextColor3 = TEXT,
 		BackgroundColor3 = Color3.fromHex("C83A3A"),
 		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.new(1, -24, 0, 20),
-		Size = UDim2.fromOffset(48, 48),
+		Position = UDim2.new(1, -28, 0, 14),
+		Size = UDim2.fromOffset(44, 44),
 		ZIndex = 44,
 	}, canvas))
-	make("UICorner", { CornerRadius = UDim.new(0, 10) }, close)
-	make("UIStroke", { Color = INK, Thickness = 2, ApplyStrokeMode = Enum.ApplyStrokeMode.Border }, close)
+	make("UICorner", { CornerRadius = UDim.new(1, 0) }, close)
+	make("UIStroke", { Color = Color3.new(1, 1, 1), Thickness = 2, Transparency = 0.6, ApplyStrokeMode = Enum.ApplyStrokeMode.Border }, close)
 	close.Activated:Connect(function()
 		self:close()
 	end)
 	Anim.button(close)
 	local wallet = pop(make("Frame", {
-		BackgroundColor3 = Color3.fromHex("141B36"),
-		BackgroundTransparency = 0.1,
+		BackgroundColor3 = Color3.fromHex("0A1450"),
+		BackgroundTransparency = 0.25,
 		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.new(1, -84, 0, 22),
-		Size = UDim2.fromOffset(200, 44),
+		Position = UDim2.new(1, -84, 0, 16),
+		Size = UDim2.fromOffset(180, 40),
 		ZIndex = 43,
 	}, canvas))
-	make("UICorner", { CornerRadius = UDim.new(0, 10) }, wallet)
-	make("UIStroke", { Color = AMBER, Thickness = 2, Transparency = 0.2, ApplyStrokeMode = Enum.ApplyStrokeMode.Border }, wallet)
-	coin_icon(wallet, 30, { Position = UDim2.fromOffset(10, 7) })
-	self.balance = label(wallet, "0", 24, Enum.FontWeight.Heavy, TEXT, {
-		Position = UDim2.fromOffset(46, 8),
-		Size = UDim2.new(1, -58, 0, 28),
+	make("UICorner", { CornerRadius = UDim.new(1, 0) }, wallet)
+	coin_icon(wallet, 26, { Position = UDim2.fromOffset(10, 7) })
+	self.balance = label(wallet, "0", 22, Enum.FontWeight.Heavy, TEXT, {
+		Position = UDim2.fromOffset(42, 7),
+		Size = UDim2.new(1, -56, 0, 26),
 		TextXAlignment = Enum.TextXAlignment.Right,
 		ZIndex = 45,
 	})
 	self.wallet = wallet
-	local function pill(x: number, w: number): (TextButton, TextLabel)
-		local b = pop(make("TextButton", {
-			Text = "",
-			AutoButtonColor = false,
-			BackgroundColor3 = Color3.new(1, 1, 1),
-			AnchorPoint = Vector2.new(1, 0),
-			Position = UDim2.new(1, x, 0, 22),
-			Size = UDim2.fromOffset(w, 44),
-			ZIndex = 43,
-		}, canvas))
-		make("UICorner", { CornerRadius = UDim.new(0, 10) }, b)
-		make("UIStroke", { Color = INK, Thickness = 2, ApplyStrokeMode = Enum.ApplyStrokeMode.Border }, b)
-		make("UIGradient", { Color = ColorSequence.new(Color3.fromHex("9BBE58"), Color3.fromHex("5A7A2A")), Rotation = 90 }, b)
-		local l = label(b, "", 17, Enum.FontWeight.Heavy, TEXT, {
-			Size = UDim2.fromScale(1, 1),
-			TextXAlignment = Enum.TextXAlignment.Center,
-			ZIndex = 45,
-		})
-		make("UIStroke", { Color = INK, Transparency = 0.4 }, l)
-		Anim.button(b)
-		return b, l
-	end
-	-- (no crates: coins are bought with Robux, owned gear is worn from MY ITEMS)
-	local buy_coins, coins_l = pill(-296, 200)
-	coins_l.Text = "+ BUY COINS"
-	buy_coins.Activated:Connect(function()
-		self.ctx:sfx("click")
-		self:_overlay("coins")
-	end)
-	local my_items, items_l = pill(-508, 200)
-	items_l.Text = "MY ITEMS"
-	my_items.Activated:Connect(function()
-		self.ctx:sfx("click")
-		self:_overlay("items")
-	end)
-	-- the sections scroll: featured and daily, then the bundles
+	-- the sections scroll: FEATURED, DAILY, then the BUNDLES
+	local CW, CH, GAP = 206, 286, 16 -- a card
+	local X0 = 108
 	local scroll = make("ScrollingFrame", {
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
-		Position = UDim2.fromOffset(0, 88),
-		Size = UDim2.new(1, 0, 0, 552),
-		CanvasSize = UDim2.fromOffset(0, 552 + 404),
-		ScrollBarThickness = 8,
-		ScrollBarImageColor3 = AMBER,
+		Position = UDim2.fromOffset(0, 72),
+		Size = UDim2.new(1, 0, 0, 600),
+		ScrollBarThickness = 6,
+		ScrollBarImageColor3 = Color3.fromHex("C9C8FF"),
 		ScrollingDirection = Enum.ScrollingDirection.Y,
 		ZIndex = 42,
 	}, canvas)
 	self.scroll = scroll
-	local FX, FW = 24, 724
-	local DX = FX + FW + 32
-	local DW = ItemShopPanel.W - 24 - DX
-	local TOP, CARD_H = 68, 476
-	local ta, tab_a, bar_a = banner(scroll, FX, 8, FW, "FEATURED ITEMS")
-	local tb, tab_b, bar_b = banner(scroll, DX, 8, DW, "DAILY ITEMS")
-	self.timer_a, self.timer_b = ta, tb
-	for _, o in { tab_a, bar_a, tab_b, bar_b } do
-		pop(o)
+	local function section(y: number, title: string): (TextLabel, number)
+		local t = pop(label(scroll, title, 44, Enum.FontWeight.Heavy, TEXT, {
+			FontFace = Font.new(FONT, Enum.FontWeight.Heavy, Enum.FontStyle.Italic),
+			Position = UDim2.fromOffset(X0, y),
+			Size = UDim2.fromOffset(700, 50),
+			ZIndex = 44,
+		}))
+		make("UIStroke", { Color = Color3.fromHex("0A1450"), Thickness = 2, Transparency = 0.4 }, t)
+		local timer = label(scroll, "", 16, Enum.FontWeight.Bold, Color3.fromHex("C9C8FF"), {
+			AnchorPoint = Vector2.new(1, 0),
+			Position = UDim2.fromOffset(X0 + 5 * CW + 4 * GAP, y + 18),
+			Size = UDim2.fromOffset(300, 20),
+			TextXAlignment = Enum.TextXAlignment.Right,
+			ZIndex = 44,
+		})
+		return timer, y + 58
 	end
-	-- a card: the rarity's colours with light rays, the picture, a slanted band with the words
+	-- a card: the rarity's colours, the picture over most of it, the words at its foot
 	local function card(x: number, y: number, w: number, h: number, big: boolean): any
 		local hit = pop(make("TextButton", {
 			Text = "",
@@ -344,14 +320,15 @@ function ItemShopPanel.new(ctx: any, gui: Instance, open_locker: () -> ())
 			ZIndex = 42,
 			Selectable = true,
 		}, scroll))
-		local edge = make("UIStroke", { Thickness = 3, ApplyStrokeMode = Enum.ApplyStrokeMode.Border, Color = INK }, hit)
-		-- (a canvas group clips the slanted band and the rays)
+		-- (the white frame of a card under the pointer, as in the reference)
+		local edge = make("UIStroke", { Thickness = 3, ApplyStrokeMode = Enum.ApplyStrokeMode.Border, Color = TEXT, Transparency = 1 }, hit)
+		make("UICorner", { CornerRadius = UDim.new(0, 12) }, hit)
 		local body = make("CanvasGroup", {
 			BackgroundColor3 = Color3.new(1, 1, 1),
 			Size = UDim2.fromScale(1, 1),
 			ZIndex = 42,
 		}, hit)
-		-- (the colours on a frame of their own: a gradient on the canvas group would tint all of it)
+		make("UICorner", { CornerRadius = UDim.new(0, 12) }, body)
 		local bg = make("Frame", {
 			BackgroundColor3 = Color3.new(1, 1, 1),
 			BorderSizePixel = 0,
@@ -359,139 +336,160 @@ function ItemShopPanel.new(ctx: any, gui: Instance, open_locker: () -> ())
 			ZIndex = 42,
 		}, body)
 		local grad = make("UIGradient", { Rotation = 90 }, bg)
-		for i = 1, 3 do
-			make("Frame", {
-				BackgroundColor3 = Color3.new(1, 1, 1),
-				BackgroundTransparency = 0.88,
-				BorderSizePixel = 0,
-				AnchorPoint = Vector2.new(0.5, 0.5),
-				Position = UDim2.new(0.18 + (i - 1) * 0.34, 0, 0.3, 0),
-				Size = UDim2.new(0, if big then 26 else 16, 1.6, 0),
-				Rotation = 24,
-				ZIndex = 42,
-			}, body)
-		end
 		local glow = make("ImageLabel", {
 			BackgroundTransparency = 1,
 			Image = UITheme.crate_art().glow or "",
-			ImageTransparency = 0.45,
+			ImageTransparency = 0.55,
 			AnchorPoint = Vector2.new(0.5, 0.5),
 			Position = UDim2.fromScale(0.5, 0.36),
-			Size = UDim2.fromScale(1.2, 0.7),
+			Size = UDim2.fromScale(1.3, 0.8),
 			ZIndex = 43,
 		}, body)
 		local art = make("ImageLabel", {
 			BackgroundTransparency = 1,
 			AnchorPoint = Vector2.new(0.5, 0.5),
-			Position = UDim2.fromScale(0.5, if big then 0.37 else 0.36),
-			Size = UDim2.fromScale(if big then 0.86 else 0.74, if big then 0.86 else 0.74),
+			Position = UDim2.fromScale(0.5, 0.37),
+			Size = UDim2.fromScale(0.86, 0.86),
 			ResampleMode = Enum.ResamplerMode.Pixelated,
 			ZIndex = 44,
 		}, body)
 		make("UIAspectRatioConstraint", { AspectRatio = 1 }, art)
-		local band_h = if big then 150 else 86
-		local band = make("Frame", {
-			BackgroundColor3 = Color3.new(1, 1, 1),
+		-- (a darker foot for the words)
+		local foot = make("Frame", {
+			BackgroundColor3 = Color3.new(0, 0, 0),
 			BorderSizePixel = 0,
-			AnchorPoint = Vector2.new(0.5, 0),
-			Position = UDim2.new(0.5, 0, 1, -band_h),
-			Size = UDim2.new(1.3, 0, 0, band_h + 40),
-			Rotation = -6,
+			AnchorPoint = Vector2.new(0, 1),
+			Position = UDim2.fromScale(0, 1),
+			Size = UDim2.new(1, 0, 0, 96),
 			ZIndex = 44,
 		}, body)
-		local band_grad = make("UIGradient", { Rotation = 90 }, band)
-		-- (a notch of lightning on its top edge)
-		local notch = make("Frame", {
-			BorderSizePixel = 0,
-			AnchorPoint = Vector2.new(0.5, 0.5),
-			Position = UDim2.new(0.6, 0, 0, 0),
-			Size = UDim2.fromOffset(if big then 30 else 18, if big then 30 else 18),
-			Rotation = 45,
-			ZIndex = 44,
-		}, band)
-		local name = label(body, "", if big then 28 else 17, Enum.FontWeight.Heavy, TEXT, {
-			AnchorPoint = Vector2.new(0.5, 0),
-			Position = UDim2.new(0.5, 0, 1, if big then -104 else -64),
-			Size = UDim2.new(1, -16, 0, if big then 32 else 20),
-			TextXAlignment = Enum.TextXAlignment.Center,
-			TextScaled = true, -- (a long name shrinks to fit)
+		make("UIGradient", {
+			Transparency = NumberSequence.new({
+				NumberSequenceKeypoint.new(0, 1),
+				NumberSequenceKeypoint.new(0.45, 0.6),
+				NumberSequenceKeypoint.new(1, 0.45),
+			}),
+			Rotation = 90,
+		}, foot)
+		local name = label(body, "", 21, Enum.FontWeight.Heavy, TEXT, {
+			AnchorPoint = Vector2.new(0, 1),
+			Position = UDim2.new(0, 12, 1, -46),
+			Size = UDim2.new(1, -24, 0, 46),
+			TextWrapped = true,
+			TextTruncate = Enum.TextTruncate.None,
+			TextYAlignment = Enum.TextYAlignment.Bottom,
+			TextScaled = true, -- (a long name shrinks to fit two lines)
 			ZIndex = 46,
 		})
-		make("UITextSizeConstraint", { MaxTextSize = if big then 28 else 17, MinTextSize = 8 }, name)
-		make("UIStroke", { Color = Color3.new(0, 0, 0), Transparency = 0.5, Thickness = 1.5 }, name)
-		local kind = label(body, "", if big then 14 else 10, Enum.FontWeight.Heavy, TEXT2, {
-			AnchorPoint = Vector2.new(0.5, 0),
-			Position = UDim2.new(0.5, 0, 1, if big then -70 else -43),
-			Size = UDim2.new(1, -16, 0, if big then 16 else 12),
-			TextXAlignment = Enum.TextXAlignment.Center,
+		make("UITextSizeConstraint", { MaxTextSize = 21, MinTextSize = 10 }, name)
+		local kind = label(body, "", 13, Enum.FontWeight.Bold, Color3.fromHex("E3E8FF"), {
+			Position = UDim2.new(0, 12, 1, -44),
+			Size = UDim2.new(1, -24, 0, 16),
 			ZIndex = 46,
 		})
-		local price = price_row(body, if big then 24 else 16, h - (if big then 50 else 28))
+		-- the price at the foot, left: the coin and the number
+		local prow = make("Frame", {
+			BackgroundTransparency = 1,
+			Position = UDim2.new(0, 12, 1, -26),
+			Size = UDim2.new(1, -40, 0, 20),
+			ZIndex = 45,
+		}, body)
+		make("UIListLayout", {
+			FillDirection = Enum.FillDirection.Horizontal,
+			VerticalAlignment = Enum.VerticalAlignment.Center,
+			Padding = UDim.new(0, 5),
+			SortOrder = Enum.SortOrder.LayoutOrder,
+		}, prow)
+		local coin = coin_icon(prow, 18, { LayoutOrder = 1 })
+		local ptext = label(prow, "", 16, Enum.FontWeight.Heavy, TEXT, {
+			AutomaticSize = Enum.AutomaticSize.X,
+			Size = UDim2.fromOffset(0, 20),
+			LayoutOrder = 2,
+			ZIndex = 46,
+		})
+		label(body, "+", 20, Enum.FontWeight.Heavy, TEXT, {
+			AnchorPoint = Vector2.new(1, 1),
+			Position = UDim2.new(1, -10, 1, -6),
+			Size = UDim2.fromOffset(16, 22),
+			TextXAlignment = Enum.TextXAlignment.Right,
+			ZIndex = 46,
+		})
 		local tag = make("TextLabel", {
 			Text = "NEW!",
-			TextSize = if big then 22 else 15,
+			TextSize = 13,
 			FontFace = Font.new(FONT, Enum.FontWeight.Heavy),
 			TextColor3 = INK,
 			BackgroundColor3 = Color3.fromHex("FFE14D"),
-			Position = UDim2.fromOffset(-10, -10),
-			Size = UDim2.fromOffset(if big then 82 else 58, if big then 34 else 24),
-			Rotation = -6,
+			Position = UDim2.fromOffset(8, 8),
+			Size = UDim2.fromOffset(48, 22),
 			Visible = false,
 			ZIndex = 48,
 		}, hit)
-		make("UIStroke", { Color = INK, Thickness = 2, ApplyStrokeMode = Enum.ApplyStrokeMode.Border }, tag)
+		make("UICorner", { CornerRadius = UDim.new(0, 6) }, tag)
 		local c = {
 			hit = hit,
 			edge = edge,
 			grad = grad,
 			glow = glow,
 			art = art,
-			band_grad = band_grad,
-			notch = notch,
 			name = name,
 			kind = kind,
-			price = price,
+			price = { coin = coin, text = ptext },
 			tag = tag,
 			big = big,
 		}
+		hit.MouseEnter:Connect(function()
+			edge.Transparency = 0
+		end)
+		hit.MouseLeave:Connect(function()
+			edge.Transparency = 1
+		end)
 		Anim.button(hit, nil, 1.04)
 		hit.Activated:Connect(function()
 			self:_activate(c)
 		end)
 		return c
 	end
-	local fw = (FW - 2 * 18) / 3
+	local PER_ROW = 5
+	local function place(i: number, y: number): (number, number)
+		local col, row = (i - 1) % PER_ROW, (i - 1) // PER_ROW
+		return X0 + col * (CW + GAP), y + row * (CH + GAP)
+	end
+	self.sections = {}
+	local y = 4
+	local ta
+	ta, y = section(y, "FEATURED")
+	table.insert(self.sections, y - 58)
 	for i = 1, ItemShop.FEATURED do
-		self.cards[i] = card(FX + (i - 1) * (fw + 18), TOP, fw, CARD_H, true)
+		local x, cy = place(i, y)
+		self.cards[i] = card(x, cy, CW, CH, true)
 	end
-	local dw = (DW - 2 * 16) / 3
-	local dh = (CARD_H - 16) / 2
+	y += math.ceil(ItemShop.FEATURED / PER_ROW) * (CH + GAP) + 18
+	local tb
+	tb, y = section(y, "DAILY")
+	table.insert(self.sections, y - 58)
 	for i = 1, ItemShop.DAILY do
-		local col, row = (i - 1) % 3, (i - 1) // 3
-		self.cards[ItemShop.FEATURED + i] = card(DX + col * (dw + 16), TOP + row * (dh + 16), dw, dh, false)
+		local x, cy = place(i, y)
+		self.cards[ItemShop.FEATURED + i] = card(x, cy, CW, CH, false)
 	end
+	y += math.ceil(ItemShop.DAILY / PER_ROW) * (CH + GAP) + 18
+	self.timer_a, self.timer_b = ta, tb
 	-- the bundles (Robux)
-	local BY = TOP + CARD_H + 30
-	local tc, tab_c, bar_c = banner(scroll, FX, BY, ItemShopPanel.W - 48, "BUNDLES")
-	tc.Text = "ROBUX ONLY"
-	for _, o in { tab_c, bar_c } do
-		pop(o)
-	end
+	local tc
+	tc, y = section(y, "BUNDLES")
+	table.insert(self.sections, y - 58)
+	tc.Text = "Robux only"
 	self.bundle_cards = {}
-	local BW = (ItemShopPanel.W - 48 - 3 * 18) / 4
+	local BW = (5 * CW + 4 * GAP - 3 * GAP) / 4
 	for i, b in Bundles.LIST do
-		local c = card(FX + (i - 1) % 4 * (BW + 18), BY + 60, BW, 300, false)
+		local c = card(X0 + (i - 1) % 4 * (BW + GAP), y, BW, CH, false)
 		c.bundle = b
 		c.f = nil
 		c.name.Text = string.upper(b.name)
-		c.kind.Text = string.format("BUNDLE · %d ITEMS", #b.items)
+		c.kind.Text = string.format("Bundle · %d items", #b.items)
 		local r = RARITY[b.rarity] or RARITY.common
 		c.grad.Color = ColorSequence.new(r[1], r[2])
-		c.band_grad.Color = ColorSequence.new(r[3], r[3]:Lerp(Color3.new(0, 0, 0), 0.3))
-		c.notch.BackgroundColor3 = r[3]
-		c.edge.Color = r[4]:Lerp(INK, 0.6)
 		c.glow.ImageColor3 = r[4]
-		c.kind.TextColor3 = r[4]
 		c.price.coin.Image = ROBUX
 		c.price.coin.ImageColor3 = TEXT
 		-- the bundle's items, side by side over the art
@@ -499,21 +497,22 @@ function ItemShopPanel.new(ctx: any, gui: Instance, open_locker: () -> ())
 		local strip = make("Frame", {
 			BackgroundTransparency = 1,
 			AnchorPoint = Vector2.new(0.5, 0.5),
-			Position = UDim2.fromScale(0.5, 0.34),
-			Size = UDim2.new(1, -16, 0, BW / #b.items),
+			Position = UDim2.fromScale(0.5, 0.36),
+			Size = UDim2.new(1, -16, 0, BW / 2),
 			ZIndex = 44,
 		}, c.art.Parent)
-		make("UIListLayout", {
-			FillDirection = Enum.FillDirection.Horizontal,
+		make("UIGridLayout", {
+			CellSize = UDim2.fromOffset(BW / 2 - 12, BW / 2 - 12),
+			CellPadding = UDim2.fromOffset(4, 4),
 			HorizontalAlignment = Enum.HorizontalAlignment.Center,
 			VerticalAlignment = Enum.VerticalAlignment.Center,
-			Padding = UDim.new(0, 2),
+			SortOrder = Enum.SortOrder.LayoutOrder,
 		}, strip)
+		strip.Size = UDim2.new(1, -16, 0, BW - 16)
 		for k, id in b.items do
 			local img = make("ImageLabel", {
 				BackgroundTransparency = 1,
 				ResampleMode = Enum.ResamplerMode.Pixelated,
-				Size = UDim2.fromOffset(BW / #b.items - 4, BW / #b.items - 4),
 				LayoutOrder = k,
 				ZIndex = 44,
 			}, strip)
@@ -521,17 +520,49 @@ function ItemShopPanel.new(ctx: any, gui: Instance, open_locker: () -> ())
 		end
 		self.bundle_cards[i] = c
 	end
+	y += CH + 30
+	scroll.CanvasSize = UDim2.fromOffset(0, y)
+	-- the section dots down the left: one a section, the one in view lit
+	local dots = pop(make("Frame", {
+		BackgroundColor3 = Color3.fromHex("0A1450"),
+		BackgroundTransparency = 0.35,
+		Position = UDim2.fromOffset(40, 120),
+		Size = UDim2.fromOffset(28, 30 + #self.sections * 30),
+		ZIndex = 43,
+	}, canvas))
+	make("UICorner", { CornerRadius = UDim.new(1, 0) }, dots)
+	self.dots = {}
+	for i = 1, #self.sections do
+		local d = make("TextButton", {
+			Text = "",
+			AutoButtonColor = false,
+			BackgroundColor3 = TEXT,
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromOffset(14, 15 + i * 30),
+			Size = UDim2.fromOffset(8, 8),
+			ZIndex = 44,
+		}, dots)
+		make("UICorner", { CornerRadius = UDim.new(1, 0) }, d)
+		d.Activated:Connect(function()
+			TweenService:Create(scroll, TweenInfo.new(0.35, Enum.EasingStyle.Quint), { CanvasPosition = Vector2.new(0, self.sections[i]) }):Play()
+		end)
+		self.dots[i] = d
+	end
+	scroll:GetPropertyChangedSignal("CanvasPosition"):Connect(function()
+		self:_dots()
+	end)
+	self:_dots()
 	self:_build_overlay(canvas)
 	-- the note and the toast
-	pop(label(canvas, "Note: these items change how your Countryball and units look. They give no advantage in battle.", 15, Enum.FontWeight.Bold, Color3.fromHex("8FB8FF"), {
+	pop(label(canvas, "Note: these items change how your Countryball and units look. They give no advantage in battle.", 13, Enum.FontWeight.Bold, Color3.fromHex("C9C8FF"), {
 		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.new(0.5, 0, 0, 676),
+		Position = UDim2.new(0.5, 0, 0, 692),
 		Size = UDim2.fromOffset(1000, 20),
 		TextXAlignment = Enum.TextXAlignment.Center,
 	}))
 	self.toast = label(canvas, "", 18, Enum.FontWeight.Heavy, GREEN, {
 		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.new(0.5, 0, 0, 646),
+		Position = UDim2.new(0.5, 0, 0, 664),
 		Size = UDim2.fromOffset(1000, 24),
 		TextXAlignment = Enum.TextXAlignment.Center,
 		ZIndex = 47,
@@ -801,6 +832,22 @@ function ItemShopPanel._refresh_overlay(self)
 	end
 end
 
+--- Lights the dot of the section in view.
+function ItemShopPanel._dots(self)
+	local y = self.scroll.CanvasPosition.Y + 40
+	local at = 1
+	for i, top in self.sections do
+		if y >= top then
+			at = i
+		end
+	end
+	for i, d in self.dots do
+		local on = i == at
+		d.Size = UDim2.fromOffset(if on then 12 else 8, if on then 12 else 8)
+		d.BackgroundTransparency = if on then 0 else 0.55
+	end
+end
+
 function ItemShopPanel._fit(self)
 	local cam = Workspace.CurrentCamera
 	local vp = if cam then cam.ViewportSize else Vector2.new(1280, 720)
@@ -852,8 +899,8 @@ function ItemShopPanel.refresh(self)
 	local now = os.time()
 	local day = now // 86400
 	local left = 86400 - now % 86400
-	self.timer_a.Text = clock(left)
-	self.timer_b.Text = clock(left)
+	self.timer_a.Text = "Refreshes in " .. clock(left)
+	self.timer_b.Text = "Refreshes in " .. clock(left)
 	-- the bundles: their Robux price, or OWNED once every item is
 	for _, c in self.bundle_cards or {} do
 		local b = c.bundle
@@ -889,12 +936,8 @@ function ItemShopPanel.refresh(self)
 			if f ~= nil then
 				local r = RARITY[f.rarity or "common"] or RARITY.common
 				c.grad.Color = ColorSequence.new(r[1], r[2])
-				c.band_grad.Color = ColorSequence.new(r[3], r[3]:Lerp(Color3.new(0, 0, 0), 0.3))
-				c.notch.BackgroundColor3 = r[3]
-				c.edge.Color = r[4]:Lerp(INK, 0.6)
 				c.glow.ImageColor3 = r[4]
-				c.kind.TextColor3 = r[4]
-				c.name.Text = string.upper(f.name)
+				c.name.Text = f.name
 				c.kind.Text = KIND_TEXT[f.kind] or "ITEM"
 				c.tag.Visible = not ItemShop.on_sale(f.id, day - 1)
 				c.art.ImageContent = GearArt.content(Cosmetics.item(f.id), BALLS[(i - 1) % #BALLS + 1]) or Content.none
@@ -911,7 +954,7 @@ function ItemShopPanel.refresh(self)
 					p.text.Text = "EQUIPPED"
 					p.text.TextColor3 = GREEN
 				else
-					p.text.Text = if c.big then "OWNED · EQUIP" else "EQUIP"
+					p.text.Text = "EQUIP"
 					p.text.TextColor3 = AMBER
 				end
 			else
