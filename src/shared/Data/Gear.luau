@@ -1,202 +1,30 @@
 --!strict
--- (Take Over the World!: item shop gear, 2026-11-06.)
--- Countryball hats (pixel art drawn over the top of the ball: Countryball.ball_content) and unit
--- skins (a colour the boats, nukes or missiles wear instead of the owner's: Map/UnitLayer). Sold in
--- the item shop (Data/ItemShop), never in crates. Data/Cosmetics resolves them by id like any item.
---   hat:  rows (top to bottom; "." = clear), x / y = where row 1's first character lands on the
---         32 x 32 ball, pal = character -> {r, g, b} ("o" is the ball's outline colour)
+-- (Take Over the World!: item shop gear, 2026-11-06; Countryball gear from the user's reference
+-- sheets 2026-11-08.)
+-- Countryball gear (pixel art drawn on the ball: Countryball.ball_content): hats, beards and
+-- moustaches, glasses (Data/GearSprites, built by tools/build_gear.py) and unit skins (a colour the
+-- boats, nukes or missiles wear instead of the owner's: Map/UnitLayer). Sold in the item shop
+-- (Data/ItemShop) and given by crates. Data/Cosmetics resolves them by id like any item.
+--   hat / beard / glasses: rows (top to bottom; "." = clear), x / y = where row 1's first character
+--         lands on the 40 x 40 ball canvas (Countryball.G), pal = character -> {r, g, b}
 --   boat / nuke / missile: color = {r, g, b}
+local GearSprites = require(script.Parent.GearSprites)
+
 local Gear = {}
 
-Gear.KINDS = { "hat", "boat", "nuke", "missile" }
-Gear.KIND_NAMES = { hat = "Hat", boat = "Boat Skin", nuke = "Nuke Skin", missile = "Missile Skin" }
+Gear.KINDS = { "hat", "beard", "glasses", "boat", "nuke", "missile" }
+--- the kinds worn on the Countryball, in the order they are drawn
+Gear.BALL_KINDS = { "beard", "glasses", "hat" }
+Gear.KIND_NAMES = {
+	hat = "Hat",
+	beard = "Beard",
+	glasses = "Glasses",
+	boat = "Boat Skin",
+	nuke = "Nuke Skin",
+	missile = "Missile Skin",
+}
 
 Gear.items = {
-	-- hats
-	{
-		id = "hat_army_helmet",
-		kind = "hat",
-		name = "Army Helmet",
-		rarity = "common",
-		x = 4,
-		y = 0,
-		pal = { a = { 92, 110, 58 }, b = { 64, 78, 40 }, d = { 128, 148, 84 } },
-		rows = {
-			"........oooooooo........",
-			"......ooaaaaaaaaoo......",
-			".....oaaddaaaaaaabo.....",
-			"....oaaddaaaaaaaaabo....",
-			"....oaadaaaaaaaaaaabo...",
-			"...oaaaaaaaaaaaaaaaabo..",
-			"..obbbbbbbbbbbbbbbbbbbo.",
-			"..oooooooooooooooooooooo",
-		},
-	},
-	{
-		id = "hat_beret",
-		kind = "hat",
-		name = "Red Beret",
-		rarity = "common",
-		x = 4,
-		y = 1,
-		pal = { a = { 196, 38, 48 }, b = { 140, 22, 32 }, c = { 255, 204, 64 } },
-		rows = {
-			"............oo..........",
-			"........oooooooooo......",
-			"......ooaaaaaaaaaaoo....",
-			".....oaaaaaaaaaaaaaaoo..",
-			"....oaacaaaaaaaaaaaaaao.",
-			"....obbbbbbbbbbbbbbbbbo.",
-			"....oooooooooooooooooo..",
-		},
-	},
-	{
-		id = "hat_officer_cap",
-		kind = "hat",
-		name = "Officer Cap",
-		rarity = "rare",
-		x = 4,
-		y = 0,
-		pal = {
-			a = { 52, 74, 60 },
-			b = { 36, 52, 42 },
-			c = { 255, 200, 50 },
-			k = { 24, 24, 28 },
-			v = { 30, 30, 34 },
-		},
-		rows = {
-			"....oooooooooooooooo....",
-			"...oaaaaaaaaaaaaaaaao...",
-			"...oaaaaaaacccaaaaaao...",
-			"....oaaaaaacccaaaaao....",
-			"....obbbbbbbbbbbbbbo....",
-			"....okkkkkkkkkkkkkko....",
-			"....ovvvvvvvvvvvvvvvo...",
-			".....ooooooooooooooo....",
-		},
-	},
-	{
-		id = "hat_ushanka",
-		kind = "hat",
-		name = "Fur Ushanka",
-		rarity = "common",
-		x = 4,
-		y = 0,
-		pal = { a = { 120, 84, 52 }, f = { 176, 140, 100 }, c = { 220, 40, 40 } },
-		rows = {
-			"......oooooooooooo......",
-			".....offffffffffffo.....",
-			"....offaaaaaaaaaaffo....",
-			"....offaaaaacaaaaffo....",
-			"...offffffffffffffffo...",
-			"...offffffffffffffffo...",
-			"...ofo..........ofo.....",
-			"...ofo..........ofo.....",
-			"...ooo..........ooo.....",
-		},
-	},
-	{
-		id = "hat_top_hat",
-		kind = "hat",
-		name = "Top Hat",
-		rarity = "rare",
-		x = 4,
-		y = 0,
-		pal = { a = { 40, 40, 48 }, r = { 190, 30, 40 }, d = { 70, 70, 82 } },
-		rows = {
-			".......oooooooooo.......",
-			".......odaaaaaaao.......",
-			".......odaaaaaaao.......",
-			".......odaaaaaaao.......",
-			".......orrrrrrrro.......",
-			".......oaaaaaaaao.......",
-			"....oooooooooooooooo....",
-			"....oaaaaaaaaaaaaaao....",
-			"....oooooooooooooooo....",
-		},
-	},
-	{
-		id = "hat_spiked_helmet",
-		kind = "hat",
-		name = "Spiked Helmet",
-		rarity = "epic",
-		x = 4,
-		y = 0,
-		pal = { a = { 34, 34, 40 }, c = { 240, 190, 60 }, d = { 70, 70, 84 } },
-		rows = {
-			"...........oo...........",
-			"..........occo..........",
-			"..........occo..........",
-			".......oooooooooo.......",
-			".....ooaadaaaaaaaoo.....",
-			"....oaadaaccccaaaaao....",
-			"....oaaaaacccccaaaao....",
-			"...oaaaaaaaccaaaaaaao...",
-			"..oooooooooooooooooooo..",
-		},
-	},
-	{
-		id = "hat_viking_helmet",
-		kind = "hat",
-		name = "Viking Helmet",
-		rarity = "rare",
-		x = 4,
-		y = 0,
-		pal = { a = { 150, 156, 170 }, b = { 104, 110, 124 }, h = { 236, 226, 196 } },
-		rows = {
-			".o....................o.",
-			"oho..................oho",
-			"ohho....oooooooo....ohho",
-			".ohhooooaaaaaaaaoooohho.",
-			"..ohhoaaaaaaaaaaaaohho..",
-			"...oooaaaaaaaaaaaaooo...",
-			"....obbbbbbbbbbbbbbo....",
-			"....oooooooooooooooo....",
-		},
-	},
-	{
-		id = "hat_bicorne",
-		kind = "hat",
-		name = "Admiral Bicorne",
-		rarity = "epic",
-		x = 4,
-		y = 1,
-		pal = { a = { 28, 30, 44 }, c = { 240, 190, 60 }, r = { 210, 40, 50 } },
-		rows = {
-			".........oooooo.........",
-			"......oooaaaaaaooo......",
-			"...oooaaaaaaaaaaaaooo...",
-			".ooaaaaaaaaccaaaaaaaaoo.",
-			"oaaaaaaaaaacrcaaaaaaaaao",
-			"occcccccccccccccccccccco",
-			".oooooooooooooooooooooo.",
-		},
-	},
-	{
-		id = "hat_crown",
-		kind = "hat",
-		name = "Royal Crown",
-		rarity = "legendary",
-		x = 4,
-		y = 0,
-		pal = {
-			a = { 250, 196, 48 },
-			c = { 255, 250, 230 },
-			r = { 220, 30, 50 },
-			g = { 40, 190, 90 },
-			b = { 50, 110, 240 },
-		},
-		rows = {
-			".....o.....oo.....o.....",
-			"....oco...occo...oco....",
-			"....oaao..oaao..oaao....",
-			"....oaaaooaaaaooaaao....",
-			"....oaaaaaaaaaaaaaao....",
-			"....oaraabaagaabaraao...",
-			"....oaaaaaaaaaaaaaao....",
-			"....oooooooooooooooo....",
-		},
-	},
 	-- boat skins
 	{ id = "boat_navy_grey", kind = "boat", name = "Navy Grey Fleet", rarity = "common", color = { 128, 138, 150 } },
 	{ id = "boat_arctic", kind = "boat", name = "Arctic Camo Fleet", rarity = "common", color = { 214, 232, 246 } },
@@ -215,6 +43,21 @@ Gear.items = {
 	{ id = "missile_gold", kind = "missile", name = "Golden Missile", rarity = "legendary", color = { 255, 206, 60 } },
 }
 
+-- the Countryball gear goes first (hats, beards, glasses: Data/GearSprites)
+for i, it in GearSprites.items do
+	local art = GearSprites.art[it.id]
+	table.insert(Gear.items, i, {
+		id = it.id,
+		kind = it.kind,
+		name = it.name,
+		rarity = it.rarity,
+		x = art.x,
+		y = art.y,
+		pal = art.pal,
+		rows = art.rows,
+	})
+end
+
 local by_id: { [string]: any } = {}
 for _, it in Gear.items do
 	by_id[it.id] = it
@@ -225,7 +68,12 @@ function Gear.item(id: any): any?
 end
 
 function Gear.is_kind(kind: any): boolean
-	return kind == "hat" or kind == "boat" or kind == "nuke" or kind == "missile"
+	return table.find(Gear.KINDS, kind) ~= nil
+end
+
+--- Is `kind` worn on the Countryball (a hat, a beard or glasses)?
+function Gear.on_ball(kind: any): boolean
+	return table.find(Gear.BALL_KINDS, kind) ~= nil
 end
 
 --- A unit skin's colour (Color3), or nil.

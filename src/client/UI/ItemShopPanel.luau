@@ -14,6 +14,7 @@ local Workspace = game:GetService("Workspace")
 local GuiService = game:GetService("GuiService")
 local RS = game:GetService("ReplicatedStorage")
 local Airfront = RS:WaitForChild("Airfront")
+local TweenService = game:GetService("TweenService")
 local ItemShop = require(Airfront.Data.ItemShop)
 local Cosmetics = require(Airfront.Data.Cosmetics)
 local UITheme = require("./UITheme")
@@ -30,8 +31,8 @@ ItemShopPanel.__index = ItemShopPanel
 
 --- the design canvas (scaled to the screen)
 ItemShopPanel.W, ItemShopPanel.H = 1280, 720
-ItemShopPanel.BACKDROP = "rbxassetid://84971757872319" -- tools/build_shop_bg.py
-ItemShopPanel.ICON = "rbxassetid://116782632104302" -- the item shop stall
+ItemShopPanel.BACKDROP = "rbxassetid://109594632689836" -- tools/build_gear.py: the user's stormy city, pixelated
+ItemShopPanel.ICON = "rbxassetid://85914348579343" -- tools/build_gear.py: the user's basket, pixelated
 
 local FONT = "rbxassetid://12187365977"
 local AMBER = Color3.fromHex("FFC23D")
@@ -47,7 +48,14 @@ local RARITY = {
 	epic = { Color3.fromHex("C176FF"), Color3.fromHex("6A2BC4"), Color3.fromHex("52209A"), Color3.fromHex("E6C6FF") },
 	legendary = { Color3.fromHex("FFB13B"), Color3.fromHex("D2621A"), Color3.fromHex("A84A12"), Color3.fromHex("FFE3A1") },
 }
-local KIND_TEXT = { hat = "COUNTRYBALL HAT", boat = "BOAT SKIN", nuke = "NUKE SKIN", missile = "MISSILE SKIN" }
+local KIND_TEXT = {
+	hat = "COUNTRYBALL HAT",
+	beard = "COUNTRYBALL BEARD",
+	glasses = "COUNTRYBALL GLASSES",
+	boat = "BOAT SKIN",
+	nuke = "NUKE SKIN",
+	missile = "MISSILE SKIN",
+}
 --- the balls hats are shown on (a few flags, by card)
 local BALLS = { "gb", "fr", "de", "jp", "br", "us", "it", "ca", "mx" }
 
@@ -183,6 +191,9 @@ function ItemShopPanel.new(ctx: any, gui: Instance, open_locker: () -> ())
 		Image = ItemShopPanel.BACKDROP,
 		ResampleMode = Enum.ResamplerMode.Pixelated,
 		ScaleType = Enum.ScaleType.Crop,
+		-- (centred, so the opening zoom and the slow drift scale about the middle)
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
 		Size = UDim2.fromScale(1, 1),
 		ZIndex = 40,
 	}, root)
@@ -992,18 +1003,54 @@ function ItemShopPanel.open(self)
 	self.toast.Text = ""
 	self:_fit()
 	self:refresh()
-	-- the backdrop fades in, then everything on it pops in turn
+	-- (2026-11-08 rework) the screen fades up while the stormy city settles from a slow zoom, then
+	-- drifts on its own; the title bar drops in from above and every card and button glides up
+	-- into place in a wave from the top left to the bottom right, its picture fading in with it
 	local root = self.root
 	root.Visible = true
 	root.BackgroundTransparency = 1
 	self.backdrop.ImageTransparency = 1
 	self.shade.BackgroundTransparency = 1
-	Anim.tween(root, Anim.FADE_S, { BackgroundTransparency = 0 })
-	Anim.tween(self.backdrop, Anim.FADE_S + 0.1, { ImageTransparency = 0 })
-	Anim.tween(self.shade, Anim.FADE_S + 0.1, { BackgroundTransparency = 0 })
-	local d = Anim.FADE_S + 0.05
+	Anim.tween(root, Anim.FADE_S, { BackgroundTransparency = 0 }, Enum.EasingStyle.Sine)
+	Anim.tween(self.shade, 0.5, { BackgroundTransparency = 0 }, Enum.EasingStyle.Sine)
+	Anim.tween(self.backdrop, 0.6, { ImageTransparency = 0 }, Enum.EasingStyle.Sine)
+	if self._drift ~= nil then
+		self._drift:Cancel()
+	end
+	self.backdrop.Size = UDim2.fromScale(1.14, 1.14)
+	self.backdrop.Position = UDim2.fromScale(0.5, 0.5)
+	local settle = Anim.tween(self.backdrop, 1.4, { Size = UDim2.fromScale(1.04, 1.04) })
+	settle.Completed:Once(function(state)
+		if state == Enum.PlaybackState.Completed and self.is_open then
+			-- a slow breathing drift while the shop stays open
+			self._drift = TweenService:Create(
+				self.backdrop,
+				TweenInfo.new(9, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
+				{ Size = UDim2.fromScale(1.09, 1.09), Position = UDim2.new(0.5, -14, 0.5, -6) }
+			)
+			self._drift:Play()
+		end
+	end)
+	local base = 0.12
 	for i, o in self._pops do
-		Anim.pop(o, d + i * 0.03)
+		local home = Anim.home(o)
+		-- the wave: later towards the right and further down (the scrolled sections sit 88 px lower)
+		local y = home.Y.Offset + (if o.Parent == self.scroll then 88 else 0)
+		local x = home.X.Offset + home.X.Scale * ItemShopPanel.W
+		local d = base + math.clamp(x / ItemShopPanel.W, 0, 1) * 0.2 + math.clamp(y / ItemShopPanel.H, 0, 1) * 0.28
+		if i == 1 then
+			-- the title bar drops down from above
+			o.Position = home + UDim2.fromOffset(0, -40)
+			Anim.tween(o, 0.55, { Position = home }, Enum.EasingStyle.Quint, Enum.EasingDirection.Out, 0.05)
+		else
+			Anim.rise(o, d, 34)
+			Anim.pop(o, d, 0.84)
+		end
+		local body = o:FindFirstChildOfClass("CanvasGroup")
+		if body ~= nil then
+			body.GroupTransparency = 1
+			Anim.tween(body, 0.4, { GroupTransparency = 0 }, Enum.EasingStyle.Sine, Enum.EasingDirection.Out, d)
+		end
 	end
 	self.ctx:sfx("open")
 end
@@ -1016,15 +1063,30 @@ function ItemShopPanel.close(self)
 	if self.overlay ~= nil then
 		self.overlay.Visible = false
 	end
-	for _, o in self._pops do
-		Anim.tween(Anim.scale_of(o), 0.14, { Scale = 0 }, Enum.EasingStyle.Back, Enum.EasingDirection.In)
+	if self._drift ~= nil then
+		self._drift:Cancel()
+		self._drift = nil
 	end
-	Anim.tween(self.backdrop, 0.22, { ImageTransparency = 1 }, nil, nil, 0.08)
-	Anim.tween(self.shade, 0.22, { BackgroundTransparency = 1 }, nil, nil, 0.08)
-	local tw = Anim.tween(self.root, 0.22, { BackgroundTransparency = 1 }, nil, nil, 0.08)
+	-- everything sinks a little and fades, quickly; the backdrop pulls back as it goes dark
+	for _, o in self._pops do
+		Anim.tween(Anim.scale_of(o), 0.16, { Scale = 0.92 }, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+		Anim.sink(o, 0, 18)
+		local body = o:FindFirstChildOfClass("CanvasGroup")
+		if body ~= nil then
+			Anim.tween(body, 0.14, { GroupTransparency = 1 }, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+		end
+	end
+	Anim.tween(self.backdrop, 0.26, { ImageTransparency = 1, Size = UDim2.fromScale(1.1, 1.1) }, Enum.EasingStyle.Sine, Enum.EasingDirection.In, 0.04)
+	Anim.tween(self.shade, 0.24, { BackgroundTransparency = 1 }, Enum.EasingStyle.Sine, Enum.EasingDirection.In, 0.06)
+	local tw = Anim.tween(self.root, 0.24, { BackgroundTransparency = 1 }, Enum.EasingStyle.Sine, Enum.EasingDirection.In, 0.08)
 	tw.Completed:Once(function(state)
 		if state == Enum.PlaybackState.Completed and not self.is_open then
 			self.root.Visible = false
+			-- back in place for the next opening
+			for _, o in self._pops do
+				o.Position = Anim.home(o)
+				Anim.scale_of(o).Scale = 1
+			end
 		end
 	end)
 	self.ctx:sfx("close")

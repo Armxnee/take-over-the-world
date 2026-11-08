@@ -400,3 +400,21 @@ An original real-time territory-conquest game for Roblox. RoWorld is the gamepla
 - Empire Countryballs look evil (Countryball EVIL_EYE / EVIL_MOUTH: angry brows, red eyes, curled
   moustache, fanged grin) instead of the beard.
 - US flag (FlagPix.OVERRIDES.us): 25 staggered one-pixel stars; a star on every pixel read as a checkerboard.
+
+## 2026-11-08 (2): gear from the user's sheets, evil empires, item shop rework, tween polish
+- tools/build_gear.py cuts the user's reference sheets (Downloads: hats, beards/moustaches/horns, glasses,
+  the evil empire ball) into pixel sprites -> src/shared/Data/GearSprites.luau (24 items + 12 recoloured
+  variants), pixelates images.jpg into the shop backdrop (rbxassetid 109594632689836) and cleans the
+  basket icon (rbxassetid 85914348579343: item shop title + top-bar button). Uploads: serve
+  tools/assets_out with `py -m http.server`, then MCP upload_image with localhost URLs.
+- Old hats removed. New slots `beard` and `glasses` beside `hat`, end to end (Gear.KINDS / BALL_KINDS,
+  Cosmetics.SLOTS, Session, GameState.set_cosmetics, MatchServer cosmetics map + bots, NameLayer,
+  CountryPicker, Locker tabs, crate / shop kind labels). Bundles point at new hat ids.
+- Countryball canvas is now 40 x 40 (the 32 px ball at 4, 7) so hats sit above the head. Empires: the
+  angry eyes and spiked helmet sampled 1:1 from the user's evil ball + the handlebar moustache (own
+  gear wins in its slot).
+- Anim: Quint glides, softer Back pops, Anim.rise / sink / home, modals grow + rise in and settle out.
+  RoWorld UI helpers default to Quint. Item shop: city zooms in and drifts, title drops in, cards rise
+  in a diagonal wave with their art fading in; closing sinks + fades and resets.
+- Studio sync note: GameState, CountryPicker and a few others hold CRLF in Studio; multi-line anchors
+  fail there (use single-line edits). Studio's Session has the cosmetics line on one line (same code).

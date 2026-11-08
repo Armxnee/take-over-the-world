@@ -491,7 +491,7 @@ function CountryPicker.select_owner(self, owner: number, focus: boolean?)
 	-- (Take Over the World!: with the player's hat from the item shop)
 	local se = self.ctx.session
 	local eq = se and se.inventory and se.inventory.equipped
-	Countryball.new(d.flag, 84, d.name, eq and eq.hat).Parent = self.ball_holder
+	Countryball.new(d.flag, 84, d.name, eq).Parent = self.ball_holder
 	local f = Countryball.flag_content(d.flag, d.name, false)
 	self.flag.Visible = f ~= nil
 	if f ~= nil then

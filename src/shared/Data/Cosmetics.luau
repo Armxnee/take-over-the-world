@@ -406,7 +406,7 @@ end
 
 -- (Take Over the World!: the item shop's gear (Data/Gear: hats, boat / nuke / missile skins) resolves by id
 -- too, and stays out of `order`: never in crates)
-Cosmetics.SLOTS = { "skin", "flag", "hat", "boat", "nuke", "missile" }
+Cosmetics.SLOTS = { "skin", "flag", "hat", "beard", "glasses", "boat", "nuke", "missile" }
 for i, g in Gear.items do
 	items[g.id] = g
 	table.insert(order, i, g) -- (crates give gear: first in `order`, before the name flags)

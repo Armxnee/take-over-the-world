@@ -501,7 +501,17 @@ function Session._apply_own_cosmetics(self: any, id: number)
 	-- (and their own head shot beside their name, as in a public match)
 	local uid = if type(self.env.user_id) == "function" then self.env.user_id() else 0
 	st:set_cosmetics({
-		[id] = { skin = eq.skin, flag = eq.flag, face = uid, hat = eq.hat, boat = eq.boat, nuke = eq.nuke, missile = eq.missile },
+		[id] = {
+			skin = eq.skin,
+			flag = eq.flag,
+			face = uid,
+			hat = eq.hat,
+			beard = eq.beard,
+			glasses = eq.glasses,
+			boat = eq.boat,
+			nuke = eq.nuke,
+			missile = eq.missile,
+		},
 	}, true)
 end
 
@@ -1504,7 +1514,7 @@ function Session._on_net(self: any, op: number, ...: any)
 				-- (Take Over the World!: every slot, the item shop's gear too)
 				equipped = (function()
 					local out = {}
-					for _, slot in { "skin", "flag", "hat", "boat", "nuke", "missile" } do
+					for _, slot in { "skin", "flag", "hat", "beard", "glasses", "boat", "nuke", "missile" } do
 						out[slot] = if type(eq[slot]) == "string" then eq[slot] else nil
 					end
 					return out

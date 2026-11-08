@@ -49,7 +49,7 @@ end
 
 local function tween(inst: Instance, t: number, props: { [string]: any }, style: Enum.EasingStyle?)
 	if TweenService ~= nil then
-		TweenService:Create(inst, TweenInfo.new(t, style or Enum.EasingStyle.Quad, Enum.EasingDirection.Out), props)
+		TweenService:Create(inst, TweenInfo.new(t, style or Enum.EasingStyle.Quint, Enum.EasingDirection.Out), props)
 			:Play()
 	end
 end
@@ -69,7 +69,7 @@ function CrateButton.new(c: any)
 	return self
 end
 
-CrateButton.ICON = "rbxassetid://116782632104302" -- (Take Over the World!: the item shop stall icon instead of the 3D chest)
+CrateButton.ICON = "rbxassetid://85914348579343" -- (Take Over the World!: the item shop basket (tools/build_gear.py) instead of the 3D chest)
 
 function CrateButton._build(self)
 	local art = UITheme.crate_art()

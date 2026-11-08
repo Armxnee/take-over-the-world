@@ -68,7 +68,7 @@ local function tween(inst: Instance, t: number, props: { [string]: any }, style:
 	if TweenService == nil then
 		return
 	end
-	TweenService:Create(inst, TweenInfo.new(t, style or Enum.EasingStyle.Quad, dir or Enum.EasingDirection.Out), props)
+	TweenService:Create(inst, TweenInfo.new(t, style or Enum.EasingStyle.Quint, dir or Enum.EasingDirection.Out), props)
 		:Play()
 end
 
@@ -1046,7 +1046,15 @@ function CrateOpening._reveal(self, gen: number)
 	self._rarity_scale.Scale = 1.6
 	tween(self._rarity_scale, 0.3, { Scale = 1 }, Enum.EasingStyle.Back)
 	self._name.Text = if it then it.name else "?"
-	local KIND = { flag = "FLAG · SHOWN BY YOUR NAME", hat = "COUNTRYBALL HAT", boat = "BOAT SKIN", nuke = "NUKE SKIN", missile = "MISSILE SKIN" }
+	local KIND = {
+		flag = "FLAG · SHOWN BY YOUR NAME",
+		hat = "COUNTRYBALL HAT",
+		beard = "COUNTRYBALL BEARD",
+		glasses = "COUNTRYBALL GLASSES",
+		boat = "BOAT SKIN",
+		nuke = "NUKE SKIN",
+		missile = "MISSILE SKIN",
+	}
 	self._kind.Text = if it then (KIND[it.kind] or "TERRITORY SKIN") else ""
 	for i, l in { self._rarity, self._name, self._kind } do
 		local p = l.Position

@@ -1,14 +1,15 @@
 --!nonstrict
 -- (Take Over the World!: the Countryball, 2026-11-06.)
 -- A country's mascot: its flag (Data/FlagPix: this game's pixel flags, public-domain artwork) as a
--- pixel-art ball (2026-11-06 redesign after the user's reference): dark outline, shaded rim, two eyes
--- (an empire's ball: an evil face).
+-- pixel-art ball (2026-11-06 redesign after the user's reference): dark outline, shaded rim, two eyes,
+-- the gear it wears (2026-11-08: hats, beards, glasses) and, for an empire, the evil look.
 -- Drawn into an EditableImage (no upload): Countryball.new(flag_code, px, name) returns a Frame.
 -- A definition's `ball` field ("countryball:<code>", Data/Countries) names one.
 local AssetService = game:GetService("AssetService")
 local FlagPix = require(game:GetService("ReplicatedStorage"):WaitForChild("Airfront"):WaitForChild("Data"):WaitForChild("FlagPix"))
 local Gear = require(game:GetService("ReplicatedStorage"):WaitForChild("Airfront"):WaitForChild("Data"):WaitForChild("Gear")) -- (Take Over the World!: hats)
-local Empires = require(game:GetService("ReplicatedStorage"):WaitForChild("Airfront"):WaitForChild("Data"):WaitForChild("Empires")) -- (Take Over the World!: beards)
+local Empires = require(game:GetService("ReplicatedStorage"):WaitForChild("Airfront"):WaitForChild("Data"):WaitForChild("Empires")) -- (Take Over the World!: the evil look)
+local GearSprites = require(game:GetService("ReplicatedStorage"):WaitForChild("Airfront"):WaitForChild("Data"):WaitForChild("GearSprites"))
 
 local Countryball = {}
 
@@ -60,10 +61,15 @@ function Countryball.code_of(ref: string?): string?
 	return string.match(ref, "^countryball:(%w+)$")
 end
 
---- The ball as one pixel sprite (G x G): a dark outline, the flag across the body, a darker rim band
---- on the upper right and along the bottom, and two round-topped white eyes with a grey glint.
-Countryball.G = 32
-local G = Countryball.G
+--- The ball as one pixel sprite on a G x G canvas: the 32 x 32 ball sits at (OX, OY), with room
+--- above it for a hat (2026-11-08). A dark outline, the flag across the body, a darker rim band on
+--- the upper right and along the bottom, two round-topped white eyes with a grey glint; then the
+--- gear it wears (Data/Gear: a beard, glasses, a hat). An empire's ball looks evil (the user's
+--- reference, Data/GearSprites.empire): angry eyes, the spiked helmet and a black handlebar
+--- moustache, unless it wears gear of its own in that place.
+Countryball.G = 40
+Countryball.OX, Countryball.OY = 4, 7
+local G, OX, OY = Countryball.G, Countryball.OX, Countryball.OY
 local OUT = Color3.fromRGB(18, 20, 28)
 local EYE = {
 	"..kkk..",
@@ -73,39 +79,43 @@ local EYE = {
 	"kwwwwwk",
 	".kkkkk.",
 }
-local EYE_COL = {
-	k = OUT,
-	w = Color3.new(1, 1, 1),
-	g = Color3.fromRGB(200, 200, 205),
-	r = Color3.fromRGB(226, 28, 40),
-	h = Color3.fromRGB(255, 150, 150),
-	m = Color3.fromRGB(120, 10, 22),
-}
---- (Take Over the World!: an empire's face: the left eye (the right one is mirrored), brows slanting
---- down to the middle, the pupils looking in; under it a curled moustache over a fanged grin.)
-local EVIL_EYE = {
-	"kk.....",
-	"kkkk...",
-	".kkkkkk",
-	"kwwwrhk",
-	"kwwrrrk",
-	".kkkkk.",
-}
-local EVIL_MOUTH = {
-	"kk..........kk",
-	".kkk.kkkk.kkk.",
-	"..kkkkkkkkkk..",
-	"..............",
-	"k............k",
-	".kkkkkkkkkkkk.",
-	".kwmwmwmwmwmk.",
-	"..kmmmmmmmmk..",
-	"...kkkkkkkk...",
-}
+local EYE_COL = { k = OUT, w = Color3.new(1, 1, 1), g = Color3.fromRGB(200, 200, 205) }
+--- the empire's moustache when it wears no beard of its own
+Countryball.EMPIRE_BEARD = "beard_handlebar"
 local balls: { [string]: any } = {}
 
-function Countryball.ball_content(code: string?, name: string?, hat: string?): Content?
-	local key = tostring(code) .. "|" .. tostring(name) .. "|" .. tostring(hat)
+--- The gear a ball wears: { hat?, beard?, glasses? } from a table (an equipped / cosmetics record)
+--- or a single item id (any kind worn on the ball).
+function Countryball.gear_of(gear: any): { [string]: string }
+	local out = {}
+	if type(gear) == "string" then
+		local it = Gear.item(gear)
+		if it ~= nil and Gear.on_ball(it.kind) then
+			out[it.kind] = gear
+		end
+	elseif type(gear) == "table" then
+		for _, kind in Gear.BALL_KINDS do
+			local id = gear[kind]
+			local it = if type(id) == "string" then Gear.item(id) else nil
+			if it ~= nil and it.kind == kind then
+				out[kind] = id
+			end
+		end
+	end
+	return out
+end
+
+function Countryball.ball_content(code: string?, name: string?, gear: any): Content?
+	local worn = Countryball.gear_of(gear)
+	local key = tostring(code)
+		.. "|"
+		.. tostring(name)
+		.. "|"
+		.. tostring(worn.hat)
+		.. "|"
+		.. tostring(worn.beard)
+		.. "|"
+		.. tostring(worn.glasses)
 	local hit = balls[key]
 	if hit ~= nil then
 		return hit or nil
@@ -121,6 +131,9 @@ function Countryball.ball_content(code: string?, name: string?, hat: string?): C
 	local FW, FH = FlagPix.W, FlagPix.H
 	local b = buffer.create(G * G * 4)
 	local function put(x: number, y: number, c: Color3, k: number?)
+		if x < 0 or y < 0 or x >= G or y >= G then
+			return
+		end
 		local o = (y * G + x) * 4
 		local m = k or 1
 		buffer.writeu8(b, o, math.floor(c.R * 255 * m + 0.5))
@@ -128,15 +141,32 @@ function Countryball.ball_content(code: string?, name: string?, hat: string?): C
 		buffer.writeu8(b, o + 2, math.floor(c.B * 255 * m + 0.5))
 		buffer.writeu8(b, o + 3, 255)
 	end
+	--- a pixel sprite { x, y, pal = { ch = {r, g, b} }, rows } at its canvas place
+	local function sprite(s: any, dx: number?, dy: number?)
+		if s == nil or s.rows == nil then
+			return
+		end
+		for j, row in s.rows do
+			for i = 1, #row do
+				local ch = string.sub(row, i, i)
+				local rgb = s.pal[ch]
+				if rgb ~= nil then
+					put(s.x + i - 1 + (dx or 0), s.y + j - 1 + (dy or 0), Color3.fromRGB(rgb[1], rgb[2], rgb[3]))
+				elseif ch == "o" then
+					put(s.x + i - 1 + (dx or 0), s.y + j - 1 + (dy or 0), OUT)
+				end
+			end
+		end
+	end
 	local cx, cy, R = 15.5, 15.5, 13.6
 	local grey = Color3.fromRGB(150, 156, 170)
-	for y = 0, G - 1 do
-		for x = 0, G - 1 do
+	for y = 0, 31 do
+		for x = 0, 31 do
 			local dx, dy = x - cx, y - cy
 			local d = math.sqrt(dx * dx + dy * dy)
 			if d <= R + 0.5 then
 				if d > R - 0.6 then
-					put(x, y, OUT)
+					put(x + OX, y + OY, OUT)
 				else
 					local u = math.clamp((x - (cx - R)) / (2 * R), 0, 0.999)
 					local v = math.clamp((y - (cy - R)) / (2 * R), 0, 0.999)
@@ -146,57 +176,36 @@ function Countryball.ball_content(code: string?, name: string?, hat: string?): C
 					end
 					local nx, ny = dx / math.max(d, 1e-6), dy / math.max(d, 1e-6)
 					local shade = (R - d) < 2.4 and (nx * 0.85 - ny * 0.25 > 0.45 or ny > 0.55)
-					put(x, y, c, if shade then 0.8 else 1)
+					put(x + OX, y + OY, c, if shade then 0.8 else 1)
 				end
 			end
 		end
 	end
-	-- (Take Over the World!: an empire's Countryball looks evil: angry brows over red eyes, a curled
-	-- villain moustache and a fanged grin, 2026-11-08)
 	local evil = Empires.is_empire(name) or (type(code) == "string" and string.sub(code, 1, 4) == "emp_")
-	local eye = if evil then EVIL_EYE else EYE
-	local y0 = if evil then 10 else 11
-	for _, spec in { { 8, false }, { 17, true } } do
-		for j, row in eye do
-			for i = 1, #row do
-				local ch = string.sub(row, if spec[2] then #row - i + 1 else i, if spec[2] then #row - i + 1 else i)
-				local c = EYE_COL[ch]
-				if c then
-					put(spec[1] + i - 1, y0 + j, c)
-				end
-			end
-		end
-	end
 	if evil then
-		for j, row in EVIL_MOUTH do
-			for i = 1, #row do
-				local c = EYE_COL[string.sub(row, i, i)]
-				if c ~= nil then
-					put(8 + i, 17 + j, c)
-				end
-			end
-		end
-	end
-	-- (Take Over the World!: a hat from the item shop, over the top of the ball)
-	local hg = if hat ~= nil then Gear.item(hat) else nil
-	if hg ~= nil and hg.rows ~= nil then
-		for j, row in hg.rows do
-			local y = hg.y + j - 1
-			for i = 1, #row do
-				local ch = string.sub(row, i, i)
-				local x = hg.x + i - 1
-				if ch ~= "." and x >= 0 and x < G and y >= 0 and y < G then
-					if ch == "o" then
-						put(x, y, OUT)
-					else
-						local rgb = hg.pal[ch]
-						if rgb ~= nil then
-							put(x, y, Color3.fromRGB(rgb[1], rgb[2], rgb[3]))
-						end
+		-- (Take Over the World!: the empire's angry eyes, from the user's evil ball)
+		sprite(GearSprites.empire.eyes)
+	else
+		for _, spec in { { 8, false }, { 17, true } } do
+			for j, row in EYE do
+				for i = 1, #row do
+					local ch = string.sub(row, if spec[2] then #row - i + 1 else i, if spec[2] then #row - i + 1 else i)
+					local c = EYE_COL[ch]
+					if c then
+						put(spec[1] + i - 1 + OX, 11 + j + OY, c)
 					end
 				end
 			end
 		end
+	end
+	-- the gear: the beard (an empire's moustache), the glasses, then the hat (an empire's helmet)
+	local beard = Gear.item(worn.beard) or (if evil then Gear.item(Countryball.EMPIRE_BEARD) else nil)
+	sprite(beard, 0, if evil and worn.beard == nil then 1 else 0)
+	sprite(Gear.item(worn.glasses))
+	if worn.hat ~= nil then
+		sprite(Gear.item(worn.hat))
+	elseif evil then
+		sprite(GearSprites.empire.helmet)
 	end
 	img:WritePixelsBuffer(Vector2.zero, Vector2.new(G, G), b)
 	local content = Content.fromObject(img)
@@ -205,8 +214,8 @@ function Countryball.ball_content(code: string?, name: string?, hat: string?): C
 end
 
 --- A Countryball `px` wide for flag `code` (or the country `name`; a grey ball when unknown): one
---- crisp pixel sprite.
-function Countryball.new(code: string?, px: number?, name: string?, hat: string?): Frame
+--- crisp pixel sprite. `gear`: a hat id, or { hat?, beard?, glasses? }.
+function Countryball.new(code: string?, px: number?, name: string?, gear: any): Frame
 	local size = px or 64
 	local root = Instance.new("Frame")
 	root.Name = "Countryball"
@@ -218,7 +227,7 @@ function Countryball.new(code: string?, px: number?, name: string?, hat: string?
 	body.Size = UDim2.fromScale(1, 1)
 	body.ResampleMode = Enum.ResamplerMode.Pixelated
 	body.ZIndex = 2
-	local c = Countryball.ball_content(code, name, hat)
+	local c = Countryball.ball_content(code, name, gear)
 	if c ~= nil then
 		body.ImageContent = c
 	end

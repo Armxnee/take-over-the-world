@@ -12,28 +12,28 @@ Bundles.LIST = {
 		name = "Royal Bundle",
 		rarity = "legendary",
 		robux = 499,
-		items = { "hat_crown", "boat_gold", "nuke_gold", "missile_gold" },
+		items = { "hat_steel_gold", "boat_gold", "nuke_gold", "missile_gold" },
 	},
 	{
 		id = "admiral",
 		name = "Admiral Bundle",
 		rarity = "epic",
 		robux = 249,
-		items = { "hat_bicorne", "boat_stealth", "nuke_black_ops" },
+		items = { "hat_officer_navy", "boat_stealth", "nuke_black_ops" },
 	},
 	{
 		id = "winter",
 		name = "Winter War Bundle",
 		rarity = "rare",
 		robux = 129,
-		items = { "hat_ushanka", "boat_arctic", "missile_ice" },
+		items = { "hat_combat_arctic", "boat_arctic", "missile_ice" },
 	},
 	{
 		id = "frontline",
 		name = "Frontline Bundle",
 		rarity = "common",
 		robux = 99,
-		items = { "hat_army_helmet", "boat_navy_grey", "missile_red_streak", "nuke_hazard" },
+		items = { "hat_combat_helmet", "boat_navy_grey", "missile_red_streak", "nuke_hazard" },
 	},
 }
 

@@ -127,7 +127,7 @@ function GearArt.content(it: any, flag: string?): Content?
 	if it == nil then
 		return nil
 	end
-	if it.kind == "hat" then
+	if Gear.on_ball(it.kind) then -- (a hat, a beard or glasses: shown worn)
 		return Countryball.ball_content(flag or "gb", nil, it.id)
 	end
 	if ART[it.kind] ~= nil then

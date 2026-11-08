@@ -259,8 +259,19 @@ function GameState.set_cosmetics(self: any, map: { [any]: any }, full: boolean?)
 			return if type(v) == "table" and type(v[k]) == "string" then v[k] else nil
 		end
 		local hat, boat, nuke, missile = str("hat"), str("boat"), str("nuke"), str("missile")
+		local beard, glasses = str("beard"), str("glasses") -- (2026-11-08: worn on the Countryball too)
 		local old = self.cosmetics[id]
-		if skin == nil and flag == nil and face == nil and hat == nil and boat == nil and nuke == nil and missile == nil then
+		if
+			skin == nil
+			and flag == nil
+			and face == nil
+			and hat == nil
+			and beard == nil
+			and glasses == nil
+			and boat == nil
+			and nuke == nil
+			and missile == nil
+		then
 			if old ~= nil then
 				self.cosmetics[id] = nil
 				table.insert(changed, id)
@@ -271,11 +282,23 @@ function GameState.set_cosmetics(self: any, map: { [any]: any }, full: boolean?)
 			or old.flag ~= flag
 			or old.face ~= face
 			or old.hat ~= hat
+			or old.beard ~= beard
+			or old.glasses ~= glasses
 			or old.boat ~= boat
 			or old.nuke ~= nuke
 			or old.missile ~= missile
 		then
-			self.cosmetics[id] = { skin = skin, flag = flag, face = face, hat = hat, boat = boat, nuke = nuke, missile = missile }
+			self.cosmetics[id] = {
+				skin = skin,
+				flag = flag,
+				face = face,
+				hat = hat,
+				beard = beard,
+				glasses = glasses,
+				boat = boat,
+				nuke = nuke,
+				missile = missile,
+			}
 			table.insert(changed, id)
 		end
 	end

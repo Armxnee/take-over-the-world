@@ -46,7 +46,7 @@ end
 
 local function tween(inst: Instance, t: number, props: { [string]: any }, style: Enum.EasingStyle?)
 	if TweenService ~= nil then
-		TweenService:Create(inst, TweenInfo.new(t, style or Enum.EasingStyle.Quad, Enum.EasingDirection.Out), props)
+		TweenService:Create(inst, TweenInfo.new(t, style or Enum.EasingStyle.Quint, Enum.EasingDirection.Out), props)
 			:Play()
 	end
 end

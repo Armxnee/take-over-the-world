@@ -633,8 +633,12 @@ function NameLayer.tick(self: any, dt: number)
 			self._flags = Countries.flags_by_name(st.map)
 		end
 		local ball = o.kind == Defs.KIND_HUMAN or (self._flags ~= nil and self._flags[o.name] ~= nil)
-		local hat = if cz ~= nil then cz.hat else nil -- (and the hat it wears: Data/Gear)
-		local face_key = if ball then "ball:" .. tostring(o.name) .. "|" .. tostring(hat) else face_id
+		-- (and the gear it wears: Data/Gear hats, beards, glasses)
+		local hat = if cz ~= nil then cz.hat else nil
+		local worn = if cz ~= nil then { hat = cz.hat, beard = cz.beard, glasses = cz.glasses } else nil
+		local face_key = if ball
+			then "ball:" .. tostring(o.name) .. "|" .. tostring(hat) .. "|" .. tostring(worn and worn.beard) .. "|" .. tostring(worn and worn.glasses)
+			else face_id
 		if face_key ~= p.face_id then
 			p.face_id = face_key
 			local ring = p.face:FindFirstChildOfClass("UIStroke")
@@ -643,7 +647,7 @@ function NameLayer.tick(self: any, dt: number)
 					self._flags_map = st.map
 					self._flags = Countries.flags_by_name(st.map)
 				end
-				local content = Countryball.ball_content(self._flags[o.name], o.name, hat)
+				local content = Countryball.ball_content(self._flags[o.name], o.name, worn)
 				p.face.Image = ""
 				if content ~= nil then
 					p.face.ImageContent = content

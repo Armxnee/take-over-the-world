@@ -44,7 +44,15 @@ end)()
 
 local Locker = W.class(W.Control)
 
-Locker.TABS = { { "Hats", "hat" }, { "Boats", "boat" }, { "Nukes", "nuke" }, { "Missiles", "missile" }, { "Flags", "flag" } }
+Locker.TABS = {
+	{ "Hats", "hat" },
+	{ "Beards", "beard" },
+	{ "Glasses", "glasses" },
+	{ "Boats", "boat" },
+	{ "Nukes", "nuke" },
+	{ "Missiles", "missile" },
+	{ "Flags", "flag" },
+}
 Locker.SKIN_CARD = Vector2.new(116, 128)
 Locker.FLAG_CARD = Vector2.new(104, 96)
 Locker.GRID_SIZE = Vector2.new(560, 430)
