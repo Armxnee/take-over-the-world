@@ -45,6 +45,14 @@ FrontLayer.FIRE_MIN, FrontLayer.FIRE_MAX = 0.6, 1.5 -- seconds between a soldier
 FrontLayer.TRACER_S = 0.11
 FrontLayer.FLASH_S = 0.07
 FrontLayer.SOLDIER_HAT = "hat_combat_helmet" -- (an empire's soldiers wear its spiked helmet)
+-- (and a few border posts everywhere on screen: a soldier of each country on its side of a border,
+-- patrolling along it; when the two are at war they face each other and fire)
+FrontLayer.MAX_POSTS = 10
+FrontLayer.POST_SPACING = 120 -- px between posts (and from the front battles)
+FrontLayer.POST_POLL_S = 0.7
+FrontLayer.POST_SAMPLES = 24 -- random looks for a border, each poll
+FrontLayer.POST_GAP = 15 -- px from the border to each soldier
+FrontLayer.PATROL_PX = 10 -- how far a patrol walks either way along the border
 
 type Slot = { cx: number, cy: number, sx: number, sy: number, dx: number, dy: number, t0: number }
 type Entry = { text: string, incoming: boolean, slots: { Slot }, seen: boolean }
@@ -71,6 +79,9 @@ function FrontLayer.new(parent: Instance, view: any)
 	self._battles = {} -- (Take Over the World!: the soldiers at each shown front, and the shots)
 	self._fx = {}
 	self._fx_free = {}
+	self._posts = {} -- (the border posts)
+	self._post_poll = 0.0
+	self._battle_pts = {} -- (where the battles are on screen this frame)
 	self._poll = 0.0
 	--- (a poll's working tables: the owners wanted, the attacks (records reused), owner -> front
 	--- tiles (an empty list: none))
@@ -93,6 +104,12 @@ function FrontLayer.unbind(self: any)
 		l.vis = false
 		l.label.Visible = false
 	end
+	for _, p in self._posts do -- (Take Over the World!: the border posts go with the match)
+		for _, sd in p.soldiers do
+			sd.img:Destroy()
+		end
+	end
+	table.clear(self._posts)
 end
 
 function FrontLayer.destroy(self: any)
@@ -546,11 +563,14 @@ local function battle(self: any, n: number, now: number, x: number, y: number, s
 		local side = if i <= 2 then -1 else 1 -- -1: the player's side of the front
 		local lane = if i % 2 == 1 then -1 else 1
 		local back = if lane > 0 then 4 else 0 -- (the second soldier a step behind)
-		local bob = math.sin(now * 5 + i * 1.7) * 1.2
+		-- (moving: each soldier steps up to the front and back again, hopping as it walks)
+		local step = (math.sin(now * 1.4 + i * 2.1) * 0.5 + 0.5) * 7
+		local hop = -math.abs(math.sin(now * 7 + i * 1.3)) * 2.5
 		local faces = if side < 0 then (if right then 1 else -1) else (if right then -1 else 1)
 		sd.kick = math.max(0, sd.kick - 0.12)
-		local sx = x + ux * side * (gap + back) + px * lane * spread - faces * sd.kick * 3
-		local sy = y + uy * side * (gap + back) + py * lane * spread + bob
+		local d = gap + back - step
+		local sx = x + ux * side * d + px * lane * spread - faces * sd.kick * 3
+		local sy = y + uy * side * d + py * lane * spread + hop
 		sd.x, sd.y, sd.faces = sx, sy, faces
 		sd.img.Position = UDim2.fromOffset(sx, sy)
 		sd.img.Visible = true
@@ -576,6 +596,211 @@ local function hide_battles(self: any, from: number)
 			end
 		end
 		b.key = "" -- (drawn again when it shows)
+	end
+end
+
+-- ===== (Take Over the World!) the border posts: a few soldiers on borders everywhere on screen =====
+
+local function post_soldier(self: any): ImageLabel
+	local img = Instance.new("ImageLabel")
+	img.Name = "Patrol"
+	img.BackgroundTransparency = 1
+	img.AnchorPoint = Vector2.new(0.5, 0.5)
+	img.ResampleMode = Enum.ResamplerMode.Pixelated
+	img.Size = UDim2.fromOffset(FrontLayer.SOLDIER_PX, FrontLayer.SOLDIER_PX)
+	img.ZIndex = FrontLayer.Z - 2
+	img.Parent = self.root
+	return img
+end
+
+local function drop_post(self: any, i: number)
+	local p = self._posts[i]
+	for _, sd in p.soldiers do
+		sd.img:Destroy()
+	end
+	table.remove(self._posts, i)
+end
+
+--- Keeps up to MAX_POSTS posts on borders between two owners' land in view: drops those that left
+--- the screen or whose border moved, then looks for new ones (a random point walks a random way
+--- until the owner changes: that is a border).
+local function post_poll(self: any, now: number, battles: { { number } })
+	local st = self._state
+	local cam = self.view.rig
+	if st == nil or st.map == nil or st.phase ~= Defs.PHASE_PLAYING then
+		for i = #self._posts, 1, -1 do
+			drop_post(self, i)
+		end
+		return
+	end
+	local W = st.map.W or Defs.W
+	local N = st.map.N or (W * (st.map.H or Defs.H))
+	-- the owners at war with each other (an attack either way)
+	local war = self._war or {}
+	self._war = war
+	table.clear(war)
+	for _, a in st.attacks do
+		if a.attacker ~= 0 and a.target ~= 0 then
+			war[a.attacker * 65536 + a.target] = true
+			war[a.target * 65536 + a.attacker] = true
+		end
+	end
+	local i = 1
+	while i <= #self._posts do
+		local p = self._posts[i]
+		local x, y = cam:tile_to_screen(p.t1)
+		if
+			not cam:on_screen(x, y, 30)
+			or st:tile_owner(p.t1) ~= p.a
+			or st:tile_owner(p.t2) ~= p.b
+		then
+			drop_post(self, i)
+		else
+			p.war = war[p.a * 65536 + p.b] == true
+			i += 1
+		end
+	end
+	if #self._posts >= FrontLayer.MAX_POSTS then
+		return
+	end
+	local vp = cam:viewport_size()
+	local sp2 = FrontLayer.POST_SPACING ^ 2
+	local function free(x: number, y: number): boolean
+		for _, p in self._posts do
+			local px, py = cam:tile_to_screen(p.t1)
+			if (px - x) ^ 2 + (py - y) ^ 2 < sp2 then
+				return false
+			end
+		end
+		for _, b in battles do
+			if (b[1] - x) ^ 2 + (b[2] - y) ^ 2 < sp2 then
+				return false
+			end
+		end
+		return true
+	end
+	local tpp = math.max(cam:tiles_per_px(), 1e-3) -- tiles per screen px
+	for _ = 1, FrontLayer.POST_SAMPLES do
+		if #self._posts >= FrontLayer.MAX_POSTS then
+			break
+		end
+		local sx, sy = 40 + math.random() * (vp.X - 80), 90 + math.random() * (vp.Y - 220)
+		local u, v = cam:screen_to_map(sx, sy)
+		if u < 0 or v < 0 or u >= W then
+			continue
+		end
+		local t = math.floor(v) * W + math.floor(u)
+		if t < 0 or t >= N then
+			continue
+		end
+		local a = st:tile_owner(t)
+		if a == 0 then
+			continue
+		end
+		local ang = math.random() * 2 * math.pi
+		local dx, dy = math.cos(ang), math.sin(ang)
+		local stepl = math.max(1, 3 * tpp) -- (about 3 px a step)
+		local prev = t
+		for k = 1, 40 do
+			local uu, vv = u + dx * stepl * k, v + dy * stepl * k
+			if uu < 0 or vv < 0 or uu >= W then
+				break
+			end
+			local tt = math.floor(vv) * W + math.floor(uu)
+			if tt < 0 or tt >= N then
+				break
+			end
+			local b = st:tile_owner(tt)
+			if b ~= a then
+				if b ~= 0 then
+					local px, py = cam:tile_to_screen(prev)
+					if cam:on_screen(px, py, -40) and free(px, py) then
+						local ux, uy = front_dir(st, prev, W, a, b)
+						local p = {
+							t1 = prev,
+							t2 = tt,
+							a = a,
+							b = b,
+							ux = ux,
+							uy = uy,
+							war = war[a * 65536 + b] == true,
+							phase = math.random() * 10,
+							soldiers = {},
+						}
+						for s = 1, 2 do
+							p.soldiers[s] = {
+								img = post_soldier(self),
+								key = "",
+								next = now + math.random() * FrontLayer.FIRE_MAX,
+								kick = 0,
+								x = 0,
+								y = 0,
+								faces = 1,
+							}
+						end
+						table.insert(self._posts, p)
+					end
+				end
+				break
+			end
+			prev = tt
+		end
+	end
+end
+
+--- Draws the posts: at peace each soldier patrols along the border (walking, hopping, facing where
+--- it walks); at war the two face each other across it, step in and out and fire.
+local function post_tick(self: any, now: number)
+	local cam = self.view.rig
+	for _, p in self._posts do
+		local bx, by = cam:tile_to_screen(p.t1)
+		local ux, uy = p.ux, p.uy
+		local px, py = -uy, ux
+		for s, sd in p.soldiers do
+			local owner = if s == 1 then p.a else p.b
+			local side = if s == 1 then -1 else 1
+			local ph = p.phase + s * 1.9
+			local x, y, faces
+			if p.war then
+				local toward = ux * -side -- (+: the enemy lies to the right)
+				faces = if toward >= 0 then 1 else -1
+				local step = (math.sin(now * 1.4 + ph) * 0.5 + 0.5) * 6
+				local d = FrontLayer.POST_GAP + 4 - step
+				sd.kick = math.max(0, sd.kick - 0.12)
+				x = bx + ux * side * d - faces * sd.kick * 3
+				y = by + uy * side * d - math.abs(math.sin(now * 7 + ph)) * 2.5
+			else
+				-- patrol: walk along the border and back, facing the way it walks
+				local w = math.sin(now * 0.8 + ph)
+				local along = w * FrontLayer.PATROL_PX
+				local vel = math.cos(now * 0.8 + ph) -- (its walking direction along the border)
+				local walk_x = px * vel
+				faces = if walk_x >= 0 then 1 else -1
+				x = bx + ux * side * FrontLayer.POST_GAP + px * along
+				y = by + uy * side * FrontLayer.POST_GAP + py * along - math.abs(math.sin(now * 6 + ph)) * 2 * math.min(1, math.abs(vel) * 2)
+			end
+			local key = owner .. (if faces > 0 then "r" else "l")
+			if sd.key ~= key then
+				local c = soldier_art(self, owner, faces > 0)
+				if c ~= nil then
+					sd.key = key
+					sd.img.ImageContent = c
+				end
+			end
+			sd.x, sd.y, sd.faces = x, y, faces
+			sd.img.Position = UDim2.fromOffset(x, y)
+		end
+		if p.war then
+			for s, sd in p.soldiers do
+				if now >= sd.next then
+					sd.next = now + FrontLayer.FIRE_MIN + math.random() * (FrontLayer.FIRE_MAX - FrontLayer.FIRE_MIN) + 0.4
+					sd.kick = 1
+					local foe = p.soldiers[3 - s]
+					local S = FrontLayer.SOLDIER_PX
+					fire(self, now, sd.x + sd.faces * S * 0.14, sd.y + S * 0.13, foe.x + (math.random() - 0.5) * 6, foe.y + (math.random() - 0.5) * 6)
+				end
+			end
+		end
 	end
 end
 
@@ -618,9 +843,25 @@ function FrontLayer.tick(self: any, dt: number)
 				l.Position = UDim2.fromOffset(x, y)
 			end
 			battle(self, n, now, x, y, s, e) -- (Take Over the World!: the soldiers at this front)
+			local bp = self._battle_pts[n]
+			if bp == nil then
+				bp = {}
+				self._battle_pts[n] = bp
+			end
+			bp[1], bp[2] = x, y
 		end
 	end
 	hide_battles(self, n + 1)
+	-- (Take Over the World!: the border posts, kept clear of the battles)
+	for j = #self._battle_pts, n + 1, -1 do
+		self._battle_pts[j] = nil
+	end
+	self._post_poll -= dt
+	if self._post_poll <= 0 then
+		self._post_poll = FrontLayer.POST_POLL_S
+		post_poll(self, now, self._battle_pts)
+	end
+	post_tick(self, now)
 	fx_tick(self, now)
 	for j = n + 1, #self._labels do
 		local rec = self._labels[j]

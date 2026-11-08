@@ -442,3 +442,4 @@ An original real-time territory-conquest game for Roblox. RoWorld is the gamepla
   with combat helmet, an empire's with its spiked helmet; rifle cut from the user's soldier image,
   GearSprites.soldier.rifle, mirrored by facing), firing: muzzle flash, tracer, spark, recoil.
   Facing comes from front_dir (owners in an 11x11 window). Countryball.ball_content(code, name, gear, pose).
+- (later) Border posts (FrontLayer post_poll / post_tick): up to 10 pairs of mini Countryball soldiers on any two countries' border in view, found by random walks until the owner changes, 120 px apart and clear of the front battles. At peace they patrol along the border (hopping walk, facing the way they walk); when the two countries are at war (an attack either way) they face each other, step in and out and fire. Front-battle soldiers now step and hop too. Only in the PLAYING phase (the title screen's live world shows them as well).
