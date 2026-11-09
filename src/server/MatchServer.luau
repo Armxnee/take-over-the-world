@@ -903,7 +903,7 @@ function MatchServer._dress_bots(self: any, ids: any)
 	end
 	for _, id in ids do
 		local c = {}
-		for _, kind in { "hat", "beard", "glasses", "boat" } do
+		for _, kind in { "hat", "beard", "glasses", "boat", "warship" } do
 			local list = gear[kind]
 			if list ~= nil and math.random() < MatchServer.BOT_GEAR_SHARE then
 				c[kind] = list[math.random(1, #list)]
@@ -945,8 +945,9 @@ function MatchServer.cosmetics_map(self: any): { [number]: any }
 			local boat = if c ~= nil then c.boat else nil
 			local nuke = if c ~= nil then c.nuke else nil
 			local missile = if c ~= nil then c.missile else nil
-			if skin ~= nil or flag ~= nil or face ~= nil or hat ~= nil or beard ~= nil or glasses ~= nil or boat ~= nil or nuke ~= nil or missile ~= nil then
-				map[part.owner] = { skin = skin, flag = flag, face = face, hat = hat, beard = beard, glasses = glasses, boat = boat, nuke = nuke, missile = missile }
+			local warship = if c ~= nil then c.warship else nil
+			if skin ~= nil or flag ~= nil or face ~= nil or hat ~= nil or beard ~= nil or glasses ~= nil or boat ~= nil or nuke ~= nil or missile ~= nil or warship ~= nil then
+				map[part.owner] = { skin = skin, flag = flag, face = face, hat = hat, beard = beard, glasses = glasses, boat = boat, nuke = nuke, missile = missile, warship = warship }
 			end
 		end
 	end

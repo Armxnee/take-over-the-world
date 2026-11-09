@@ -12,7 +12,7 @@ local GearSprites = require(script.Parent.GearSprites)
 
 local Gear = {}
 
-Gear.KINDS = { "hat", "beard", "glasses", "boat", "nuke", "missile" }
+Gear.KINDS = { "hat", "beard", "glasses", "boat", "nuke", "missile", "warship" }
 --- the kinds worn on the Countryball, in the order they are drawn
 Gear.BALL_KINDS = { "beard", "glasses", "hat" }
 Gear.KIND_NAMES = {
@@ -22,6 +22,7 @@ Gear.KIND_NAMES = {
 	boat = "Boat Skin",
 	nuke = "Nuke Skin",
 	missile = "Missile Skin",
+	warship = "Warship Skin",
 }
 
 Gear.items = {
@@ -57,6 +58,22 @@ Gear.items = {
 	{ id = "missile_shadow", kind = "missile", name = "Shadow Missile", rarity = "rare", color = { 40, 42, 52 } },
 	{ id = "missile_neon", kind = "missile", name = "Neon Missile", rarity = "rare", color = { 60, 255, 140 } },
 	{ id = "missile_inferno", kind = "missile", name = "Inferno Missile", rarity = "epic", color = { 255, 110, 30 } },
+	-- (2026-11-08: the user's sprite sheets; every boat / nuke / missile skin is now pixel art, Data/UnitSkins,
+	-- and a few new ones come with them; `color` stays for what still tints)
+	{ id = "boat_barge", kind = "boat", name = "Gravel Barge", rarity = "common", color = { 120, 96, 80 } },
+	{ id = "nuke_rust", kind = "nuke", name = "Rusted Warhead", rarity = "common", color = { 200, 110, 50 } },
+	{ id = "missile_field", kind = "missile", name = "Field Missile", rarity = "common", color = { 120, 118, 70 } },
+	{ id = "missile_hazard", kind = "missile", name = "Hazard Missile", rarity = "rare", color = { 250, 210, 30 } },
+	{ id = "missile_rust", kind = "missile", name = "Rusty Missile", rarity = "common", color = { 160, 96, 56 } },
+	-- warship skins (2026-11-08, the user's warship sheet)
+	{ id = "warship_destroyer", kind = "warship", name = "Grey Destroyer", rarity = "common", color = { 110, 118, 130 } },
+	{ id = "warship_desert", kind = "warship", name = "Desert Camo Gunboat", rarity = "common", color = { 150, 140, 90 } },
+	{ id = "warship_jungle", kind = "warship", name = "Jungle Camo Cruiser", rarity = "rare", color = { 96, 112, 70 } },
+	{ id = "warship_battle", kind = "warship", name = "Battle Cruiser", rarity = "rare", color = { 140, 146, 160 } },
+	{ id = "warship_sub", kind = "warship", name = "Submarine", rarity = "epic", color = { 60, 66, 80 } },
+	{ id = "warship_stealth", kind = "warship", name = "Stealth Corvette", rarity = "epic", color = { 40, 50, 80 } },
+	{ id = "warship_carrier", kind = "warship", name = "Aircraft Carrier", rarity = "legendary", color = { 120, 126, 140 } },
+	{ id = "warship_dread", kind = "warship", name = "Dreadnought", rarity = "legendary", color = { 110, 100, 86 } },
 }
 
 -- the Countryball gear goes first (hats, beards, glasses: Data/GearSprites)

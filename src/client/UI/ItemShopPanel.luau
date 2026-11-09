@@ -63,6 +63,7 @@ local KIND_TEXT = {
 	beard = "Countryball Beard",
 	glasses = "Countryball Glasses",
 	boat = "Boat Skin",
+	warship = "Warship Skin",
 	nuke = "Nuke Skin",
 	missile = "Missile Skin",
 }
@@ -75,6 +76,7 @@ local CATEGORIES = {
 	{ kind = "boat", text = "Boat Skins" },
 	{ kind = "nuke", text = "Nuke Skins" },
 	{ kind = "missile", text = "Missile Skins" },
+	{ kind = "warship", text = "Warship Skins" },
 }
 local CAT_W = 200
 --- the coin packs' cards, smallest to biggest (top, foot): green, blue, purple, orange
@@ -398,6 +400,7 @@ function ItemShopPanel.new(ctx: any, gui: Instance, open_locker: () -> ())
 			Position = UDim2.fromScale(0.5, 0.37),
 			Size = UDim2.fromScale(0.86, 0.86),
 			ResampleMode = Enum.ResamplerMode.Pixelated,
+			ScaleType = Enum.ScaleType.Fit, -- (a ship's art is wide, a missile's tall)
 			ZIndex = 44,
 		}, body)
 		make("UIAspectRatioConstraint", { AspectRatio = 1 }, art)
@@ -633,6 +636,7 @@ function ItemShopPanel.new(ctx: any, gui: Instance, open_locker: () -> ())
 			local pic = make("ImageLabel", {
 				BackgroundTransparency = 1,
 				ResampleMode = Enum.ResamplerMode.Pixelated,
+				ScaleType = Enum.ScaleType.Fit,
 				Size = UDim2.fromScale(1, 1),
 				ZIndex = 47,
 			}, tile)

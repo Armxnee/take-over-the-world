@@ -511,6 +511,7 @@ function Session._apply_own_cosmetics(self: any, id: number)
 			boat = eq.boat,
 			nuke = eq.nuke,
 			missile = eq.missile,
+			warship = eq.warship,
 		},
 	}, true)
 end
@@ -1521,7 +1522,7 @@ function Session._on_net(self: any, op: number, ...: any)
 				-- (Take Over the World!: every slot, the item shop's gear too)
 				equipped = (function()
 					local out = {}
-					for _, slot in { "skin", "flag", "hat", "beard", "glasses", "boat", "nuke", "missile" } do
+					for _, slot in { "skin", "flag", "hat", "beard", "glasses", "boat", "nuke", "missile", "warship" } do
 						out[slot] = if type(eq[slot]) == "string" then eq[slot] else nil
 					end
 					return out

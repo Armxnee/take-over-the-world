@@ -9,6 +9,7 @@ local AssetService = game:GetService("AssetService")
 local Airfront = game:GetService("ReplicatedStorage"):WaitForChild("Airfront")
 local Gear = require(Airfront.Data.Gear)
 local Countryball = require("./Countryball")
+local UnitSkins = require(Airfront.Data.UnitSkins) -- (2026-11-08: the skins' pixel art)
 
 local GearArt = {}
 
@@ -126,6 +127,11 @@ local BALLS = { "gb", "fr", "de", "jp", "br", "us", "it", "ca" }
 function GearArt.content(it: any, flag: string?): Content?
 	if it == nil then
 		return nil
+	end
+	-- (a boat / warship / nuke / missile skin: its pixel art, a ship facing right)
+	local sk = UnitSkins.skins[it.id]
+	if sk ~= nil then
+		return Content.fromUri(sk.r or sk.img)
 	end
 	if Gear.on_ball(it.kind) then -- (a hat, a beard or glasses: shown worn)
 		return Countryball.ball_content(flag or "plain", nil, it.id) -- (a plain ball: gear is for anyone)

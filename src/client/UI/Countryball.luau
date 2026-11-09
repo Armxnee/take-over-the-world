@@ -10,6 +10,8 @@ local FlagPix = require(game:GetService("ReplicatedStorage"):WaitForChild("Airfr
 local Gear = require(game:GetService("ReplicatedStorage"):WaitForChild("Airfront"):WaitForChild("Data"):WaitForChild("Gear")) -- (Take Over the World!: hats)
 local Empires = require(game:GetService("ReplicatedStorage"):WaitForChild("Airfront"):WaitForChild("Data"):WaitForChild("Empires")) -- (Take Over the World!: the evil look)
 local GearSprites = require(game:GetService("ReplicatedStorage"):WaitForChild("Airfront"):WaitForChild("Data"):WaitForChild("GearSprites"))
+-- (2026-11-08: each historical empire's own hat and facial hair, tools/build_empire_looks.py)
+local EmpireLooks = require(game:GetService("ReplicatedStorage"):WaitForChild("Airfront"):WaitForChild("Data"):WaitForChild("EmpireLooks"))
 
 local Countryball = {}
 
@@ -84,6 +86,17 @@ local EYE_COL = { k = OUT, w = Color3.new(1, 1, 1), g = Color3.fromRGB(200, 200,
 --- the empire's moustache when it wears no beard of its own
 Countryball.EMPIRE_BEARD = "beard_handlebar"
 local balls: { [string]: any } = {}
+
+--- A historical empire's own look ({ hat, beard } sprites, Data/EmpireLooks) by its flag code
+--- ("emp_german") or its name; nil for an "Empire of <country>" (the spiked helmet and moustache).
+function Countryball.empire_look(code: string?, name: string?): any?
+	local key = if type(code) == "string" then string.match(code, "^emp_(.+)$") else nil
+	if key == nil then
+		local f = Empires.flag_of(name)
+		key = if f ~= nil then string.match(f, "^emp_(.+)$") else nil
+	end
+	return if key ~= nil then EmpireLooks[key] else nil
+end
 
 --- The gear a ball wears: { hat?, beard?, glasses? } from a table (an equipped / cosmetics record)
 --- or a single item id (any kind worn on the ball).
@@ -193,8 +206,10 @@ function Countryball.ball_content(code: string?, name: string?, gear: any, pose:
 	local evil = Empires.is_empire(name) or (type(code) == "string" and string.sub(code, 1, 4) == "emp_")
 	-- the beard (an empire's moustache) under the eyes, then the eyes, the glasses and the hat (an
 	-- empire's helmet)
-	local beard = Gear.item(worn.beard) or (if evil then Gear.item(Countryball.EMPIRE_BEARD) else nil)
-	sprite(beard, 0, if evil and worn.beard == nil then 1 else 0)
+	local look = if evil then Countryball.empire_look(code, name) else nil
+	local beard = Gear.item(worn.beard)
+		or (if evil then (if look ~= nil then look.beard else Gear.item(Countryball.EMPIRE_BEARD)) else nil)
+	sprite(beard, 0, if evil and worn.beard == nil and look == nil then 1 else 0)
 	if evil and worn.glasses == nil then
 		-- (Take Over the World!: the empire's angry eyes, from the user's evil ball; glasses the player
 		-- wears replace them, as their hat replaces the helmet and their beard the moustache, so the
@@ -217,7 +232,7 @@ function Countryball.ball_content(code: string?, name: string?, gear: any, pose:
 	if worn.hat ~= nil then
 		sprite(Gear.item(worn.hat))
 	elseif evil then
-		sprite(GearSprites.empire.helmet)
+		sprite(if look ~= nil then look.hat else GearSprites.empire.helmet)
 	end
 	-- (Take Over the World!: a front-line soldier's rifle, after the user's soldier balls: aiming left
 	-- it rests on the ball's right side, aiming right (mirrored) on its left)

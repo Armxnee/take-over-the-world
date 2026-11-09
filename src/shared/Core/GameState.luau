@@ -260,6 +260,7 @@ function GameState.set_cosmetics(self: any, map: { [any]: any }, full: boolean?)
 		end
 		local hat, boat, nuke, missile = str("hat"), str("boat"), str("nuke"), str("missile")
 		local beard, glasses = str("beard"), str("glasses") -- (2026-11-08: worn on the Countryball too)
+		local warship = str("warship") -- (2026-11-08: the warship skins)
 		local old = self.cosmetics[id]
 		if
 			skin == nil
@@ -271,6 +272,7 @@ function GameState.set_cosmetics(self: any, map: { [any]: any }, full: boolean?)
 			and boat == nil
 			and nuke == nil
 			and missile == nil
+			and warship == nil
 		then
 			if old ~= nil then
 				self.cosmetics[id] = nil
@@ -287,6 +289,7 @@ function GameState.set_cosmetics(self: any, map: { [any]: any }, full: boolean?)
 			or old.boat ~= boat
 			or old.nuke ~= nuke
 			or old.missile ~= missile
+			or old.warship ~= warship
 		then
 			self.cosmetics[id] = {
 				skin = skin,
@@ -298,6 +301,7 @@ function GameState.set_cosmetics(self: any, map: { [any]: any }, full: boolean?)
 				boat = boat,
 				nuke = nuke,
 				missile = missile,
+				warship = warship,
 			}
 			table.insert(changed, id)
 		end

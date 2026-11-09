@@ -44,6 +44,8 @@ local WakeRoute = require(script.Parent:WaitForChild("WakeRoute")) :: any
 local TrailBudget = require(script.Parent:WaitForChild("TrailBudget")) :: any
 local FrameClock = require(script.Parent:WaitForChild("FrameClock")) :: any
 local Gear = require(Airfront:WaitForChild("Data"):WaitForChild("Gear")) :: any
+-- (2026-11-08: the skins' pixel art and the trains, from the user's sheets: tools/build_unit_skins.py)
+local UnitSkins = require(Airfront:WaitForChild("Data"):WaitForChild("UnitSkins")) :: any
 local Countries = require(Airfront:WaitForChild("Data"):WaitForChild("Countries")) :: any -- (Take Over the World!: jets)
 local Countryball = require("../UI/Countryball")
 local BattleFx = require(script.Parent:WaitForChild("BattleFx")) :: any
@@ -131,6 +133,17 @@ local function tint_of(st: any, owner: number, slot: string | false | nil): Colo
 	return t or nil
 end
 
+--- The pixel art (Data/UnitSkins) of owner `owner`'s `slot` skin ("boat" / "warship" / "nuke" /
+--- "missile"), or nil (no skin: the unit's own sprite).
+local function skin_of(st: any, owner: number, slot: string | false | nil): any?
+	if not slot then
+		return nil
+	end
+	local cz = st.cosmetics and st.cosmetics[owner]
+	local id = if cz ~= nil then cz[slot] else nil
+	return if type(id) == "string" then UnitSkins.skins[id] else nil
+end
+
 --- Munitions drawn without a trail and a target ring (a battery's shells: there are many).
 local NUKE_PLAIN = { [Defs.N_SHELL] = true }
 --- Munitions drawn bigger than the others.
@@ -193,6 +206,12 @@ function UnitLayer.new(parent: Instance, view: any)
 	self._drawn_at = 0.0
 	-- (Take Over the World!: air strikes fly as Countryball jets and strafe their target)
 	self._jets = {} :: { [number]: any }
+	-- (Take Over the World!: art sprites, free-sized pictures: the trains, skinned ships and munitions)
+	self._arts = {} :: { [number]: ImageLabel }
+	self._art_pool = {} :: { ImageLabel }
+	self._art_seen = {} :: { [number]: boolean }
+	self._face = {} :: { [number]: boolean }
+	self._prevx = {} :: { [number]: number }
 	self._bfx = BattleFx.new(root, UnitLayer.Z + 4)
 	return self
 end
@@ -204,6 +223,12 @@ end
 
 function UnitLayer.unbind(self: any)
 	self._state = nil
+	for key, a in self._arts do
+		a:Destroy()
+		self._arts[key] = nil
+	end
+	table.clear(self._face)
+	table.clear(self._prevx)
 	for key, s in self._sprites do
 		self:_release(s)
 		self._sprites[key] = nil
@@ -349,6 +374,73 @@ function UnitLayer._sprite(
 		s.x, s.y = rx, ry
 		s.frame.Position = UDim2.fromOffset(rx, ry)
 	end
+end
+
+UnitLayer.LOCO_PX = 1.25 -- a train's engine, wide as this many unit sprites
+UnitLayer.SHIP_PX = 1.5 -- a skinned ship's width, in unit sprites
+UnitLayer.NUKE_ART = 0.9 -- a skinned bomb's height, in its sprite size
+UnitLayer.MISSILE_ART = 1.1 -- a skinned SAM missile's height, in unit sprites
+UnitLayer.TRAIN_CARS = 4 -- container cars behind the engine (the art has three, repeated)
+
+--- An art sprite: picture `image` centred at (x, y), w x h px, turned `rot` degrees.
+function UnitLayer._art(self: any, key: number, image: string, x: number, y: number, w: number, h: number, rot: number)
+	self._art_seen[key] = true
+	local a = self._arts[key]
+	if a == nil then
+		a = table.remove(self._art_pool)
+		if a == nil then
+			a = Instance.new("ImageLabel")
+			a.Name = "Art"
+			a.BackgroundTransparency = 1
+			a.AnchorPoint = Vector2.new(0.5, 0.5)
+			a.ResampleMode = Enum.ResamplerMode.Pixelated
+			a.ZIndex = UnitLayer.Z
+			a.Parent = self.root
+		end
+		a.Visible = true
+		self._arts[key] = a
+	end
+	if a.Image ~= image then
+		a.Image = image
+	end
+	local sz = UDim2.fromOffset(math.max(2, math.round(w)), math.max(2, math.round(h)))
+	if a.Size ~= sz then
+		a.Size = sz
+	end
+	a.Position = UDim2.fromOffset(math.round(x), math.round(y))
+	a.Rotation = rot
+end
+
+--- Facing right? Changes only on a clear move (`dx` px), so a picture doesn't flip back and forth.
+function UnitLayer._facing(self: any, key: number, dx: number): boolean
+	local f = self._face[key]
+	if f == nil or math.abs(dx) > 0.35 then
+		f = dx >= 0
+		self._face[key] = f
+	end
+	return f
+end
+
+--- A train piece (Data/UnitSkins.train: the engine or a car) whose middle is `d` tiles along unit
+--- `u`'s path, `w` px long, turned along the track.
+function UnitLayer._train_piece(self: any, key: number, piece: any, st: any, u: any, d: number, w: number)
+	local cam = self.view.rig
+	local half = w * 0.5 / math.max(cam.scale, 0.01)
+	local x0, y0 = cam:map_to_screen(UnitLayer.path_uv(st, u, d - half))
+	local x1, y1 = cam:map_to_screen(UnitLayer.path_uv(st, u, d + half))
+	local x, y = (x0 + x1) * 0.5, (y0 + y1) * 0.5
+	if not cam:on_screen(x, y, w) then
+		return false
+	end
+	local dx, dy = x1 - x0, y1 - y0
+	local right = self:_facing(key, dx)
+	local rot = 0
+	if math.abs(dx) + math.abs(dy) > 0.01 then
+		rot = if right then math.deg(math.atan2(dy, dx)) else math.deg(math.atan2(-dy, -dx))
+		rot = math.clamp(rot, -89, 89)
+	end
+	self:_art(key, if right then piece.r else piece.l, x, y, w, w * piece.h / piece.w, rot)
+	return true
 end
 
 function UnitLayer._dot(self: any, x: number, y: number, px: number, col: Color3)
@@ -646,6 +738,7 @@ function UnitLayer.tick(self: any, _dt: number)
 	self._drawn_at = clock
 	local seen = self._seen
 	table.clear(seen)
+	table.clear(self._art_seen)
 	self._dots_used = 0
 	self._bars_used = 0
 	table.clear(self._screen)
@@ -707,17 +800,28 @@ function UnitLayer.tick(self: any, _dt: number)
 			continue
 		end
 		local pick = kind == U_TRANSPORT or kind == U_WARSHIP
-		if kind == U_TRUCK and cars_shown then
-			-- the cars behind the engine, back to front (the engine is drawn last, on top)
+		if kind == U_TRUCK then
+			-- (2026-11-08: a train, the user's: the engine at the front, container cars behind it, each
+			-- turned along the track; zoomed out, the engine alone)
+			local T = UnitSkins.train
 			local done = UnitLayer.path_done(u, rt)
-			local step = UnitLayer.TRAIN_SPACING / k
-			for j = cars + 1, 1, -1 do
-				local cx, cy = cam:map_to_screen(UnitLayer.path_uv(st, u, done - j * step))
-				if cam:on_screen(cx, cy, px) then
-					self:_sprite(uid * 16 + j, if j > cars then COL_TRAIN else COL_CARRIAGE, u.owner, cx, cy, px, seen)
-					drawn += 1
+			local lw = math.max(px * UnitLayer.LOCO_PX, 12)
+			local s = math.max(cam.scale, 0.01)
+			if cars_shown then
+				local cw = lw * T.car1.w / T.loco.w
+				local back = done - lw / s
+				for j = UnitLayer.TRAIN_CARS, 1, -1 do
+					local piece = T["car" .. ((j - 1) % 3 + 1)]
+					local d = back - (cw * (j - 0.5) + j * 1.5) / s
+					if self:_train_piece(uid * 16 + j, piece, st, u, d, cw) then
+						drawn += 1
+					end
 				end
 			end
+			if self:_train_piece(uid * 16, T.loco, st, u, done - lw * 0.5 / s, lw) then
+				drawn += 1
+			end
+			continue
 		end
 		-- (a transport rides its smoothed route, at the head of its wake)
 		local wake = if kind == U_TRANSPORT then self._wakes[uid] else nil
@@ -733,7 +837,22 @@ function UnitLayer.tick(self: any, _dt: number)
 		if pick then
 			self._screen[uid] = Vector2.new(x, y)
 		end
-		local tint = if pick then tint_of(st, u.owner, "boat") else nil
+		-- (2026-11-08: a skin is the user's pixel art: cargo ships for transports and trade ships, its
+		-- own for warships; facing the way the ship sails)
+		local sk = if kind == U_WARSHIP
+			then skin_of(st, u.owner, "warship")
+			elseif kind == U_TRANSPORT or kind == Defs.U_TRADE then skin_of(st, u.owner, "boat")
+			else nil
+		if sk ~= nil and sk.r ~= nil then
+			local prev = self._prevx[uid]
+			self._prevx[uid] = x
+			local right = self:_facing(uid * 16, if prev ~= nil then x - prev else 0)
+			local w = px * UnitLayer.SHIP_PX
+			self:_art(uid * 16, if right then sk.r else sk.l, x, y, w, w * sk.h / sk.w, 0)
+			drawn += 1
+			continue
+		end
+		local tint = if kind == U_TRANSPORT then tint_of(st, u.owner, "boat") else nil
 		self:_sprite(uid * 16, col, u.owner, x, y, px, seen, tint)
 		drawn += 1
 	end
@@ -792,7 +911,16 @@ function UnitLayer.tick(self: any, _dt: number)
 			-- (Take Over the World!: an air strike is the owner's Countryball jet, strafing at the end)
 			self:_jet(uid, n, t, x, y, now)
 		elseif cam:on_screen(x, y, npx) then
-			self:_sprite(uid * 16 + KEY_NUKE, col, n.owner, x, y, npx, seen, ntint)
+			local sk = skin_of(st, n.owner, if slot == nil then "nuke" else slot)
+			if sk ~= nil and sk.img ~= nil then
+				-- (its pixel art, nose along its flight)
+				local x2, y2 = cam:map_to_screen(uv(st, n, math.min(1, t + 0.01)))
+				local rot = if math.abs(x2 - x) + math.abs(y2 - y) > 0.01 then math.deg(math.atan2(y2 - y, x2 - x)) + 90 else 0
+				local h = npx * UnitLayer.NUKE_ART
+				self:_art(uid * 16 + KEY_NUKE, sk.img, x, y, h * sk.w / sk.h, h, rot)
+			else
+				self:_sprite(uid * 16 + KEY_NUKE, col, n.owner, x, y, npx, seen, ntint)
+			end
 		end
 		if n.kind == Defs.N_WARHEAD and not rings_for_warheads then
 			continue
@@ -871,13 +999,37 @@ function UnitLayer.tick(self: any, _dt: number)
 		local bx, by = UnitLayer.nuke_uv(st, n, ti)
 		local x, y = cam:map_to_screen(ax + (bx - ax) * t, ay + (by - ay) * t)
 		if cam:on_screen(x, y, px) then
-			self:_sprite(nuke_uid * 16 + KEY_SAM, COL_SAM, sam.owner, x, y, px, seen, tint_of(st, sam.owner, "missile"))
+			local sk = skin_of(st, sam.owner, "missile")
+			if sk ~= nil and sk.img ~= nil then
+				local axs, ays = cam:map_to_screen(ax, ay)
+				local bxs, bys = cam:map_to_screen(bx, by)
+				local rot = math.deg(math.atan2(bys - ays, bxs - axs)) + 90
+				local h = px * UnitLayer.MISSILE_ART
+				self:_art(nuke_uid * 16 + KEY_SAM, sk.img, x, y, h * sk.w / sk.h, h, rot)
+			else
+				self:_sprite(nuke_uid * 16 + KEY_SAM, COL_SAM, sam.owner, x, y, px, seen, tint_of(st, sam.owner, "missile"))
+			end
 		end
 	end
 	for key, s in self._sprites do
 		if not seen[key] then
 			self:_release(s)
 			self._sprites[key] = nil
+		end
+	end
+	for key, a in self._arts do
+		if not self._art_seen[key] then
+			self._arts[key] = nil
+			self._face[key] = nil
+			if key % 16 == 0 then
+				self._prevx[key // 16] = nil
+			end
+			if #self._art_pool < UnitLayer.POOL_SPARE then
+				a.Visible = false
+				table.insert(self._art_pool, a)
+			else
+				a:Destroy()
+			end
 		end
 	end
 	-- (the pools: a few spares stay hidden, the rest go)

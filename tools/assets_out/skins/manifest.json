@@ -1,0 +1,347 @@
+{
+ "boat_crimson_r": {
+  "file": "boat_crimson_r.png",
+  "w": 56,
+  "h": 30
+ },
+ "boat_crimson_l": {
+  "file": "boat_crimson_l.png",
+  "w": 56,
+  "h": 30
+ },
+ "boat_ocean_r": {
+  "file": "boat_ocean_r.png",
+  "w": 57,
+  "h": 26
+ },
+ "boat_ocean_l": {
+  "file": "boat_ocean_l.png",
+  "w": 57,
+  "h": 26
+ },
+ "boat_rust_r": {
+  "file": "boat_rust_r.png",
+  "w": 57,
+  "h": 25
+ },
+ "boat_rust_l": {
+  "file": "boat_rust_l.png",
+  "w": 57,
+  "h": 25
+ },
+ "boat_stealth_r": {
+  "file": "boat_stealth_r.png",
+  "w": 57,
+  "h": 27
+ },
+ "boat_stealth_l": {
+  "file": "boat_stealth_l.png",
+  "w": 57,
+  "h": 27
+ },
+ "boat_barge_r": {
+  "file": "boat_barge_r.png",
+  "w": 56,
+  "h": 21
+ },
+ "boat_barge_l": {
+  "file": "boat_barge_l.png",
+  "w": 56,
+  "h": 21
+ },
+ "boat_navy_grey_r": {
+  "file": "boat_navy_grey_r.png",
+  "w": 56,
+  "h": 27
+ },
+ "boat_navy_grey_l": {
+  "file": "boat_navy_grey_l.png",
+  "w": 56,
+  "h": 27
+ },
+ "boat_jungle_r": {
+  "file": "boat_jungle_r.png",
+  "w": 53,
+  "h": 26
+ },
+ "boat_jungle_l": {
+  "file": "boat_jungle_l.png",
+  "w": 53,
+  "h": 26
+ },
+ "boat_gold_r": {
+  "file": "boat_gold_r.png",
+  "w": 55,
+  "h": 28
+ },
+ "boat_gold_l": {
+  "file": "boat_gold_l.png",
+  "w": 55,
+  "h": 28
+ },
+ "boat_arctic_r": {
+  "file": "boat_arctic_r.png",
+  "w": 57,
+  "h": 26
+ },
+ "boat_arctic_l": {
+  "file": "boat_arctic_l.png",
+  "w": 57,
+  "h": 26
+ },
+ "boat_royal_r": {
+  "file": "boat_royal_r.png",
+  "w": 56,
+  "h": 30
+ },
+ "boat_royal_l": {
+  "file": "boat_royal_l.png",
+  "w": 56,
+  "h": 30
+ },
+ "boat_neon_r": {
+  "file": "boat_neon_r.png",
+  "w": 57,
+  "h": 27
+ },
+ "boat_neon_l": {
+  "file": "boat_neon_l.png",
+  "w": 57,
+  "h": 27
+ },
+ "boat_ivory_r": {
+  "file": "boat_ivory_r.png",
+  "w": 56,
+  "h": 27
+ },
+ "boat_ivory_l": {
+  "file": "boat_ivory_l.png",
+  "w": 56,
+  "h": 27
+ },
+ "nuke_camo": {
+  "file": "nuke_camo.png",
+  "w": 35,
+  "h": 64
+ },
+ "nuke_crimson": {
+  "file": "nuke_crimson.png",
+  "w": 28,
+  "h": 77
+ },
+ "nuke_hazard": {
+  "file": "nuke_hazard.png",
+  "w": 32,
+  "h": 64
+ },
+ "nuke_rust": {
+  "file": "nuke_rust.png",
+  "w": 32,
+  "h": 63
+ },
+ "nuke_ice": {
+  "file": "nuke_ice.png",
+  "w": 32,
+  "h": 71
+ },
+ "nuke_toxic": {
+  "file": "nuke_toxic.png",
+  "w": 33,
+  "h": 71
+ },
+ "nuke_black_ops": {
+  "file": "nuke_black_ops.png",
+  "w": 35,
+  "h": 73
+ },
+ "nuke_plasma": {
+  "file": "nuke_plasma.png",
+  "w": 35,
+  "h": 73
+ },
+ "nuke_gold": {
+  "file": "nuke_gold.png",
+  "w": 35,
+  "h": 64
+ },
+ "nuke_candy": {
+  "file": "nuke_candy.png",
+  "w": 28,
+  "h": 77
+ },
+ "missile_field": {
+  "file": "missile_field.png",
+  "w": 33,
+  "h": 75
+ },
+ "missile_red_streak": {
+  "file": "missile_red_streak.png",
+  "w": 28,
+  "h": 77
+ },
+ "missile_jungle": {
+  "file": "missile_jungle.png",
+  "w": 35,
+  "h": 76
+ },
+ "missile_hazard": {
+  "file": "missile_hazard.png",
+  "w": 33,
+  "h": 75
+ },
+ "missile_inferno": {
+  "file": "missile_inferno.png",
+  "w": 36,
+  "h": 73
+ },
+ "missile_ice": {
+  "file": "missile_ice.png",
+  "w": 36,
+  "h": 73
+ },
+ "missile_neon": {
+  "file": "missile_neon.png",
+  "w": 35,
+  "h": 73
+ },
+ "missile_rust": {
+  "file": "missile_rust.png",
+  "w": 36,
+  "h": 73
+ },
+ "missile_shadow": {
+  "file": "missile_shadow.png",
+  "w": 33,
+  "h": 75
+ },
+ "missile_plasma": {
+  "file": "missile_plasma.png",
+  "w": 36,
+  "h": 73
+ },
+ "missile_gold": {
+  "file": "missile_gold.png",
+  "w": 33,
+  "h": 75
+ },
+ "warship_destroyer_r": {
+  "file": "warship_destroyer_r.png",
+  "w": 53,
+  "h": 28
+ },
+ "warship_destroyer_l": {
+  "file": "warship_destroyer_l.png",
+  "w": 53,
+  "h": 28
+ },
+ "warship_jungle_r": {
+  "file": "warship_jungle_r.png",
+  "w": 57,
+  "h": 32
+ },
+ "warship_jungle_l": {
+  "file": "warship_jungle_l.png",
+  "w": 57,
+  "h": 32
+ },
+ "warship_sub_r": {
+  "file": "warship_sub_r.png",
+  "w": 53,
+  "h": 25
+ },
+ "warship_sub_l": {
+  "file": "warship_sub_l.png",
+  "w": 53,
+  "h": 25
+ },
+ "warship_carrier_r": {
+  "file": "warship_carrier_r.png",
+  "w": 58,
+  "h": 28
+ },
+ "warship_carrier_l": {
+  "file": "warship_carrier_l.png",
+  "w": 58,
+  "h": 28
+ },
+ "warship_battle_r": {
+  "file": "warship_battle_r.png",
+  "w": 57,
+  "h": 32
+ },
+ "warship_battle_l": {
+  "file": "warship_battle_l.png",
+  "w": 57,
+  "h": 32
+ },
+ "warship_desert_r": {
+  "file": "warship_desert_r.png",
+  "w": 46,
+  "h": 30
+ },
+ "warship_desert_l": {
+  "file": "warship_desert_l.png",
+  "w": 46,
+  "h": 30
+ },
+ "warship_stealth_r": {
+  "file": "warship_stealth_r.png",
+  "w": 57,
+  "h": 23
+ },
+ "warship_stealth_l": {
+  "file": "warship_stealth_l.png",
+  "w": 57,
+  "h": 23
+ },
+ "warship_dread_r": {
+  "file": "warship_dread_r.png",
+  "w": 57,
+  "h": 34
+ },
+ "warship_dread_l": {
+  "file": "warship_dread_l.png",
+  "w": 57,
+  "h": 34
+ },
+ "train_loco_r": {
+  "file": "train_loco_r.png",
+  "w": 87,
+  "h": 34
+ },
+ "train_loco_l": {
+  "file": "train_loco_l.png",
+  "w": 87,
+  "h": 34
+ },
+ "train_car1_r": {
+  "file": "train_car1_r.png",
+  "w": 36,
+  "h": 34
+ },
+ "train_car1_l": {
+  "file": "train_car1_l.png",
+  "w": 36,
+  "h": 34
+ },
+ "train_car2_r": {
+  "file": "train_car2_r.png",
+  "w": 39,
+  "h": 33
+ },
+ "train_car2_l": {
+  "file": "train_car2_l.png",
+  "w": 39,
+  "h": 33
+ },
+ "train_car3_r": {
+  "file": "train_car3_r.png",
+  "w": 39,
+  "h": 33
+ },
+ "train_car3_l": {
+  "file": "train_car3_l.png",
+  "w": 39,
+  "h": 33
+ }
+}

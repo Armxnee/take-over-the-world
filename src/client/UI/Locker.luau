@@ -51,6 +51,7 @@ Locker.TABS = {
 	{ "Boats", "boat" },
 	{ "Nukes", "nuke" },
 	{ "Missiles", "missile" },
+	{ "Warships", "warship" },
 	{ "Flags", "flag" },
 }
 Locker.SKIN_CARD = Vector2.new(116, 128)
@@ -143,6 +144,7 @@ local function show_item(img: ImageLabel, it: any)
 	local gear = GearArt.content(it)
 	if gear ~= nil then
 		img.ResampleMode = Enum.ResamplerMode.Pixelated
+		img.ScaleType = Enum.ScaleType.Fit
 		img.ImageContent = gear
 		return
 	end
