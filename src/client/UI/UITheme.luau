@@ -1332,6 +1332,9 @@ local _icons: any = nil
 --- Icons every Roblox client ships (rbxasset textures, white: tint with ImageColor3).
 UITheme.BUILTIN_ICONS = {
 	robux = "rbxasset://textures/ui/common/robux@3x.png",
+	-- (Take Over the World!, 2026-11-08) the coins' icon: a pixel star coin with a gold rim, in colour
+	-- (tools/build_coin_packs.py; not tinted: ImageColor3 white)
+	coin = "rbxassetid://97653823732397",
 }
 
 local _crate_art: any = nil

@@ -279,8 +279,7 @@ function QuestPanel.new(ctx: any, gui: Instance)
 		make("UICorner", { CornerRadius = UDim.new(1, 0) }, reward)
 		make("ImageLabel", {
 			BackgroundTransparency = 1,
-			Image = UITheme.icon("gold") or "",
-			ImageColor3 = AMBER,
+			Image = UITheme.icon("coin") or "",
 			ScaleType = Enum.ScaleType.Fit,
 			Position = UDim2.fromOffset(8, 5),
 			Size = UDim2.fromOffset(20, 20),

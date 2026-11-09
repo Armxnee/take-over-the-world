@@ -3,7 +3,7 @@
 After the user's reference (Fortnite's V-Bucks packs): piles of silver coins with cyan rims, bigger for
 each pack, drawn as pixel art, with a star where the reference has its V. Also a sheet of soft white
 rays (the cards' and the bundles' background, tinted in game). Writes tools/assets_out/coins_<1-4>.png
-and tools/assets_out/rays.png; upload them (MCP upload_image) and put the ids in
+tools/assets_out/rays.png and the coin icon tools/assets_out/coin_icon.png (UITheme.BUILTIN_ICONS.coin); upload them (MCP upload_image) and put the ids in
 src/client/UI/ItemShopPanel.luau (COIN_ART, RAYS). Run from the project root: py tools/build_coin_packs.py
 """
 import math
@@ -23,8 +23,8 @@ SIDE = (154, 166, 178, 255)
 SIDE_HI = (195, 204, 213, 255)
 FACE = (227, 233, 239, 255)
 FACE_SH = (184, 195, 206, 255)
-CYAN = (89, 227, 242, 255)
-CYAN_DK = (39, 169, 196, 255)
+CYAN = (255, 214, 64, 255)  # (2026-11-08: the rims gold, after the user; they were cyan as in the reference)
+CYAN_DK = (214, 146, 22, 255)
 WHITE = (255, 255, 255, 255)
 STAR_SH = (140, 153, 166, 255)
 
@@ -153,7 +153,16 @@ def rays():
     return out
 
 
+def icon():
+    """One coin standing up (the currency's icon everywhere coins show): 30 x 30, drawn up x8."""
+    img = Image.new("RGBA", (30, 30), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    hero(d, 13, 15, 11)
+    return outline(img).resize((240, 240), Image.NEAREST)
+
+
 def main():
+    icon().save(os.path.join(OUT, "coin_icon.png"))
     for i, spec in enumerate(PACKS, start=1):
         pack(spec).save(os.path.join(OUT, "coins_%d.png" % i))
     rays().save(os.path.join(OUT, "rays.png"))

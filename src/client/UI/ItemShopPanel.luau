@@ -36,10 +36,10 @@ ItemShopPanel.BACKDROP = "rbxassetid://80157115981891" -- tools/build_shop_bg_bl
 ItemShopPanel.ICON = "rbxassetid://85914348579343" -- tools/build_gear.py: the user's basket, pixelated
 --- tools/build_coin_packs.py: the coin packs' piles (smallest to biggest) and the cards' rays
 ItemShopPanel.COIN_ART = {
-	"rbxassetid://102611285707916",
-	"rbxassetid://117940683998447",
-	"rbxassetid://131590042018033",
-	"rbxassetid://131154860974694",
+	"rbxassetid://101681398880263",
+	"rbxassetid://90572924963464",
+	"rbxassetid://139567959618041",
+	"rbxassetid://88545773509125",
 }
 ItemShopPanel.RAYS = "rbxassetid://95061794432591"
 
@@ -116,8 +116,7 @@ end
 local function coin_icon(parent: Instance, px: number, props: { [string]: any }?): ImageLabel
 	local i = make("ImageLabel", {
 		BackgroundTransparency = 1,
-		Image = UITheme.icon("gold") or "",
-		ImageColor3 = AMBER,
+		Image = UITheme.icon("coin") or "",
 		Size = UDim2.fromOffset(px, px),
 		ZIndex = 46,
 	}, parent)

@@ -148,8 +148,7 @@ function ArsenalButton._build(self)
 	}, brow)
 	self._badge_icon = new("ImageLabel", {
 		BackgroundTransparency = 1,
-		Image = UITheme.icon("gold") or "", -- (Take Over the World!: coins)
-		ImageColor3 = GOLD,
+		Image = UITheme.icon("coin") or "", -- (Take Over the World!: coins)
 		LayoutOrder = 1,
 		ZIndex = 9,
 	}, brow)
