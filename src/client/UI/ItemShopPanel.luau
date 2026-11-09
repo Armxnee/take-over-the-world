@@ -19,6 +19,7 @@ local ItemShop = require(Airfront.Data.ItemShop)
 local Cosmetics = require(Airfront.Data.Cosmetics)
 local UITheme = require("./UITheme")
 local GearArt = require("./GearArt")
+local Countryball = require("./Countryball")
 local Anim = require("./Anim")
 local Bundles = require(Airfront.Data.Bundles)
 local Products = require(Airfront.Data.Products)
@@ -33,6 +34,14 @@ ItemShopPanel.__index = ItemShopPanel
 ItemShopPanel.W, ItemShopPanel.H = 1280, 720
 ItemShopPanel.BACKDROP = "rbxassetid://80157115981891" -- tools/build_shop_bg_blue.py: a blue grid (the Fortnite-style shop)
 ItemShopPanel.ICON = "rbxassetid://85914348579343" -- tools/build_gear.py: the user's basket, pixelated
+--- tools/build_coin_packs.py: the coin packs' piles (smallest to biggest) and the cards' rays
+ItemShopPanel.COIN_ART = {
+	"rbxassetid://102611285707916",
+	"rbxassetid://117940683998447",
+	"rbxassetid://131590042018033",
+	"rbxassetid://131154860974694",
+}
+ItemShopPanel.RAYS = "rbxassetid://95061794432591"
 
 local FONT = "rbxassetid://12187365977"
 local AMBER = Color3.fromHex("FFC23D")
@@ -59,6 +68,15 @@ local KIND_TEXT = {
 }
 --- the balls hats are shown on (a few flags, by card)
 local BALLS = { "gb", "fr", "de", "jp", "br", "us", "it", "ca", "mx" }
+--- the Countryball on a bundle's card
+local BUNDLE_BALL = { royal = "gb", admiral = "us", winter = "fi", frontline = "fr" }
+--- the coin packs' cards, smallest to biggest (top, foot): green, blue, purple, orange
+local PACK_COLORS = {
+	{ Color3.fromHex("3FCB3A"), Color3.fromHex("128A12") },
+	{ Color3.fromHex("2FA6FF"), Color3.fromHex("0A62D8") },
+	{ Color3.fromHex("B254E0"), Color3.fromHex("6A1FA8") },
+	{ Color3.fromHex("FF9A2E"), Color3.fromHex("D35A0E") },
+}
 
 local function make(class: string, props: { [string]: any }, parent: Instance?): any
 	local o = Instance.new(class)
@@ -498,53 +516,169 @@ function ItemShopPanel.new(ctx: any, gui: Instance, open_locker: () -> ())
 	end
 	y += math.ceil(ItemShop.DAILY / PER_ROW) * (CH + GAP) + 18
 	self.timer_a, self.timer_b = ta, tb
-	-- the bundles (Robux)
+	-- the bundles (Robux), portrait cards after the user's reference (a Fortnite pack): the bundle's
+	-- Countryball big over rays in its rarity's colours, its name, and its items in a bracketed row
 	local tc
 	tc, y = section(y, "BUNDLES")
 	table.insert(self.sections, y - 58)
 	tc.Text = "Robux only"
 	self.bundle_cards = {}
 	local BW = (5 * CW + 4 * GAP - 3 * GAP) / 4
+	local BH = math.floor(BW * 4 / 3)
 	for i, b in Bundles.LIST do
-		local c = card(X0 + (i - 1) % 4 * (BW + GAP), y, BW, CH, false)
-		c.bundle = b
-		c.f = nil
-		c.name.Text = string.upper(b.name)
-		c.kind.Text = string.format("Bundle · %d items", #b.items)
+		local flag = BUNDLE_BALL[b.id] or BALLS[(i - 1) % #BALLS + 1]
 		local r = RARITY[b.rarity] or RARITY.common
-		c.grad.Color = ColorSequence.new(r[1], r[2])
-		c.glow.ImageColor3 = r[4]
-		c.price.coin.Image = ROBUX
-		c.price.coin.ImageColor3 = TEXT
-		-- the bundle's items, side by side over the art
-		c.art.Visible = false
-		local strip = make("Frame", {
+		local hit = pop(make("TextButton", {
+			Text = "",
+			AutoButtonColor = false,
 			BackgroundTransparency = 1,
 			AnchorPoint = Vector2.new(0.5, 0.5),
-			Position = UDim2.fromScale(0.5, 0.36),
-			Size = UDim2.new(1, -16, 0, BW / 2),
+			Position = UDim2.fromOffset(X0 + (i - 1) % 4 * (BW + GAP) + BW / 2, y + BH / 2),
+			Size = UDim2.fromOffset(BW, BH),
+			ZIndex = 42,
+			Selectable = true,
+		}, scroll))
+		local edge = make("UIStroke", { Thickness = 3, ApplyStrokeMode = Enum.ApplyStrokeMode.Border, Color = TEXT, Transparency = 1 }, hit)
+		make("UICorner", { CornerRadius = UDim.new(0, 12) }, hit)
+		local body = make("CanvasGroup", { BackgroundColor3 = Color3.new(1, 1, 1), Size = UDim2.fromScale(1, 1), ZIndex = 42 }, hit)
+		make("UICorner", { CornerRadius = UDim.new(0, 12) }, body)
+		-- (the colours on a frame of their own: a gradient on the CanvasGroup would tint everything in it)
+		local bg = make("Frame", { BackgroundColor3 = Color3.new(1, 1, 1), BorderSizePixel = 0, Size = UDim2.fromScale(1, 1), ZIndex = 42 }, body)
+		make("UIGradient", { Color = ColorSequence.new(r[1], r[2]), Rotation = 90 }, bg)
+		make("ImageLabel", { -- (the rays)
+			BackgroundTransparency = 1,
+			Image = ItemShopPanel.RAYS,
+			ImageTransparency = 0.25,
+			ScaleType = Enum.ScaleType.Crop,
+			Size = UDim2.fromScale(1, 1),
+			ZIndex = 43,
+		}, body)
+		-- the hero: the bundle's Countryball wearing its gear, big
+		local worn = {}
+		for _, id in b.items do
+			local it = Cosmetics.item(id)
+			if it ~= nil and (it.kind == "hat" or it.kind == "beard" or it.kind == "glasses") then
+				worn[it.kind] = id
+			end
+		end
+		local heroimg = make("ImageLabel", {
+			BackgroundTransparency = 1,
+			ResampleMode = Enum.ResamplerMode.Pixelated,
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.new(0.5, 0, 0, BH * 0.32),
+			Size = UDim2.fromOffset(BW * 0.74, BW * 0.74),
 			ZIndex = 44,
-		}, c.art.Parent)
-		make("UIGridLayout", {
-			CellSize = UDim2.fromOffset(BW / 2 - 12, BW / 2 - 12),
-			CellPadding = UDim2.fromOffset(4, 4),
-			HorizontalAlignment = Enum.HorizontalAlignment.Center,
-			VerticalAlignment = Enum.VerticalAlignment.Center,
-			SortOrder = Enum.SortOrder.LayoutOrder,
-		}, strip)
-		strip.Size = UDim2.new(1, -16, 0, BW - 16)
+		}, body)
+		heroimg.ImageContent = Countryball.ball_content(flag, nil, worn) or Content.none
+		-- (a white fade under the hero, as the reference's ground)
+		local fade = make("Frame", {
+			BackgroundColor3 = Color3.fromHex("0A1450"),
+			BorderSizePixel = 0,
+			AnchorPoint = Vector2.new(0, 1),
+			Position = UDim2.fromScale(0, 1),
+			Size = UDim2.new(1, 0, 0, BH * 0.48),
+			ZIndex = 44,
+		}, body)
+		make("UIGradient", {
+			Transparency = NumberSequence.new({
+				NumberSequenceKeypoint.new(0, 1),
+				NumberSequenceKeypoint.new(0.35, 0.45),
+				NumberSequenceKeypoint.new(1, 0.15),
+			}),
+			Rotation = 90,
+		}, fade)
+		local title = label(body, string.upper(b.name), 22, Enum.FontWeight.Heavy, TEXT, {
+			AnchorPoint = Vector2.new(0.5, 0),
+			Position = UDim2.new(0.5, 0, 0, BH * 0.6),
+			Size = UDim2.new(1, -16, 0, 26),
+			TextXAlignment = Enum.TextXAlignment.Center,
+			TextScaled = true,
+			ZIndex = 46,
+		})
+		make("UITextSizeConstraint", { MaxTextSize = 22, MinTextSize = 12 }, title)
+		make("UIStroke", { Color = INK, Thickness = 2, Transparency = 0.2 }, title)
+		-- the items, a row of tiles between corner brackets
+		local n = #b.items
+		local ts = math.min(54, math.floor((BW - 36 - (n - 1) * 5) / n))
+		local rw = n * ts + (n - 1) * 5
+		local row = make("Frame", {
+			BackgroundTransparency = 1,
+			AnchorPoint = Vector2.new(0.5, 0),
+			Position = UDim2.new(0.5, 0, 0, BH * 0.6 + 34),
+			Size = UDim2.fromOffset(rw + 14, ts + 14),
+			ZIndex = 45,
+		}, body)
+		for _, cn in { { 0, 0 }, { 1, 0 }, { 0, 1 }, { 1, 1 } } do
+			local ax, ay = cn[1], cn[2]
+			make("Frame", { BackgroundColor3 = TEXT, BorderSizePixel = 0, AnchorPoint = Vector2.new(ax, ay), Position = UDim2.fromScale(ax, ay), Size = UDim2.fromOffset(12, 3), ZIndex = 46 }, row)
+			make("Frame", { BackgroundColor3 = TEXT, BorderSizePixel = 0, AnchorPoint = Vector2.new(ax, ay), Position = UDim2.fromScale(ax, ay), Size = UDim2.fromOffset(3, 12), ZIndex = 46 }, row)
+		end
 		for k, id in b.items do
-			local img = make("ImageLabel", {
+			local it = Cosmetics.item(id)
+			local tile = make("Frame", {
+				BackgroundColor3 = r[1],
+				Position = UDim2.fromOffset(7 + (k - 1) * (ts + 5), 7),
+				Size = UDim2.fromOffset(ts, ts),
+				ZIndex = 46,
+			}, row)
+			make("UICorner", { CornerRadius = UDim.new(0, 4) }, tile)
+			make("UIGradient", { Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.fromHex("B8C3D6")), Rotation = 90 }, tile)
+			local pic = make("ImageLabel", {
 				BackgroundTransparency = 1,
 				ResampleMode = Enum.ResamplerMode.Pixelated,
-				LayoutOrder = k,
-				ZIndex = 44,
-			}, strip)
-			img.ImageContent = GearArt.content(Cosmetics.item(id), BALLS[(i + k) % #BALLS + 1]) or Content.none
+				Size = UDim2.fromScale(1, 1),
+				ZIndex = 47,
+			}, tile)
+			pic.ImageContent = GearArt.content(it, flag) or Content.none
 		end
+		-- the price at the foot, centred
+		local prow = make("Frame", {
+			BackgroundTransparency = 1,
+			AnchorPoint = Vector2.new(0.5, 1),
+			Position = UDim2.new(0.5, 0, 1, -10),
+			Size = UDim2.new(1, -20, 0, 22),
+			ZIndex = 45,
+		}, body)
+		make("UIListLayout", {
+			FillDirection = Enum.FillDirection.Horizontal,
+			HorizontalAlignment = Enum.HorizontalAlignment.Center,
+			VerticalAlignment = Enum.VerticalAlignment.Center,
+			Padding = UDim.new(0, 6),
+			SortOrder = Enum.SortOrder.LayoutOrder,
+		}, prow)
+		local coin = coin_icon(prow, 20, { LayoutOrder = 1, Image = ROBUX, ImageColor3 = TEXT })
+		local ptext = label(prow, "", 18, Enum.FontWeight.Heavy, TEXT, {
+			AutomaticSize = Enum.AutomaticSize.X,
+			Size = UDim2.fromOffset(0, 22),
+			LayoutOrder = 2,
+			ZIndex = 46,
+		})
+		local tag = make("TextLabel", {
+			Text = "OWNED",
+			TextSize = 13,
+			FontFace = Font.new(FONT, Enum.FontWeight.Heavy),
+			TextColor3 = INK,
+			BackgroundColor3 = GREEN,
+			Position = UDim2.fromOffset(8, 8),
+			Size = UDim2.fromOffset(62, 22),
+			Visible = false,
+			ZIndex = 48,
+		}, hit)
+		make("UICorner", { CornerRadius = UDim.new(0, 6) }, tag)
+		local c = { hit = hit, bundle = b, price = { coin = coin, text = ptext }, owned_tag = tag, body = body }
+		hit.MouseEnter:Connect(function()
+			edge.Transparency = 0
+		end)
+		hit.MouseLeave:Connect(function()
+			edge.Transparency = 1
+		end)
+		Anim.button(hit, nil, 1.04)
+		hit.Activated:Connect(function()
+			self:_activate(c)
+		end)
 		self.bundle_cards[i] = c
 	end
-	y += CH + 30
+	y += BH + 30
 	scroll.CanvasSize = UDim2.fromOffset(0, y)
 	-- the section dots down the left: one a section, the one in view lit
 	local dots = pop(make("Frame", {
@@ -660,92 +794,107 @@ function ItemShopPanel._build_pages(self)
 		Size = UDim2.fromOffset(ROW, 26),
 		Visible = false,
 	})
-	-- BUY COINS: the coin packs, tall gold cards in a row
+	-- BUY COINS: the coin packs after the user's reference (Fortnite's V-Bucks packs): a card a pack in
+	-- its own colour with rays, a pixel pile of star coins growing with the pack (tools/build_coin_packs.py),
+	-- the amount, and a yellow price button; "N% EXTRA" against the smallest pack
 	local coins = page(3, "BUY COINS", "Coins buy the shop's gear")
 	self.coin_cards = {}
 	local n = #Bundles.COINS
 	local PW = (ROW - (n - 1) * G.GAP) / math.max(n, 1)
+	local base = Bundles.COINS[1]
+	local per = if base ~= nil then base.coins / base.robux else 1
 	for i, pk in Bundles.COINS do
+		local col = PACK_COLORS[(i - 1) % #PACK_COLORS + 1]
 		local b = make("TextButton", {
 			Text = "",
 			AutoButtonColor = false,
 			BackgroundColor3 = Color3.new(1, 1, 1),
 			AnchorPoint = Vector2.new(0.5, 0.5),
-			Position = UDim2.fromOffset(G.X0 + (i - 1) * (PW + G.GAP) + PW / 2, 72 + 200),
-			Size = UDim2.fromOffset(PW, 400),
+			Position = UDim2.fromOffset(G.X0 + (i - 1) * (PW + G.GAP) + PW / 2, 72 + 210),
+			Size = UDim2.fromOffset(PW, 420),
 			ZIndex = 42,
 		}, coins)
-		make("UICorner", { CornerRadius = UDim.new(0, 12) }, b)
+		make("UICorner", { CornerRadius = UDim.new(0, 14) }, b)
 		local edge = make("UIStroke", { Thickness = 3, ApplyStrokeMode = Enum.ApplyStrokeMode.Border, Color = TEXT, Transparency = 1 }, b)
-		make("UIGradient", { Color = ColorSequence.new(Color3.fromHex("FFC94A"), Color3.fromHex("C8531A")), Rotation = 90 }, b)
-		make("ImageLabel", {
+		make("UIGradient", { Color = ColorSequence.new(col[1], col[2]), Rotation = 90 }, b)
+		local rays = make("ImageLabel", {
 			BackgroundTransparency = 1,
-			Image = UITheme.crate_art().glow or "",
-			ImageColor3 = Color3.fromHex("FFE7B3"),
-			ImageTransparency = 0.5,
-			AnchorPoint = Vector2.new(0.5, 0.5),
-			Position = UDim2.fromScale(0.5, 0.34),
-			Size = UDim2.fromScale(1.3, 0.7),
+			Image = ItemShopPanel.RAYS,
+			ImageTransparency = 0.35,
+			ScaleType = Enum.ScaleType.Crop,
+			Size = UDim2.fromScale(1, 1),
 			ZIndex = 43,
 		}, b)
+		make("UICorner", { CornerRadius = UDim.new(0, 14) }, rays)
 		make("ImageLabel", {
 			BackgroundTransparency = 1,
-			Image = UITheme.icon("gold") or "",
-			ImageColor3 = Color3.fromHex("FFF2B0"),
+			Image = ItemShopPanel.COIN_ART[i] or ItemShopPanel.COIN_ART[#ItemShopPanel.COIN_ART],
+			ResampleMode = Enum.ResamplerMode.Pixelated,
+			ScaleType = Enum.ScaleType.Fit,
 			AnchorPoint = Vector2.new(0.5, 0.5),
-			Position = UDim2.fromScale(0.5, 0.34),
-			Size = UDim2.fromOffset(80 + i * 20, 80 + i * 20),
+			Position = UDim2.fromScale(0.5, 0.42),
+			Size = UDim2.new(1, -6, 0, (PW - 6) * 0.75),
 			ZIndex = 44,
 		}, b)
-		local foot = make("Frame", {
-			BackgroundColor3 = Color3.new(0, 0, 0),
-			BackgroundTransparency = 0.5,
-			BorderSizePixel = 0,
-			AnchorPoint = Vector2.new(0, 1),
-			Position = UDim2.fromScale(0, 1),
-			Size = UDim2.new(1, 0, 0, 132),
-			ZIndex = 44,
-		}, b)
-		make("UICorner", { CornerRadius = UDim.new(0, 12) }, foot)
 		local amount = label(b, commas(pk.coins), 34, Enum.FontWeight.Heavy, TEXT, {
-			AnchorPoint = Vector2.new(0, 1),
-			Position = UDim2.new(0, 14, 1, -84),
-			Size = UDim2.new(1, -28, 0, 38),
-			ZIndex = 46,
-		})
-		make("UIStroke", { Color = INK, Thickness = 2 }, amount)
-		label(b, "Coins", 15, Enum.FontWeight.Bold, Color3.fromHex("E3E8FF"), {
-			AnchorPoint = Vector2.new(0, 1),
-			Position = UDim2.new(0, 14, 1, -64),
-			Size = UDim2.new(1, -28, 0, 18),
-			ZIndex = 46,
-		})
-		local price = make("Frame", {
-			BackgroundColor3 = Color3.fromHex("2F6B2F"),
 			AnchorPoint = Vector2.new(0.5, 1),
-			Position = UDim2.new(0.5, 0, 1, -12),
-			Size = UDim2.new(1, -24, 0, 42),
+			Position = UDim2.new(0.5, 0, 1, -102),
+			Size = UDim2.new(1, -20, 0, 38),
+			TextXAlignment = Enum.TextXAlignment.Center,
+			ZIndex = 46,
+		})
+		make("UIStroke", { Color = INK, Thickness = 2, Transparency = 0.3 }, amount)
+		local unit = label(b, "COINS", 22, Enum.FontWeight.Heavy, TEXT, {
+			AnchorPoint = Vector2.new(0.5, 1),
+			Position = UDim2.new(0.5, 0, 1, -76),
+			Size = UDim2.new(1, -20, 0, 26),
+			TextXAlignment = Enum.TextXAlignment.Center,
+			ZIndex = 46,
+		})
+		make("UIStroke", { Color = INK, Thickness = 2, Transparency = 0.3 }, unit)
+		local price = make("Frame", {
+			BackgroundColor3 = Color3.fromHex("F5F51E"),
+			AnchorPoint = Vector2.new(0.5, 1),
+			Position = UDim2.new(0.5, 0, 1, -14),
+			Size = UDim2.new(1, -24, 0, 48),
 			ZIndex = 45,
 		}, b)
-		make("UICorner", { CornerRadius = UDim.new(0, 10) }, price)
-		local row = price_row(price, 20, 8)
+		make("UICorner", { CornerRadius = UDim.new(0, 8) }, price)
+		local row = price_row(price, 22, 10)
 		row.coin.Image = ROBUX
-		row.coin.ImageColor3 = TEXT
+		row.coin.ImageColor3 = INK
+		row.text.TextColor3 = INK
 		row.text.Text = commas(pk.robux)
-		if pk.tag ~= nil then
+		local s = row.text:FindFirstChildOfClass("UIStroke")
+		if s ~= nil then
+			s.Enabled = false
+		end
+		local extra = math.floor((pk.coins / pk.robux / per - 1) * 100 + 0.5)
+		local pill = if extra >= 1 then string.format("%d%% EXTRA", extra) else pk.tag
+		if pill ~= nil then
 			local tag = make("TextLabel", {
-				Text = pk.tag,
-				TextSize = 13,
-				FontFace = Font.new(FONT, Enum.FontWeight.Heavy),
+				Text = pill,
+				TextSize = 15,
+				FontFace = Font.new(FONT, Enum.FontWeight.Heavy, Enum.FontStyle.Italic),
 				TextColor3 = INK,
-				BackgroundColor3 = Color3.fromHex("FFE14D"),
+				BackgroundColor3 = TEXT,
 				AutomaticSize = Enum.AutomaticSize.X,
-				Position = UDim2.fromOffset(8, 8),
-				Size = UDim2.fromOffset(48, 22),
+				Position = UDim2.fromOffset(12, 12),
+				Size = UDim2.fromOffset(40, 26),
 				ZIndex = 48,
 			}, b)
-			make("UIPadding", { PaddingLeft = UDim.new(0, 6), PaddingRight = UDim.new(0, 6) }, tag)
-			make("UICorner", { CornerRadius = UDim.new(0, 6) }, tag)
+			make("UIPadding", { PaddingLeft = UDim.new(0, 10), PaddingRight = UDim.new(0, 10) }, tag)
+			make("UICorner", { CornerRadius = UDim.new(1, 0) }, tag)
+		end
+		if pk.tag ~= nil and pill ~= pk.tag then
+			local note = label(b, pk.tag, 13, Enum.FontWeight.Heavy, TEXT, {
+				AnchorPoint = Vector2.new(1, 0),
+				Position = UDim2.new(1, -14, 0, 17),
+				Size = UDim2.fromOffset(110, 16),
+				TextXAlignment = Enum.TextXAlignment.Right,
+				ZIndex = 48,
+			})
+			make("UIStroke", { Color = INK, Thickness = 1.5, Transparency = 0.3 }, note)
 		end
 		b.MouseEnter:Connect(function()
 			edge.Transparency = 0
@@ -897,6 +1046,16 @@ function ItemShopPanel._owned(self, id: string): boolean
 	return table.find(inv.owned, id) ~= nil
 end
 
+--- Does the player own every item of bundle `b`?
+function ItemShopPanel._bundle_owned(self, b: any): boolean
+	for _, id in b.items do
+		if not self:_owned(id) then
+			return false
+		end
+	end
+	return true
+end
+
 function ItemShopPanel._worn(self, kind: string, id: string): boolean
 	local inv = self:_inv()
 	return inv ~= nil and type(inv.equipped) == "table" and inv.equipped[kind] == id
@@ -917,12 +1076,9 @@ function ItemShopPanel.refresh(self)
 	-- the bundles: their Robux price, or OWNED once every item is
 	for _, c in self.bundle_cards or {} do
 		local b = c.bundle
-		local all = true
-		for _, id in b.items do
-			if not self:_owned(id) then
-				all = false
-			end
-		end
+		local all = self:_bundle_owned(b)
+		c.owned_tag.Visible = all
+		c.body.GroupColor3 = if all then Color3.fromHex("9AA0B0") else Color3.new(1, 1, 1)
 		local prod = Products["bundle_" .. b.id]
 		c.price.coin.Visible = not all
 		if all then
@@ -1002,6 +1158,13 @@ end
 --- A card pressed: buy it, or (owned) wear it / take it off.
 function ItemShopPanel._activate(self, c: any)
 	if c.bundle ~= nil then
+		-- (a developer product can be bought again and again: once every item is the player's, the
+		-- bundle can't be; the server also pays an owned item back in coins)
+		if self:_bundle_owned(c.bundle) then
+			self:_toast("You already own the " .. c.bundle.name .. "!", TEXT2)
+			self.ctx:sfx("deny", -4.0)
+			return
+		end
 		self:_prompt("bundle_" .. c.bundle.id)
 		return
 	end
