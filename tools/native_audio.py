@@ -119,7 +119,7 @@ UI = {
     "star_get": entry("coins"),
     "star_tick": entry("tick"),
     "ui_back": entry("goodbye"),
-    "ui_click": entry("click"),
+    "ui_click": entry("pop", 0.22),  # (2026-11-08: the soft pop; the click wasn't smooth)
     "ui_confirm": entry("stinger"),
     "ui_error": entry("error"),
     "ui_hover": entry("tick"),

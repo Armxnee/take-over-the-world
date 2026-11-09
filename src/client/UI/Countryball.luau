@@ -167,7 +167,8 @@ function Countryball.ball_content(code: string?, name: string?, gear: any, pose:
 		end
 	end
 	local cx, cy, R = 15.5, 15.5, 13.6
-	local grey = Color3.fromRGB(150, 156, 170)
+	-- (code "plain": a light, flagless ball, the item shop's; an unknown flag: grey)
+	local grey = if code == "plain" then Color3.fromRGB(226, 230, 238) else Color3.fromRGB(150, 156, 170)
 	for y = 0, 31 do
 		for x = 0, 31 do
 			local dx, dy = x - cx, y - cy

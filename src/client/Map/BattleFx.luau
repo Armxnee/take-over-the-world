@@ -22,9 +22,11 @@ local FIRE_HOT = Color3.fromRGB(255, 230, 120)
 local SMOKE = Color3.fromRGB(90, 90, 96)
 local SHELL = Color3.fromRGB(40, 40, 44)
 
--- (the shots' sound: the Roblox-licensed shell fire (Assets/Audio shell_fire), its first half second,
--- faster and quieter for a rifle; under the game's "SFX" sound group (Audio/AudioDirector) so the game's mute and volume apply)
-BattleFx.SHOT_SOUND = "rbxassetid://1846435334"
+-- (the shots' sound: one shot of a Roblox-licensed machine-gun burst (Pro Sound Effects); it was the
+-- shell fire, a timpani hit, 2026-11-08; under the game's "SFX" sound group (Audio/AudioDirector) so the
+-- game's mute and volume apply)
+BattleFx.SHOT_SOUND = "rbxassetid://9116361236"
+BattleFx.SHOT_TO = 0.13 -- s: its first shot
 BattleFx.SOUND_GAP_S = 0.09 -- at most one shot sound this often (a battle is many shots)
 local sounds: { Sound } = {}
 local sound_i, sound_at = 0, -1
@@ -42,7 +44,7 @@ local function play(now: number, speed: number, volume: number)
 			s.Name = "BattleShot"
 			s.SoundId = BattleFx.SHOT_SOUND
 			s.PlaybackRegionsEnabled = true
-			s.PlaybackRegion = NumberRange.new(0, 0.5)
+			s.PlaybackRegion = NumberRange.new(0, BattleFx.SHOT_TO)
 			if group ~= nil and group:IsA("SoundGroup") then
 				s.SoundGroup = group
 			end
@@ -148,7 +150,7 @@ end
 --- A rifle shot from (x0, y0) to (x1, y1) (`quiet`: no sound, as a jet's strafing burst after its first).
 function BattleFx.shot(self, now: number, x0: number, y0: number, x1: number, y1: number, quiet: boolean?)
 	if not quiet then
-		play(now, 1.7, 0.22)
+		play(now, 1.1, 0.28)
 	end
 	local flash = self:_frame(FLASH, 7, 7)
 	flash.Position = UDim2.fromOffset(x0, y0)

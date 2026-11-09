@@ -74,9 +74,9 @@ PRODUCTS.bundle_admiral = { own = true, id = 3729153448, robux = 249, grants = "
 PRODUCTS.bundle_winter = { own = true, id = 3729153535, robux = 129, grants = "bundle:winter" }
 PRODUCTS.bundle_frontline = { own = true, id = 3729153618, robux = 99, grants = "bundle:frontline" }
 PRODUCTS.coins_s = { own = true, id = 3729153677, robux = 49, grants = "coins:2500" }
-PRODUCTS.coins_m = { own = true, id = 3729153745, robux = 129, grants = "coins:7000" }
-PRODUCTS.coins_l = { own = true, id = 3729153826, robux = 279, grants = "coins:16000" }
-PRODUCTS.coins_xl = { own = true, id = 3729153911, robux = 599, grants = "coins:40000" }
+PRODUCTS.coins_m = { own = true, id = 3729153745, robux = 129, grants = "coins:7700" } -- (7,000 + 10% extra: Data/Bundles)
+PRODUCTS.coins_l = { own = true, id = 3729153826, robux = 279, grants = "coins:19200" } -- (16,000 + 20%)
+PRODUCTS.coins_xl = { own = true, id = 3729153911, robux = 599, grants = "coins:54000" } -- (40,000 + 35%)
 
 --- Rofront Staging (Data/Staging): there every product is its `staging` one.
 local Staging: any = if typeof(game) == "Instance"

@@ -66,8 +66,6 @@ local KIND_TEXT = {
 	nuke = "Nuke Skin",
 	missile = "Missile Skin",
 }
---- the balls hats are shown on (a few flags, by card)
-local BALLS = { "gb", "fr", "de", "jp", "br", "us", "it", "ca", "mx" }
 --- MY ITEMS' categories (Data/Gear kinds), down the left of the page
 local CATEGORIES = {
 	{ kind = "all", text = "All" },
@@ -79,8 +77,6 @@ local CATEGORIES = {
 	{ kind = "missile", text = "Missile Skins" },
 }
 local CAT_W = 200
---- the Countryball on a bundle's card
-local BUNDLE_BALL = { royal = "gb", admiral = "us", winter = "fi", frontline = "fr" }
 --- the coin packs' cards, smallest to biggest (top, foot): green, blue, purple, orange
 local PACK_COLORS = {
 	{ Color3.fromHex("3FCB3A"), Color3.fromHex("128A12") },
@@ -536,7 +532,8 @@ function ItemShopPanel.new(ctx: any, gui: Instance, open_locker: () -> ())
 	local BW = (5 * CW + 4 * GAP - 3 * GAP) / 4
 	local BH = math.floor(BW * 4 / 3)
 	for i, b in Bundles.LIST do
-		local flag = BUNDLE_BALL[b.id] or BALLS[(i - 1) % #BALLS + 1]
+		-- (2026-11-08: on a plain ball, not a country's, so nobody thinks gear is for one country only)
+		local flag = "plain"
 		local r = RARITY[b.rarity] or RARITY.common
 		local hit = pop(make("TextButton", {
 			Text = "",
@@ -873,8 +870,6 @@ function ItemShopPanel._build_pages(self)
 	self.coin_cards = {}
 	local n = #Bundles.COINS
 	local PW = (ROW - (n - 1) * G.GAP) / math.max(n, 1)
-	local base = Bundles.COINS[1]
-	local per = if base ~= nil then base.coins / base.robux else 1
 	for i, pk in Bundles.COINS do
 		local col = PACK_COLORS[(i - 1) % #PACK_COLORS + 1]
 		local b = make("TextButton", {
@@ -908,7 +903,7 @@ function ItemShopPanel._build_pages(self)
 			Size = UDim2.new(1, -6, 0, (PW - 6) * 0.75),
 			ZIndex = 44,
 		}, b)
-		local amount = label(b, commas(pk.coins), 34, Enum.FontWeight.Heavy, TEXT, {
+		local amount = label(b, commas(Bundles.coin_total(pk)), 34, Enum.FontWeight.Heavy, TEXT, {
 			AnchorPoint = Vector2.new(0.5, 1),
 			Position = UDim2.new(0.5, 0, 1, -102),
 			Size = UDim2.new(1, -20, 0, 38),
@@ -924,6 +919,17 @@ function ItemShopPanel._build_pages(self)
 			ZIndex = 46,
 		})
 		make("UIStroke", { Color = INK, Thickness = 2, Transparency = 0.3 }, unit)
+		if (pk.bonus or 0) > 0 then
+			-- (what the extra is: the bonus coins on top, all of them granted)
+			local split = label(b, string.format("%s + %s bonus", commas(pk.coins), commas(pk.bonus)), 13, Enum.FontWeight.Bold, TEXT, {
+				AnchorPoint = Vector2.new(0.5, 1),
+				Position = UDim2.new(0.5, 0, 1, -140),
+				Size = UDim2.new(1, -20, 0, 16),
+				TextXAlignment = Enum.TextXAlignment.Center,
+				ZIndex = 46,
+			})
+			make("UIStroke", { Color = INK, Thickness = 1.5, Transparency = 0.35 }, split)
+		end
 		local price = make("Frame", {
 			BackgroundColor3 = Color3.fromHex("F5F51E"),
 			AnchorPoint = Vector2.new(0.5, 1),
@@ -941,8 +947,8 @@ function ItemShopPanel._build_pages(self)
 		if s ~= nil then
 			s.Enabled = false
 		end
-		local extra = math.floor((pk.coins / pk.robux / per - 1) * 100 + 0.5)
-		local pill = if extra >= 1 then string.format("%d%% EXTRA", extra) else pk.tag
+		local extra = if (pk.bonus or 0) > 0 then math.floor(pk.bonus / pk.coins * 100 + 0.5) else 0
+		local pill = if extra >= 1 then string.format("+%d%% EXTRA", extra) else pk.tag
 		if pill ~= nil then
 			local tag = make("TextLabel", {
 				Text = pill,
@@ -1077,7 +1083,7 @@ function ItemShopPanel._refresh_items(self)
 			c.glow.ImageColor3 = r[4]
 			c.name.Text = c.f.name
 			c.kind.Text = KIND_TEXT[it.kind] or "ITEM"
-			c.art.ImageContent = GearArt.content(it, BALLS[(i - 1) % #BALLS + 1]) or Content.none
+			c.art.ImageContent = GearArt.content(it) or Content.none
 		end
 		self:_price(c, 0)
 	end
@@ -1202,7 +1208,7 @@ function ItemShopPanel.refresh(self)
 				c.name.Text = f.name
 				c.kind.Text = KIND_TEXT[f.kind] or "ITEM"
 				c.tag.Visible = not ItemShop.on_sale(f.id, day - 1)
-				c.art.ImageContent = GearArt.content(Cosmetics.item(f.id), BALLS[(i - 1) % #BALLS + 1]) or Content.none
+				c.art.ImageContent = GearArt.content(Cosmetics.item(f.id)) or Content.none
 			end
 		end
 	end
@@ -1289,10 +1295,29 @@ function ItemShopPanel._buy(self, id: string)
 	self:_toast("Buying…", TEXT2)
 end
 
+--- A message under the cards; it pops in and (2026-11-08) fades out after TOAST_S.
+ItemShopPanel.TOAST_S = 2.2
 function ItemShopPanel._toast(self, text: string, color: Color3)
-	self.toast.Text = text
-	self.toast.TextColor3 = color
-	Anim.pop(self.toast, 0, 0.7)
+	local t = self.toast
+	local stroke = t:FindFirstChildOfClass("UIStroke")
+	self._toast_n = (self._toast_n or 0) + 1
+	local n = self._toast_n
+	t.Text = text
+	t.TextColor3 = color
+	t.TextTransparency = 0
+	if stroke ~= nil then
+		stroke.Transparency = 0.3
+	end
+	Anim.pop(t, 0, 0.7)
+	task.delay(ItemShopPanel.TOAST_S, function()
+		if self._toast_n ~= n then
+			return -- (a newer message took its place)
+		end
+		Anim.tween(t, 0.5, { TextTransparency = 1 }, Enum.EasingStyle.Sine)
+		if stroke ~= nil then
+			Anim.tween(stroke, 0.5, { Transparency = 1 }, Enum.EasingStyle.Sine)
+		end
+	end)
 end
 
 --- The server's answer (Session "item_result").

@@ -149,7 +149,7 @@ function UIRoot.setup(self, session: any, world: any, audio: any)
 		elseif kind == "tab" then
 			ctx:sfx("tab", -3.0, 0.02)
 		else
-			ctx:sfx("click", -1.0, 0.03)
+			ctx:sfx("click", -4.0, 0.03)
 		end
 	end
 	if session ~= nil then

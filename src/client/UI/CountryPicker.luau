@@ -225,6 +225,7 @@ function CountryPicker.new(ctx: any, gui: Instance)
 	}, card)
 	make("UICorner", { CornerRadius = UDim.new(0, 10) }, emp)
 	make("UIStroke", { Color = Color3.fromHex("FFB547"), Transparency = 0.6 }, emp)
+	self.empire_row = emp
 	self.empire_ball = make("Frame", {
 		BackgroundTransparency = 1,
 		Position = UDim2.fromOffset(6, 6),
@@ -508,7 +509,7 @@ function CountryPicker.select_owner(self, owner: number, focus: boolean?)
 	if focus then
 		self.ctx:world_call("focus_owner", { owner })
 	end
-	self.ctx:sfx("click")
+	self.ctx:sfx("click", -9.0) -- (quieter: a click on a country, 2026-11-08)
 	self.card.Visible = true
 	local d = self.defs[owner]
 	local ball = self.ball_holder:FindFirstChild("Countryball")
@@ -542,6 +543,8 @@ function CountryPicker.select_owner(self, owner: number, focus: boolean?)
 	eb.Parent = self.empire_ball
 	self.empire_name.Text = "EMPIRE: " .. string.upper(e.name)
 	local land = self.ctx.state and self.ctx.state.map and self.ctx.state.map.land_count or 0
+	-- (no empires on some maps: Empires.allowed)
+	self.empire_row.Visible = Empires.allowed(self.ctx.state and self.ctx.state.map and self.ctx.state.map.id)
 	if land > 0 then
 		local share = Empires.need(land, d.tiles) / land * 100
 		local more = math.max(0, Empires.need(land, d.tiles) - d.tiles) / land * 100
@@ -606,7 +609,7 @@ function CountryPicker._confirm(self)
 	local d = self.defs[owner]
 	-- the existing spawn intent, at the country's capital: the server's Sim decides (pick_country)
 	self.ctx:send({ type = "spawn", tile = d.capital_tile })
-	self.ctx:sfx("spawn")
+	self.ctx:sfx("spawn", -5.0)
 	self.confirm.Text = "JOINING " .. string.upper(d.name) .. "…"
 end
 

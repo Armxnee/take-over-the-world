@@ -293,8 +293,8 @@ AudioDirector.POP_JITTER = 0.012
 --- The whole run sits a touch higher the closer the player is to winning (x1 to x1.05).
 AudioDirector.POP_PROGRESS_LIFT = 0.05
 --- Level: a small bite POP_DB_MIN, a big one (POP_BIG tiles banked) POP_DB_MAX.
-AudioDirector.POP_DB_MIN = -9.0
-AudioDirector.POP_DB_MAX = -3.0
+AudioDirector.POP_DB_MIN = -12.0 -- (2026-11-08: 3 dB down, the user found taking land too loud)
+AudioDirector.POP_DB_MAX = -6.0
 AudioDirector.POP_BIG = 60.0
 
 AudioDirector.VOICE_COUNT = 18

@@ -10,7 +10,8 @@ return {
 		star_get = { id = "rbxassetid://9113849492", length = 1.245 },
 		star_tick = { id = "rbxassetid://15675032796", length = 0.133 },
 		ui_back = { id = "rbxassetid://15675081158", length = 0.281 },
-		ui_click = { id = "rbxassetid://15675059323", length = 0.371 },
+		-- (2026-11-08, the user: the old click (15675059323) wasn't smooth; the kit's soft pop, shorter)
+		ui_click = { sprite = "rbxassetid://15675055424", start = 0.0, stop = 0.22, length = 0.22 },
 		ui_confirm = { id = "rbxassetid://15675043410", length = 1.472 },
 		ui_error = { id = "rbxassetid://15675075163", length = 0.611 },
 		ui_hover = { id = "rbxassetid://15675032796", length = 0.133 },

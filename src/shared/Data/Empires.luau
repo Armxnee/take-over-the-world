@@ -58,6 +58,14 @@ function Empires.of(country: string): { name: string, flag: string? }
 	return { name = "Empire of " .. country, flag = nil }
 end
 
+--- Maps without empires (2026-11-08: the Korean War is two sides, no empires).
+Empires.OFF_MAPS = { korea = true }
+
+--- May countries found empires on map `map_id`?
+function Empires.allowed(map_id: string?): boolean
+	return not (type(map_id) == "string" and Empires.OFF_MAPS[map_id] == true)
+end
+
 function Empires.is_empire(name: string?): boolean
 	if type(name) ~= "string" then
 		return false

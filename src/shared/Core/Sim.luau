@@ -1226,6 +1226,9 @@ function Sim.can_form_empire(self: any, id: number): boolean
 	if kind ~= Defs.KIND_HUMAN and kind ~= Defs.KIND_NATION then
 		return false
 	end
+	if not Empires.allowed(self.map_id) then
+		return false
+	end
 	self._empire = self._empire or {}
 	if self._empire[id] ~= nil or Empires.is_empire(self.o_name[id]) then
 		return false

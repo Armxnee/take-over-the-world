@@ -283,7 +283,7 @@ function EmpireButton.refresh(self)
 	local o = st and st.owners and st.owners[st.local_owner]
 	local land = st and st.map and st.map.land_count or 0
 	local show = false
-	if o ~= nil and o.alive and o.kind == Defs.KIND_HUMAN and st.phase == Defs.PHASE_PLAYING and land > 0 then
+	if o ~= nil and o.alive and o.kind == Defs.KIND_HUMAN and st.phase == Defs.PHASE_PLAYING and land > 0 and Empires.allowed(st.map.id) then
 		if not Empires.is_empire(o.name) then
 			local need = Empires.need(land, self:_home(st))
 			local k = math.clamp(o.tiles / need, 0, 1)
