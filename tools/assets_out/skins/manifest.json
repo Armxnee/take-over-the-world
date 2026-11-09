@@ -304,6 +304,86 @@
   "w": 57,
   "h": 34
  },
+ "army1_r": {
+  "file": "army1_r.png",
+  "w": 53,
+  "h": 20
+ },
+ "army1_l": {
+  "file": "army1_l.png",
+  "w": 53,
+  "h": 20
+ },
+ "army2_r": {
+  "file": "army2_r.png",
+  "w": 56,
+  "h": 26
+ },
+ "army2_l": {
+  "file": "army2_l.png",
+  "w": 56,
+  "h": 26
+ },
+ "army3_r": {
+  "file": "army3_r.png",
+  "w": 55,
+  "h": 28
+ },
+ "army3_l": {
+  "file": "army3_l.png",
+  "w": 55,
+  "h": 28
+ },
+ "army4_r": {
+  "file": "army4_r.png",
+  "w": 55,
+  "h": 25
+ },
+ "army4_l": {
+  "file": "army4_l.png",
+  "w": 55,
+  "h": 25
+ },
+ "army5_r": {
+  "file": "army5_r.png",
+  "w": 51,
+  "h": 26
+ },
+ "army5_l": {
+  "file": "army5_l.png",
+  "w": 51,
+  "h": 26
+ },
+ "army6_r": {
+  "file": "army6_r.png",
+  "w": 56,
+  "h": 30
+ },
+ "army6_l": {
+  "file": "army6_l.png",
+  "w": 56,
+  "h": 30
+ },
+ "army7_r": {
+  "file": "army7_r.png",
+  "w": 46,
+  "h": 18
+ },
+ "army7_l": {
+  "file": "army7_l.png",
+  "w": 46,
+  "h": 18
+ },
+ "army8_r": {
+  "file": "army8_r.png",
+  "w": 51,
+  "h": 26
+ },
+ "army8_l": {
+  "file": "army8_l.png",
+  "w": 51,
+  "h": 26
+ },
  "train_loco_r": {
   "file": "train_loco_r.png",
   "w": 87,

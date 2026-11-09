@@ -837,12 +837,18 @@ function UnitLayer.tick(self: any, _dt: number)
 		if pick then
 			self._screen[uid] = Vector2.new(x, y)
 		end
-		-- (2026-11-08: a skin is the user's pixel art: cargo ships for transports and trade ships, its
-		-- own for warships; facing the way the ship sails)
-		local sk = if kind == U_WARSHIP
-			then skin_of(st, u.owner, "warship")
-			elseif kind == U_TRANSPORT or kind == Defs.U_TRADE then skin_of(st, u.owner, "boat")
-			else nil
+		-- (2026-11-08, the user's pixel art, facing the way the ship sails: a transport is an army landing
+		-- boat, one of UnitSkins.army a country; a trade ship a cargo ship, the owner's boat skin or
+		-- TRADE_DEFAULT; a warship its warship skin, or its own sprite without one)
+		local sk = nil
+		if kind == U_WARSHIP then
+			sk = skin_of(st, u.owner, "warship")
+		elseif kind == Defs.U_TRADE then
+			sk = skin_of(st, u.owner, "boat") or UnitSkins.skins[UnitSkins.TRADE_DEFAULT]
+		elseif kind == U_TRANSPORT then
+			local army = UnitSkins.army
+			sk = army[u.owner % #army + 1]
+		end
 		if sk ~= nil and sk.r ~= nil then
 			local prev = self._prevx[uid]
 			self._prevx[uid] = x
@@ -852,8 +858,7 @@ function UnitLayer.tick(self: any, _dt: number)
 			drawn += 1
 			continue
 		end
-		local tint = if kind == U_TRANSPORT then tint_of(st, u.owner, "boat") else nil
-		self:_sprite(uid * 16, col, u.owner, x, y, px, seen, tint)
+		self:_sprite(uid * 16, col, u.owner, x, y, px, seen)
 		drawn += 1
 	end
 	self._drawn = drawn

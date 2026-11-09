@@ -56,4 +56,19 @@ UnitSkins.train = {
 	car3 = { r = "rbxassetid://100786933182505", l = "rbxassetid://98767515836615", w = 39, h = 33 },
 }
 
+--- the army's landing boats: the transports that carry troops over the sea, one design a country
+UnitSkins.army = {
+	{ r = "rbxassetid://123292142654450", l = "rbxassetid://112014133585926", w = 53, h = 20 },
+	{ r = "rbxassetid://75942046425793", l = "rbxassetid://136909417667177", w = 56, h = 26 },
+	{ r = "rbxassetid://108476345067112", l = "rbxassetid://118818841358737", w = 55, h = 28 },
+	{ r = "rbxassetid://134833074443782", l = "rbxassetid://101490173023386", w = 55, h = 25 },
+	{ r = "rbxassetid://130930507841652", l = "rbxassetid://118241805868237", w = 51, h = 26 },
+	{ r = "rbxassetid://103777632152755", l = "rbxassetid://101570252365251", w = 56, h = 30 },
+	{ r = "rbxassetid://125705233261126", l = "rbxassetid://84366558018450", w = 46, h = 18 },
+	{ r = "rbxassetid://88046725604547", l = "rbxassetid://134400400124343", w = 51, h = 26 },
+}
+
+--- what a trade ship without a boat skin looks like
+UnitSkins.TRADE_DEFAULT = "boat_crimson"
+
 return UnitSkins
