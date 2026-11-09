@@ -68,6 +68,17 @@ local KIND_TEXT = {
 }
 --- the balls hats are shown on (a few flags, by card)
 local BALLS = { "gb", "fr", "de", "jp", "br", "us", "it", "ca", "mx" }
+--- MY ITEMS' categories (Data/Gear kinds), down the left of the page
+local CATEGORIES = {
+	{ kind = "all", text = "All" },
+	{ kind = "hat", text = "Hats" },
+	{ kind = "beard", text = "Beards" },
+	{ kind = "glasses", text = "Glasses" },
+	{ kind = "boat", text = "Boat Skins" },
+	{ kind = "nuke", text = "Nuke Skins" },
+	{ kind = "missile", text = "Missile Skins" },
+}
+local CAT_W = 200
 --- the Countryball on a bundle's card
 local BUNDLE_BALL = { royal = "gb", admiral = "us", winter = "fi", frontline = "fr" }
 --- the coin packs' cards, smallest to biggest (top, foot): green, blue, purple, orange
@@ -780,7 +791,8 @@ function ItemShopPanel._build_pages(self)
 		ScrollingDirection = Enum.ScrollingDirection.Y,
 		ZIndex = 42,
 	}, items)
-	make("UIPadding", { PaddingLeft = UDim.new(0, G.X0), PaddingTop = UDim.new(0, 6), PaddingBottom = UDim.new(0, 20) }, grid)
+	-- (the categories take the left; the cards four a row beside them)
+	make("UIPadding", { PaddingLeft = UDim.new(0, G.X0 + CAT_W + 20), PaddingTop = UDim.new(0, 6), PaddingBottom = UDim.new(0, 20) }, grid)
 	make("UIGridLayout", {
 		CellSize = UDim2.fromOffset(G.CW, G.CH),
 		CellPadding = UDim2.fromOffset(G.GAP, G.GAP),
@@ -788,11 +800,72 @@ function ItemShopPanel._build_pages(self)
 	}, grid)
 	self.items_grid = grid
 	self.item_cards = {}
-	self.items_empty = label(items, "You don't own any gear yet: buy some in the ITEM SHOP!", 20, Enum.FontWeight.Bold, TEXT2, {
-		Position = UDim2.fromOffset(G.X0, 80),
-		Size = UDim2.fromOffset(ROW, 26),
+	self.items_empty = label(items, "", 20, Enum.FontWeight.Bold, TEXT2, {
+		Position = UDim2.fromOffset(G.X0 + CAT_W + 20, 80),
+		Size = UDim2.fromOffset(ROW - CAT_W - 20, 26),
 		Visible = false,
 	})
+	-- the categories down the left: ALL, then a kind each, with how many the player owns of it
+	self.items_kind = "all"
+	self.cat_buttons = {}
+	local side = make("Frame", {
+		BackgroundColor3 = Color3.fromHex("0A1450"),
+		BackgroundTransparency = 0.35,
+		Position = UDim2.fromOffset(G.X0, 68),
+		Size = UDim2.fromOffset(CAT_W, #CATEGORIES * 50 + 16),
+		ZIndex = 42,
+	}, items)
+	make("UICorner", { CornerRadius = UDim.new(0, 14) }, side)
+	make("UIPadding", { PaddingTop = UDim.new(0, 8), PaddingLeft = UDim.new(0, 8), PaddingRight = UDim.new(0, 8) }, side)
+	make("UIListLayout", { Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder }, side)
+	for i, cat in CATEGORIES do
+		local b = make("TextButton", {
+			Text = "",
+			AutoButtonColor = false,
+			BackgroundColor3 = Color3.fromHex("C9C8FF"),
+			BackgroundTransparency = 1,
+			Size = UDim2.new(1, 0, 0, 44),
+			LayoutOrder = i,
+			ZIndex = 43,
+		}, side)
+		make("UICorner", { CornerRadius = UDim.new(0, 10) }, b)
+		local name = label(b, cat.text, 17, Enum.FontWeight.Heavy, TEXT, {
+			Position = UDim2.fromOffset(12, 11),
+			Size = UDim2.new(1, -56, 0, 22),
+		})
+		local count = label(b, "0", 14, Enum.FontWeight.Heavy, TEXT2, {
+			AnchorPoint = Vector2.new(1, 0),
+			Position = UDim2.new(1, -10, 0, 13),
+			Size = UDim2.fromOffset(40, 18),
+			TextXAlignment = Enum.TextXAlignment.Right,
+		})
+		local entry = { b = b, name = name, count = count, kind = cat.kind }
+		b.MouseEnter:Connect(function()
+			if self.items_kind ~= cat.kind then
+				b.BackgroundTransparency = 0.82
+			end
+		end)
+		b.MouseLeave:Connect(function()
+			if self.items_kind ~= cat.kind then
+				b.BackgroundTransparency = 1
+			end
+		end)
+		Anim.button(b, nil, 1.03)
+		b.Activated:Connect(function()
+			if self.items_kind ~= cat.kind then
+				self.items_kind = cat.kind
+				self.ctx:sfx("click")
+				self:_refresh_items()
+				self.items_grid.CanvasPosition = Vector2.zero
+				for k, c in self.item_cards do
+					if c.hit.Visible then
+						Anim.pop(c.hit, (k - 1) % 4 * 0.04, 0.9)
+					end
+				end
+			end
+		end)
+		self.cat_buttons[i] = entry
+	end
 	-- BUY COINS: the coin packs after the user's reference (Fortnite's V-Bucks packs): a card a pack in
 	-- its own colour with rays, a pixel pile of star coins growing with the pack (tools/build_coin_packs.py),
 	-- the amount, and a yellow price button; "N% EXTRA" against the smallest pack
@@ -961,11 +1034,32 @@ end
 --- MY ITEMS' cards: one per owned piece of gear, with EQUIP / EQUIPPED at its foot.
 function ItemShopPanel._refresh_items(self)
 	local owned = {}
+	local counts = { all = 0 }
+	local kind = self.items_kind or "all"
 	for _, it in Cosmetics.gear() do
 		if self:_owned(it.id) then
-			table.insert(owned, it)
+			counts.all += 1
+			counts[it.kind] = (counts[it.kind] or 0) + 1
+			if kind == "all" or it.kind == kind then
+				table.insert(owned, it)
+			end
 		end
 	end
+	-- the categories: the one shown lit, each with its count
+	local shown = "gear"
+	for _, e in self.cat_buttons or {} do
+		local on = e.kind == kind
+		e.b.BackgroundTransparency = if on then 0 else 1
+		e.name.TextColor3 = if on then Color3.fromHex("1A1F4D") else TEXT
+		e.count.TextColor3 = if on then Color3.fromHex("1A1F4D") else TEXT2
+		e.count.Text = tostring(counts[e.kind] or 0)
+		if on and e.kind ~= "all" then
+			shown = string.lower(e.name.Text)
+		end
+	end
+	self.items_empty.Text = if counts.all == 0
+		then "You don't own any gear yet: buy some in the ITEM SHOP!"
+		else "No " .. shown .. " yet: find them in the ITEM SHOP!"
 	self.items_empty.Visible = #owned == 0
 	local G = self._grid
 	for i, it in owned do

@@ -95,6 +95,56 @@ function BattleFx._add(self, fx: any)
 	table.insert(self.live, fx)
 end
 
+-- (2026-11-08) the jets' sounds, Roblox-licensed (Pro Sound Effects): a machine-gun burst for the
+-- strafing, the game's explosion (Assets/Audio nuke_explosion, its first 0.9 s) for the bombs and a
+-- Doppler whoosh for the flyby
+BattleFx.SFX = {
+	gun = { id = "rbxassetid://9116361236", to = 0.6, volume = 0.5 },
+	boom = { id = "rbxassetid://9114224354", to = 0.9, volume = 0.55 },
+	flyby = { id = "rbxassetid://9114157694", to = 2.3, volume = 0.4 },
+}
+local pools: { [string]: { list: { Sound }, i: number } } = {}
+--- Plays sound `name` (BattleFx.SFX) under the game's SFX group, a few of each at once at most.
+function BattleFx.sfx(name: string, speed: number?)
+	local def = BattleFx.SFX[name]
+	if def == nil then
+		return
+	end
+	local pool = pools[name]
+	if pool == nil then
+		local SoundService = game:GetService("SoundService")
+		local folder = SoundService:FindFirstChild("AirfrontAudio")
+		local group = folder and folder:FindFirstChild("SFX")
+		pool = { list = {}, i = 0 }
+		for _ = 1, 3 do
+			local snd = Instance.new("Sound")
+			snd.Name = "Battle_" .. name
+			snd.SoundId = def.id
+			snd.Volume = def.volume
+			snd.PlaybackRegionsEnabled = true
+			snd.PlaybackRegion = NumberRange.new(0, def.to)
+			if group ~= nil and group:IsA("SoundGroup") then
+				snd.SoundGroup = group
+			end
+			snd.Parent = SoundService
+			table.insert(pool.list, snd)
+		end
+		pools[name] = pool
+	end
+	pool.i = pool.i % #pool.list + 1
+	local snd = pool.list[pool.i]
+	snd.PlaybackSpeed = (speed or 1) * (0.95 + math.random() * 0.1)
+	snd.TimePosition = 0
+	snd:Play()
+end
+
+--- A bomb dropped from (x0, y0) falling onto (x1, y1) over `dur` seconds (the blast is the caller's).
+function BattleFx.bomb(self, now: number, x0: number, y0: number, x1: number, y1: number, dur: number?)
+	local b = self:_frame(SHELL, 5, 5, true)
+	b.Position = UDim2.fromOffset(x0, y0)
+	self:_add({ f = b, kind = "shell", t0 = now, x = x0, y = y0, x1 = x1, y1 = y1, dur = dur or 0.35 })
+end
+
 --- A rifle shot from (x0, y0) to (x1, y1) (`quiet`: no sound, as a jet's strafing burst after its first).
 function BattleFx.shot(self, now: number, x0: number, y0: number, x1: number, y1: number, quiet: boolean?)
 	if not quiet then

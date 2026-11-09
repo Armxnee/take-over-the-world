@@ -481,9 +481,62 @@ end
 
 --- (Take Over the World!) Air strike `uid` as a Countryball jet at (x, y): facing and tilting the way it
 --- flies; over the last stretch it strafes the target (tracers and sparks), and blows it up at the end.
-UnitLayer.JET_PX = 64 -- (the 32 px jet at 2x)
+UnitLayer.JET_PX = 32 -- (the 32 px jet at 1x: it was 2x, too big next to the map)
 UnitLayer.STRAFE_FROM = 0.55 -- of the flight
 UnitLayer.STRAFE_S = 0.07
+UnitLayer.GUN_S = 0.55 -- a machine-gun burst's sound this often while strafing
+UnitLayer.BOMB_AT = 0.8 -- of the flight: the bombs drop
+UnitLayer.SAMPLES = 48 -- points along a jet's route
+
+--- (2026-11-08) An air strike's route, as a boat's: not a straight line but a smooth curve from its
+--- airfield to the target, swinging out to one side and weaving back (a cubic curve whose bends come
+--- from the strike's id), flown at an even speed. The sim only times the flight (a strike can't be
+--- intercepted), so the picture can take any route that starts and ends where the sim's does.
+function UnitLayer.jet_uv(st: any, n: any, t: number, uid: number): (number, number)
+	local path = n._jet_path
+	if path == nil then
+		local W = st.map.W or Defs.W
+		local ax, ay = centre(n.from_tile, W)
+		local bx, by = centre(n.to_tile, W)
+		local dx, dy = bx - ax, by - ay
+		local L = math.max(math.sqrt(dx * dx + dy * dy), 1)
+		local px, py = -dy / L, dx / L
+		local rnd = Random.new(uid * 7919 + n.from_tile)
+		local a1 = (0.22 + rnd:NextNumber() * 0.25) * (if rnd:NextNumber() < 0.5 then -1 else 1)
+		local a2 = if rnd:NextNumber() < 0.7 then -a1 * (0.6 + rnd:NextNumber() * 0.5) else a1 * 0.5
+		local c1x, c1y = ax + dx * 0.3 + px * L * a1, ay + dy * 0.3 + py * L * a1
+		local c2x, c2y = ax + dx * 0.72 + px * L * a2, ay + dy * 0.72 + py * L * a2
+		local xs, ys, lens = {}, {}, {}
+		local total = 0
+		for i = 0, UnitLayer.SAMPLES do
+			local q = i / UnitLayer.SAMPLES
+			local r = 1 - q
+			local x = r * r * r * ax + 3 * r * r * q * c1x + 3 * r * q * q * c2x + q * q * q * bx
+			local y = r * r * r * ay + 3 * r * r * q * c1y + 3 * r * q * q * c2y + q * q * q * by
+			if i > 0 then
+				total += math.sqrt((x - xs[i]) ^ 2 + (y - ys[i]) ^ 2)
+			end
+			xs[i + 1], ys[i + 1], lens[i + 1] = x, y, total
+		end
+		path = { xs = xs, ys = ys, lens = lens, total = total }
+		n._jet_path = path
+	end
+	-- (by length flown: an even speed along the curve)
+	local want = math.clamp(t, 0, 1) * path.total
+	local lens = path.lens
+	local lo, hi = 1, #lens
+	while hi - lo > 1 do
+		local mid = (lo + hi) // 2
+		if lens[mid] < want then
+			lo = mid
+		else
+			hi = mid
+		end
+	end
+	local seg = lens[hi] - lens[lo]
+	local f = if seg > 0 then (want - lens[lo]) / seg else 0
+	return path.xs[lo] + (path.xs[hi] - path.xs[lo]) * f, path.ys[lo] + (path.ys[hi] - path.ys[lo]) * f
+end
 function UnitLayer._jet(self: any, uid: number, n: any, t: number, x: number, y: number, now: number)
 	local st = self._state
 	local cam = self.view.rig
@@ -497,12 +550,20 @@ function UnitLayer._jet(self: any, uid: number, n: any, t: number, x: number, y:
 		img.Size = UDim2.fromOffset(UnitLayer.JET_PX, UnitLayer.JET_PX)
 		img.ZIndex = UnitLayer.Z + 3
 		img.Parent = self.root
-		j = { img = img, key = "", next = 0, boomed = false }
+		j = { img = img, key = "", next = 0, boomed = false, gun = 0, bombs = false }
 		self._jets[uid] = j
+		if cam:on_screen(x, y, 200) then
+			BattleFx.sfx("flyby")
+		end
 	end
-	local x2, y2 = cam:map_to_screen(UnitLayer.nuke_uv(st, n, math.min(1, t + 0.02)))
+	local x2, y2 = cam:map_to_screen(UnitLayer.jet_uv(st, n, math.min(1, t + 0.02), uid))
 	local dx, dy = x2 - x, y2 - y
-	local right = dx >= 0
+	-- (the side it faces changes only on a clear turn: flying straight up or down it would flip every frame)
+	local right = j.right
+	if right == nil or math.abs(dx) > 0.6 then
+		right = dx >= 0
+		j.right = right
+	end
 	local key = tostring(n.owner) .. (if right then "r" else "l")
 	if j.key ~= key then
 		if self._flags_map ~= st.map then
@@ -520,7 +581,9 @@ function UnitLayer._jet(self: any, uid: number, n: any, t: number, x: number, y:
 	end
 	local tilt = 0
 	if math.abs(dx) + math.abs(dy) > 0.01 then
-		tilt = math.clamp(math.deg(math.atan2(dy, math.abs(dx))), -30, 30) * (if right then 1 else -1)
+		-- (nose along its course, up to straight up or down)
+		tilt = if right then math.deg(math.atan2(dy, dx)) else math.deg(math.atan2(-dy, -dx))
+		tilt = math.clamp(tilt, -95, 95)
 	end
 	j.img.Rotation = tilt
 	j.img.Position = UDim2.fromOffset(math.round(x), math.round(y))
@@ -529,10 +592,25 @@ function UnitLayer._jet(self: any, uid: number, n: any, t: number, x: number, y:
 	if t >= UnitLayer.STRAFE_FROM and now >= j.next and j.img.Visible then
 		j.next = now + UnitLayer.STRAFE_S
 		local face = if right then 1 else -1
-		self._bfx:shot(now, x + face * 28, y + 5, tx + (math.random() - 0.5) * 22, ty + (math.random() - 0.5) * 22)
+		self._bfx:shot(now, x + face * 14, y + 3, tx + (math.random() - 0.5) * 22, ty + (math.random() - 0.5) * 22, true)
+		if now >= j.gun then
+			j.gun = now + UnitLayer.GUN_S
+			BattleFx.sfx("gun")
+		end
+	end
+	if t >= UnitLayer.BOMB_AT and not j.bombs and j.img.Visible then
+		-- the bombs: three dropping onto the target, landing as the strike hits
+		j.bombs = true
+		local fall = math.max(0.2, (0.97 - t) * (n.flight_ticks or 30) / Defs.TICK_RATE)
+		self._bfx:bomb(now, x, y + 4, tx, ty, fall)
+		self._bfx:bomb(now, x - 6, y + 4, tx + 10, ty - 6, fall * 1.05)
+		self._bfx:bomb(now, x + 6, y + 4, tx - 9, ty + 5, fall * 1.1)
 	end
 	if t >= 0.97 and not j.boomed then
 		j.boomed = true
+		if j.img.Visible or cam:on_screen(tx, ty, 40) then
+			BattleFx.sfx("boom")
+		end
 		self._bfx:blast(now, tx, ty, 26)
 		self._bfx:blast(now + 0.1, tx + 10, ty - 6, 16)
 		self._bfx:blast(now + 0.18, tx - 9, ty + 5, 14)
@@ -687,7 +765,14 @@ function UnitLayer.tick(self: any, _dt: number)
 		local len = math.sqrt((dx - sx) ^ 2 + (dy - sy) ^ 2) * 1.4 + 1
 		local steps = math.clamp(math.floor(len * k / UnitLayer.TRAIL_STEP), 2, TrailBudget.MAX)
 		local thick = math.max(2, math.round(cam.scale * UnitLayer.TRAIL_WIDTH))
-		local x, y = cam:map_to_screen(UnitLayer.nuke_uv(st, n, t))
+		-- (an air strike flies its curved route: UnitLayer.jet_uv)
+		local uv = UnitLayer.nuke_uv
+		if n.kind == Defs.N_AIRSTRIKE then
+			uv = function(s0: any, n0: any, q: number)
+				return UnitLayer.jet_uv(s0, n0, q, uid)
+			end
+		end
+		local x, y = cam:map_to_screen(uv(st, n, t))
 		-- (the newest `trail_dots` points: the whole trail unless many munitions fly at once)
 		local newest = math.floor(steps * t)
 		local px0, py0 = nil, nil
@@ -696,7 +781,7 @@ function UnitLayer.tick(self: any, _dt: number)
 			if i > newest then
 				tx, ty = x, y
 			else
-				tx, ty = cam:map_to_screen(UnitLayer.nuke_uv(st, n, i / steps))
+				tx, ty = cam:map_to_screen(uv(st, n, i / steps))
 			end
 			if px0 ~= nil and (cam:on_screen(tx, ty, thick) or cam:on_screen(px0, py0, thick)) then
 				self:_bar(px0, py0, tx, ty, thick, c)
