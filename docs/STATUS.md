@@ -465,3 +465,4 @@ An original real-time territory-conquest game for Roblox. RoWorld is the gamepla
   (Rules.AIRSTRIKE_MIN_TICKS), so the Countryball jet is seen crossing, strafing and hitting.
 - Studio sync of big modules without the bridge: pack the file into a lossless RGB PNG (len + crc32 header),
   upload_image, read it back in Studio with EditableImage, check the crc, ScriptEditorService:UpdateSourceAsync.
+- (later) Item shop: MY ITEMS and BUY COINS are no longer pop-up frames; the three pills slide a row of pages (ItemShopPanel._page, Quint 0.45 s). MY ITEMS shows owned gear as the shop's own cards (wear / take off); BUY COINS the coin packs as tall gold cards. Section dots only on the shop page.
