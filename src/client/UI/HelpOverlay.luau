@@ -258,10 +258,10 @@ HelpOverlay.SECTIONS = {
 --- and effects are RoWorld's own or public domain since that day, and the World map since 2026-10-26).
 --- NOTICE.md and LICENSE in the source have the full text.
 HelpOverlay.LEGAL = {
-	"Take Over the World! is a modified version of RoWorld, which is a modified version of OpenFront. © OpenFront and Contributors. RoWorld changes © 2026 Snick Co. Take Over the World! changes © 2026 Armxnee.",
-	"Take Over the World! is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General Public License, version 3, with the additional terms in its LICENSE file. It comes with ABSOLUTELY NO WARRANTY. The licence comes with RoWorld's source code.",
+	"World Conquest is a modified version of RoWorld, which is a modified version of OpenFront. © OpenFront and Contributors. RoWorld changes © 2026 Snick Co. World Conquest changes © 2026 Armxnee.",
+	"World Conquest is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General Public License, version 3, with the additional terms in its LICENSE file. It comes with ABSOLUTELY NO WARRANTY. The licence comes with RoWorld's source code.",
 	"Maps made with Natural Earth and NOAA ETOPO1 data (public domain). Country flags from Wikimedia Commons (public domain). Music courtesy of APM Music; sound effects from Pro Sound Effects and Roblox (Roblox licensed audio).",
-	"Take Over the World! is not affiliated with or endorsed by OpenFront or RoWorld.",
+	"World Conquest is not affiliated with or endorsed by OpenFront or RoWorld.",
 }
 --- Where the source lives, under the credits: plain text with the GitHub mark, since Roblox games
 --- can't link off-platform (2026-10-25: "Source <github logo> <repo>" at the bottom; the public repo is

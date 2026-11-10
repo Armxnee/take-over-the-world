@@ -92,7 +92,9 @@ function Countries.flags_by_name(map: any): { [string]: string }
 				out[nd[1]] = nd[2]
 				-- (Take Over the World!: and the empire it can found, under that empire's flag or its own)
 				local e = Empires.of(nd[1])
-				out[e.name] = e.flag or nd[2]
+				if e ~= nil then
+					out[e.name] = e.flag or nd[2]
+				end
 			end
 		end
 		return out

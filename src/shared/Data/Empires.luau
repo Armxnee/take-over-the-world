@@ -2,9 +2,9 @@
 -- (Take Over the World!: empires, 2026-11-07.)
 -- A country whose leader holds LAND_SHARE of the map's land can found its empire (Sim.form_empire):
 -- the nation takes the empire's name and flag (Data/FlagData/Empires, historical flags pixelated by
--- tools/build_empire_flags.py) and its Countryball grows a moustache and a beard. A country with no
--- historical empire of its own founds the "Empire of <name>" under its own flag.
---   Empires.of(country) -> { name, flag }      (flag: a FlagPix code)
+-- tools/build_empire_flags.py) and its Countryball grows a moustache and a beard. (2026-11-09, the user)
+-- Only real empires: a country that never had one (no HISTORICAL entry) can't found an empire at all.
+--   Empires.of(country) -> { name, flag }?     (flag: a FlagPix code; nil: the country has no empire)
 --   Empires.is_empire(name) -> boolean
 --   Empires.flag_of(name) -> flag code?         (an empire's flag by the empire's name)
 local Empires = {}
@@ -42,6 +42,26 @@ Empires.HISTORICAL = {
 	["South Korea"] = { "Korean Empire", "korean" },
 	["Sweden"] = { "Swedish Empire", "swedish" },
 	["Netherlands"] = { "Dutch Empire", "dutch" },
+	-- (2026-11-09) every other country that had an empire, under that empire's own flag
+	["India"] = { "Mughal Empire", "mughal" },
+	["Mongolia"] = { "Mongol Empire", "mongol" },
+	["Peru"] = { "Inca Empire", "inca" },
+	["Mali"] = { "Mali Empire", "mali" },
+	["Niger"] = { "Songhai Empire", "songhai" },
+	["Ghana"] = { "Ashanti Empire", "ashanti" },
+	["South Africa"] = { "Zulu Empire", "zulu" },
+	["Vietnam"] = { "Empire of Vietnam", "vietnamese" },
+	["Bulgaria"] = { "Bulgarian Empire", "bulgarian" },
+	["Serbia"] = { "Serbian Empire", "serbian" },
+	["Uzbekistan"] = { "Timurid Empire", "timurid" },
+	["Afghanistan"] = { "Durrani Empire", "durrani" },
+	["Central African Rep."] = { "Central African Empire", "central_african" },
+	["Haiti"] = { "Empire of Haiti", "haitian" },
+	["Morocco"] = { "Sharifian Empire", "moroccan" },
+	["Oman"] = { "Omani Empire", "omani" },
+	["Myanmar"] = { "Burmese Empire", "burmese" },
+	["Indonesia"] = { "Majapahit Empire", "majapahit" },
+	["Denmark"] = { "Danish Empire", "danish" },
 }
 
 local by_name: { [string]: string } = {}
@@ -49,13 +69,13 @@ for _, e in Empires.HISTORICAL do
 	by_name[e[1]] = "emp_" .. e[2]
 end
 
---- The empire `country` founds: its name and its flag code (nil `flag`: the country keeps its own).
-function Empires.of(country: string): { name: string, flag: string? }
-	local e = Empires.HISTORICAL[country]
+--- The empire `country` founds: its name and its flag code; nil when the country never had one.
+function Empires.of(country: string?): { name: string, flag: string? }?
+	local e = if type(country) == "string" then Empires.HISTORICAL[country] else nil
 	if e ~= nil then
 		return { name = e[1], flag = "emp_" .. e[2] }
 	end
-	return { name = "Empire of " .. country, flag = nil }
+	return nil
 end
 
 --- Maps without empires (2026-11-08: the Korean War is two sides, no empires).
@@ -70,7 +90,7 @@ function Empires.is_empire(name: string?): boolean
 	if type(name) ~= "string" then
 		return false
 	end
-	return by_name[name] ~= nil or string.sub(name, 1, 10) == "Empire of "
+	return by_name[name] ~= nil
 end
 
 --- A historical empire's flag code by the empire's name ("German Empire" -> "emp_german").
@@ -78,7 +98,7 @@ function Empires.flag_of(name: string?): string?
 	return if type(name) == "string" then by_name[name] else nil
 end
 
---- The country an "Empire of <country>" was founded by.
+--- The country an empire was founded by.
 function Empires.country_of(name: string?): string?
 	if type(name) ~= "string" then
 		return nil
@@ -87,9 +107,6 @@ function Empires.country_of(name: string?): string?
 		if e[1] == name then
 			return country
 		end
-	end
-	if string.sub(name, 1, 10) == "Empire of " then
-		return string.sub(name, 11)
 	end
 	return nil
 end

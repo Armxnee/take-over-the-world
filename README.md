@@ -1,4 +1,4 @@
-# Take Over the World!
+# World Conquest
 
 A real-time territory conquest game for Roblox: expand, trade, ally, betray and launch planes, boats and
 missiles across a pixel map of the real world. Play it on Roblox (place 88696526459892).

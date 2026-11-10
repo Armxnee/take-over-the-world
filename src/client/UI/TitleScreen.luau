@@ -513,7 +513,7 @@ function TitleScreen._build_head(self)
 	self:add_child(self._glow)
 	self:move_child(self._glow, 3)
 
-	local word = GradientText.new("TAKE OVER THE WORLD!", 120, 900)
+	local word = GradientText.new("WORLD CONQUEST", 120, 900)
 	word.spacing = 14
 	word.shadow = { color = Color3.new(0.0, 0.02, 0.08), alpha = 0.55, offset_y = 6, outline = 14 }
 	word:set_colors(Color3.new(1, 1, 1), Color3.new(1.0, 0.8, 0.52))

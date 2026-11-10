@@ -481,3 +481,11 @@ An original real-time territory-conquest game for Roblox. RoWorld is the gamepla
   FOLLOW_FULL (120 full tiles) of that front walk out to it (RUSH 2.2x speed), spread GAP_PX apart on screen, fight
   where they stand and move on with the front as land is taken (FrontLayer front_spot, using _poll_fronts' lists).
   Sound effects: the SFX SoundGroup plays at AudioDirector.SFX_GROUP_VOLUME = 0.475.
+- (2026-11-09) The game is now called **WORLD CONQUEST** (title wordmark, credits, rotate card, README, NOTICE; code
+  comments keep the `(Take Over the World!:` marker). Roblox place name / icon must be renamed by the user.
+- (2026-11-09) Empires are real ones only: Empires.of returns nil for a country that never had one (no "Empire of X";
+  can_form_empire, EmpireButton, CountryPicker row and flags_by_name skip it). 19 more: Mughal (India), Mongol, Inca
+  (Peru), Mali, Songhai (Niger), Ashanti (Ghana), Zulu (South Africa), Empire of Vietnam, Bulgarian, Serbian, Timurid
+  (Uzbekistan), Durrani (Afghanistan), Central African, Empire of Haiti, Sharifian (Morocco), Omani, Burmese (Myanmar),
+  Majapahit (Indonesia), Danish: 38 empires, flags from Wikimedia Commons pixelated by tools/build_empire_flags.py.
+  New empires have no EmpireLooks entry yet (they wear the default spiked helmet). CountryTests 32/32.

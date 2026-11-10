@@ -1233,6 +1233,10 @@ function Sim.can_form_empire(self: any, id: number): boolean
 	if self._empire[id] ~= nil or Empires.is_empire(self.o_name[id]) then
 		return false
 	end
+	-- (2026-11-09: only countries that had a real empire found one)
+	if Empires.of(self.o_name[id]) == nil then
+		return false
+	end
 	local land = self.map.land_count
 	-- (it must have conquered land beyond its own country: Empires.need)
 	local def = self.country_defs and self.country_defs[id]
@@ -1246,7 +1250,7 @@ function Sim.form_empire(self: any, id: number): boolean
 		return false
 	end
 	local country = self.o_name[id]
-	local e = Empires.of(country)
+	local e = Empires.of(country) :: any
 	self._empire[id] = country
 	self.o_name[id] = e.name
 	self:ev({ Ev.OWNER_ADD, id, self.o_name[id], self.o_color[id], self.o_kind[id], self.o_team[id] })

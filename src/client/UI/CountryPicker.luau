@@ -537,15 +537,20 @@ function CountryPicker.select_owner(self, owner: number, focus: boolean?)
 	self.bonus.Text = "★ " .. d.bonuses.label
 	self.bonus_text.Text = d.bonuses.text
 	-- (Take Over the World!: the empire it can found: its Countryball, its name, the land it takes)
+	-- (2026-11-09: only a country that had a real empire shows one, under that empire's own flag)
 	local e = Empires.of(d.name)
 	self.empire_ball:ClearAllChildren()
-	local eb = Countryball.new(e.flag or d.flag, 36, e.name)
-	eb.Parent = self.empire_ball
-	self.empire_name.Text = "EMPIRE: " .. string.upper(e.name)
+	if e ~= nil then
+		local eb = Countryball.new(e.flag or d.flag, 36, e.name)
+		eb.Parent = self.empire_ball
+		self.empire_name.Text = "EMPIRE: " .. string.upper(e.name)
+	end
 	local land = self.ctx.state and self.ctx.state.map and self.ctx.state.map.land_count or 0
 	-- (no empires on some maps: Empires.allowed)
-	self.empire_row.Visible = Empires.allowed(self.ctx.state and self.ctx.state.map and self.ctx.state.map.id)
-	if land > 0 then
+	self.empire_row.Visible = e ~= nil and Empires.allowed(self.ctx.state and self.ctx.state.map and self.ctx.state.map.id)
+	if e == nil then
+		-- (nothing to show)
+	elseif land > 0 then
 		local share = Empires.need(land, d.tiles) / land * 100
 		local more = math.max(0, Empires.need(land, d.tiles) - d.tiles) / land * 100
 		self.empire_need.Text = string.format("Hold %.1f%% of the map · conquer %.1f%% more", share, more)
