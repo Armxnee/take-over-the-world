@@ -477,3 +477,7 @@ An original real-time territory-conquest game for Roblox. RoWorld is the gamepla
   warships without a skin the frigate with a big helmeted Countryball, trade ships without a boat skin the
   container ship. The Countryballs wear the owner's flag. Skins still win for warships and trade ships.
   UnitSkins.army / TRADE_DEFAULT are no longer used. UnitLayer._art takes a uri or Content; UnitLayer._flag_of.
+- (2026-11-09) Defense-post soldiers follow the front: while the player attacks a country, the player's squads within
+  FOLLOW_FULL (120 full tiles) of that front walk out to it (RUSH 2.2x speed), spread GAP_PX apart on screen, fight
+  where they stand and move on with the front as land is taken (FrontLayer front_spot, using _poll_fronts' lists).
+  Sound effects: the SFX SoundGroup plays at AudioDirector.SFX_GROUP_VOLUME = 0.475.

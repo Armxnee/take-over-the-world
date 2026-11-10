@@ -48,6 +48,10 @@ FrontLayer.FIGHT_FULL = 4 -- full-size tiles from enemy land a soldier stops to 
 FrontLayer.WALK_FULL = 3.5 -- full-size tiles a second
 FrontLayer.AIM_PX = 90 -- an enemy soldier this close is shot at instead of the border
 FrontLayer.MIN_SCALE = 1.6 -- px a map tile: zoomed out further, no soldiers
+-- (2026-11-09, the user) while the player attacks a country, the player's squads move with the front
+FrontLayer.FOLLOW_FULL = 120 -- full-size tiles from a soldier the front may be to pull it along
+FrontLayer.RUSH = 2.2 -- walking speed x, catching up with the front
+FrontLayer.GAP_PX = 26 -- on-screen room kept between soldiers on the front
 
 type Slot = { cx: number, cy: number, sx: number, sy: number, dx: number, dy: number, t0: number }
 type Entry = { text: string, incoming: boolean, slots: { Slot }, seen: boolean }
@@ -479,7 +483,9 @@ end
 -- AI's, sends out a squad of mini Countryball soldiers. They roam their own country around the post,
 -- walking from spot to spot and mostly to its borders; one that reaches a border with a country its
 -- owner is at war with (an attack either way) stops, faces it and fires across, at an enemy soldier
--- when one is near. Zoomed far out (MIN_SCALE) none show.
+-- when one is near. Zoomed far out (MIN_SCALE) none show. (2026-11-09) While the player attacks a
+-- country, the player's squads within FOLLOW_FULL of that front walk out to it, spread along it, and
+-- move on with it as the land is taken (RUSH speed), fighting wherever they stand on it.
 
 local function post_soldier(self: any): ImageLabel
 	return pixel_image(self, "Patrol", FrontLayer.SOLDIER_PX, FrontLayer.Z - 2)
@@ -559,6 +565,32 @@ local function roam_target(st: any, post: number, W: number, N: number, owner: n
 	return px + 0.5, py + 0.5
 end
 
+--- The nearest tile to (u, v) within `r` tiles on the player's front with a country it attacks (`lists`:
+--- FrontLayer._fronts' tile lists), at least `gap` tiles from every spot in `taken` (u1, v1, u2, v2...).
+local function front_spot(lists: { { number } }, W: number, u: number, v: number, r: number, gap: number, taken: { number }): (number?, number?)
+	local best, bu, bv = r * r, nil, nil
+	local g2 = gap * gap
+	for _, list in lists do
+		for _, t in list do
+			local x, y = t % W + 0.5, t // W + 0.5
+			local d = (x - u) ^ 2 + (y - v) ^ 2
+			if d < best then
+				local free = true
+				for i = 1, #taken, 2 do
+					if (taken[i] - x) ^ 2 + (taken[i + 1] - y) ^ 2 < g2 then
+						free = false
+						break
+					end
+				end
+				if free then
+					best, bu, bv = d, x, y
+				end
+			end
+		end
+	end
+	return bu, bv
+end
+
 --- Keeps a squad at each defense post in view (any owner's, up to MAX_POSTS, nearest the middle of the
 --- screen first) and gives each soldier its next walk or its fight.
 local function post_poll(self: any, now: number)
@@ -585,6 +617,20 @@ local function post_poll(self: any, now: number)
 			war[a.target * 65536 + a.attacker] = true
 		end
 	end
+	-- (2026-11-09) the player's fronts with the countries it attacks (filled by _poll_fronts): its squads
+	-- walk out to them and move on with them as the land is taken
+	local follow: { { number } }? = nil
+	for _, a in st.attacks do
+		if a.attacker == me and a.target ~= 0 then
+			local list = self._fronts[a.target]
+			if list ~= nil and #list > 0 then
+				follow = follow or {}
+				table.insert(follow :: any, list)
+			end
+		end
+	end
+	local follow_r = FrontLayer.FOLLOW_FULL / k
+	local gap = math.clamp(FrontLayer.GAP_PX / math.max(cam.scale, 0.01), 1, 20)
 	local vp = cam._vp or Vector2.new(1280, 720)
 	local cands = {}
 	for sid, s in st.structures do
@@ -635,8 +681,10 @@ local function post_poll(self: any, now: number)
 		end
 		p.owner = s.owner
 		p.tile = s.tile
+		local taken: { number }? = if follow ~= nil and p.owner == me then {} else nil
 		for _, sd in p.soldiers do
 			local t = math.clamp(math.floor(sd.v), 0, (N // W) - 1) * W + math.clamp(math.floor(sd.u), 0, W - 1)
+			sd.rush = false
 			if st:tile_owner(t) ~= p.owner then
 				-- (its ground was lost: back to the post)
 				sd.fu, sd.fv = nil, nil
@@ -647,7 +695,23 @@ local function post_poll(self: any, now: number)
 			sd.fu, sd.fv = eu, ev
 			if eu ~= nil then
 				sd.tu, sd.tv = nil, nil
-			elseif sd.tu == nil and now >= sd.wait then
+				if taken ~= nil then
+					table.insert(taken, sd.u)
+					table.insert(taken, sd.v)
+				end
+				continue
+			end
+			if taken ~= nil then
+				-- (the front moved on, or it hasn't got there yet: on to the nearest free spot on it)
+				local fu, fv = front_spot(follow :: any, W, sd.u, sd.v, follow_r, gap, taken)
+				if fu ~= nil then
+					sd.tu, sd.tv, sd.rush = fu, fv, true
+					table.insert(taken, fu)
+					table.insert(taken, fv :: number)
+					continue
+				end
+			end
+			if sd.tu == nil and now >= sd.wait then
 				sd.tu, sd.tv = roam_target(st, s.tile, W, N, p.owner, roam)
 			end
 		end
@@ -675,11 +739,11 @@ local function post_tick(self: any, now: number, dt: number)
 			elseif sd.tu ~= nil then
 				local du, dv = sd.tu - sd.u, sd.tv - sd.v
 				local d = math.sqrt(du * du + dv * dv)
-				local step = speed * dt
+				local step = speed * dt * (if sd.rush then FrontLayer.RUSH else 1)
 				if d <= step or d < 0.05 then
 					sd.u, sd.v = sd.tu, sd.tv
 					sd.tu, sd.tv = nil, nil
-					sd.wait = now + 0.6 + math.random() * 2.2
+					sd.wait = now + (if sd.rush then 0 else 0.6 + math.random() * 2.2)
 				else
 					sd.u += du / d * step
 					sd.v += dv / d * step
