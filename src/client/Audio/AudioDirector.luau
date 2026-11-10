@@ -38,6 +38,10 @@ local Playlist = require(script.Parent:WaitForChild("Playlist")) :: any
 local AudioDirector = {}
 AudioDirector.__index = AudioDirector
 
+--- (Take Over the World!, 2026-11-09) Every sound effect (UI, battle, jets) plays through the "SFX" group
+--- at this level: the user found them far too loud at full volume and asked for 45-50 %.
+AudioDirector.SFX_GROUP_VOLUME = 0.475
+
 AudioDirector.SFX_NAMES = {
 	"ui_click",
 	"ui_hover",
@@ -436,6 +440,7 @@ function AudioDirector.new(autoplay_theme: string?)
 	self._root = root
 	self._music_group = self:_group("Music")
 	self._sfx_group = self:_group("SFX")
+	self._sfx_group.Volume = AudioDirector.SFX_GROUP_VOLUME -- (Take Over the World!: the user's level, 2026-11-09)
 	self._player_a = self:_make_sound("MusicA", self._music_group)
 	self._player_b = self:_make_sound("MusicB", self._music_group)
 	self._player_a.Looped = true
