@@ -489,3 +489,11 @@ An original real-time territory-conquest game for Roblox. RoWorld is the gamepla
   (Uzbekistan), Durrani (Afghanistan), Central African, Empire of Haiti, Sharifian (Morocco), Omani, Burmese (Myanmar),
   Majapahit (Indonesia), Danish: 38 empires, flags from Wikimedia Commons pixelated by tools/build_empire_flags.py.
   New empires have no EmpireLooks entry yet (they wear the default spiked helmet). CountryTests 32/32.
+- (2026-11-09) Empire looks for all 38 empires (tools/build_empire_looks.py -> Data/EmpireLooks): the 19 new ones
+  designed (Mughal pagri, Mongol helmet, Inca llawt'u, Mansa Musa's crown, Songhai turban, Asantehene crown, Zulu
+  leopard band, Vietnamese khan van, tsar crowns for Bulgaria / Serbia, Timurid kulah, Durrani turban, Bokassa's
+  crown, Haitian laurel, Moroccan turban, Omani massar, Konbaung crown, Majapahit crown, Christian IV's hat; Inca,
+  Ashanti, Zulu and Central African are clean-shaven, no beard sprite). Fixes to the old ones: full beards kept off
+  the ball's sides so the flag shows, no mouths, hair strands so dark beards don't read as open mouths, no outline
+  around dark hair (the Qing Fu Manchu was a solid block), Austrian chops light grey. The preview now draws each
+  look as the game does (empire flag + angry eyes). The picker card closes up when a country has no empire.

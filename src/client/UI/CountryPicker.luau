@@ -271,13 +271,17 @@ function CountryPicker.new(ctx: any, gui: Instance)
 	return self
 end
 
+--- the empire row's height and the gap above it: what the card loses without one
+CountryPicker.EMPIRE_ROW_H = 56
+
 function CountryPicker.apply_layout(self)
 	local compact = self.ctx.compact == true
 	local vp = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize or Vector2.new(1280, 720)
 	local lw = if compact then 230 else 300
 	self.list_panel.Size = UDim2.new(0, lw, 0, math.max(200, vp.Y - 76 - 16))
 	local cw = if compact then 300 else 360
-	self.card.Size = UDim2.fromOffset(cw, 372)
+	-- (2026-11-09: a country with no empire has no empire row, and the card closes up over it)
+	self.card.Size = UDim2.fromOffset(cw, if self.empire_row.Visible then 372 else 372 - CountryPicker.EMPIRE_ROW_H)
 	self.card.Position = UDim2.new(1, -16, 1, -16)
 end
 
@@ -548,6 +552,7 @@ function CountryPicker.select_owner(self, owner: number, focus: boolean?)
 	local land = self.ctx.state and self.ctx.state.map and self.ctx.state.map.land_count or 0
 	-- (no empires on some maps: Empires.allowed)
 	self.empire_row.Visible = e ~= nil and Empires.allowed(self.ctx.state and self.ctx.state.map and self.ctx.state.map.id)
+	self:apply_layout()
 	if e == nil then
 		-- (nothing to show)
 	elseif land > 0 then
