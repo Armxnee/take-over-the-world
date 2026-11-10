@@ -12,6 +12,8 @@ local Empires = require(game:GetService("ReplicatedStorage"):WaitForChild("Airfr
 local GearSprites = require(game:GetService("ReplicatedStorage"):WaitForChild("Airfront"):WaitForChild("Data"):WaitForChild("GearSprites"))
 -- (2026-11-08: each historical empire's own hat and facial hair, tools/build_empire_looks.py)
 local EmpireLooks = require(game:GetService("ReplicatedStorage"):WaitForChild("Airfront"):WaitForChild("Data"):WaitForChild("EmpireLooks"))
+-- (2026-11-09: the default boats from the user's pictures, tools/build_boat_art.py)
+local BoatArt = require(game:GetService("ReplicatedStorage"):WaitForChild("Airfront"):WaitForChild("Data"):WaitForChild("BoatArt"))
 
 local Countryball = {}
 
@@ -427,6 +429,67 @@ function Countryball.vehicle_content(kind: string, code: string?, name: string?,
 	local content = Content.fromObject(img)
 	vehicles_drawn[key] = content
 	return content
+end
+
+local boats_drawn: { [string]: any } = {}
+--- A default boat (Data/BoatArt: "unit", "warship", "trade") facing right or left, its Countryballs in
+--- the owner's flag (the art faces right: mirrored for left). Returns the Content and its w, h in px.
+function Countryball.boat_content(kind: string, code: string?, name: string?, right: boolean): (Content?, number, number)
+	local v = BoatArt.boats[kind]
+	if v == nil then
+		return nil, 0, 0
+	end
+	local W, H = v.w, v.h
+	local key = kind .. "|" .. tostring(code) .. "|" .. tostring(name) .. "|" .. tostring(right)
+	local hit = boats_drawn[key]
+	if hit ~= nil then
+		return hit or nil, W, H
+	end
+	boats_drawn[key] = false
+	local ok, img = pcall(function()
+		return AssetService:CreateEditableImage({ Size = Vector2.new(W, H) })
+	end)
+	if not ok or img == nil then
+		return nil, W, H
+	end
+	local g = if #v.balls > 0 then FlagPix.forCode(code, name) else nil
+	local pal: { [string]: Color3 } = {}
+	for ch, rgb in v.pal do
+		pal[ch] = Color3.fromRGB(rgb[1], rgb[2], rgb[3])
+	end
+	local b = buffer.create(W * H * 4)
+	for y = 0, H - 1 do
+		local row, frow = v.rows[y + 1], v.flag[y + 1]
+		for x = 0, W - 1 do
+			local c: Color3? = nil
+			local k = 1
+			local fc = string.sub(frow, x + 1, x + 1)
+			if fc == "F" or fc == "f" then
+				-- the ball this pixel belongs to: its box maps the flag (its top row at flag height v0)
+				local box = v.balls[1]
+				for _, bb in v.balls do
+					if x >= bb[1] - 2 and x <= bb[3] + 2 and y >= bb[2] and y <= bb[4] then
+						box = bb
+						break
+					end
+				end
+				local u = (x - box[1]) / math.max(1, box[3] - box[1])
+				local vv = box[5] + (1 - box[5]) * (y - box[2]) / math.max(1, box[4] - box[2])
+				c = flag_at(g, u, vv)
+				k = if fc == "f" then 0.72 else 1
+			else
+				c = pal[string.sub(row, x + 1, x + 1)]
+			end
+			if c ~= nil then
+				local px = if right then x else W - 1 - x
+				write_rgb(b, (y * W + px) * 4, c, k)
+			end
+		end
+	end
+	img:WritePixelsBuffer(Vector2.zero, Vector2.new(W, H), b)
+	local content = Content.fromObject(img)
+	boats_drawn[key] = content
+	return content, W, H
 end
 
 --- A Countryball `px` wide for flag `code` (or the country `name`; a grey ball when unknown): one

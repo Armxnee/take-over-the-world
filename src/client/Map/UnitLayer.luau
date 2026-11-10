@@ -210,6 +210,7 @@ function UnitLayer.new(parent: Instance, view: any)
 	self._arts = {} :: { [number]: ImageLabel }
 	self._art_pool = {} :: { ImageLabel }
 	self._art_seen = {} :: { [number]: boolean }
+	self._art_src = {} :: { [ImageLabel]: any } -- (the picture each art label shows: a uri or Content)
 	self._face = {} :: { [number]: boolean }
 	self._prevx = {} :: { [number]: number }
 	self._bfx = BattleFx.new(root, UnitLayer.Z + 4)
@@ -382,8 +383,9 @@ UnitLayer.NUKE_ART = 0.9 -- a skinned bomb's height, in its sprite size
 UnitLayer.MISSILE_ART = 1.1 -- a skinned SAM missile's height, in unit sprites
 UnitLayer.TRAIN_CARS = 4 -- container cars behind the engine (the art has three, repeated)
 
---- An art sprite: picture `image` centred at (x, y), w x h px, turned `rot` degrees.
-function UnitLayer._art(self: any, key: number, image: string, x: number, y: number, w: number, h: number, rot: number)
+--- An art sprite: picture `image` (an asset uri, or Content drawn here) centred at (x, y), w x h px,
+--- turned `rot` degrees.
+function UnitLayer._art(self: any, key: number, image: any, x: number, y: number, w: number, h: number, rot: number)
 	self._art_seen[key] = true
 	local a = self._arts[key]
 	if a == nil then
@@ -400,8 +402,9 @@ function UnitLayer._art(self: any, key: number, image: string, x: number, y: num
 		a.Visible = true
 		self._arts[key] = a
 	end
-	if a.Image ~= image then
-		a.Image = image
+	if self._art_src[a] ~= image then
+		self._art_src[a] = image
+		a.ImageContent = if type(image) == "string" then Content.fromUri(image) else image
 	end
 	local sz = UDim2.fromOffset(math.max(2, math.round(w)), math.max(2, math.round(h)))
 	if a.Size ~= sz then
@@ -571,6 +574,18 @@ end
 -- Frame
 -- ---------------------------------------------------------------------------------------------
 
+--- (Take Over the World!) Owner `owner`'s flag code and country name (for its Countryballs).
+function UnitLayer._flag_of(self: any, st: any, owner: number): (string?, string?)
+	if self._flags_map ~= st.map then
+		self._flags_map = st.map
+		local ok, f = pcall(Countries.flags_by_name, st.map)
+		self._flags = if ok then f else {}
+	end
+	local o = st:get_owner(owner)
+	local name = o and o.name
+	return name and self._flags[name], name
+end
+
 --- (Take Over the World!) Air strike `uid` as a Countryball jet at (x, y): facing and tilting the way it
 --- flies; over the last stretch it strafes the target (tracers and sparks), and blows it up at the end.
 UnitLayer.JET_PX = 32 -- (the 32 px jet at 1x: it was 2x, too big next to the map)
@@ -658,14 +673,8 @@ function UnitLayer._jet(self: any, uid: number, n: any, t: number, x: number, y:
 	end
 	local key = tostring(n.owner) .. (if right then "r" else "l")
 	if j.key ~= key then
-		if self._flags_map ~= st.map then
-			self._flags_map = st.map
-			local ok, f = pcall(Countries.flags_by_name, st.map)
-			self._flags = if ok then f else {}
-		end
-		local o = st:get_owner(n.owner)
-		local name = o and o.name
-		local c = Countryball.vehicle_content("jet", name and self._flags[name], name, right)
+		local code, name = self:_flag_of(st, n.owner)
+		local c = Countryball.vehicle_content("jet", code, name, right)
 		if c ~= nil then
 			j.key = key
 			j.img.ImageContent = c
@@ -837,26 +846,38 @@ function UnitLayer.tick(self: any, _dt: number)
 		if pick then
 			self._screen[uid] = Vector2.new(x, y)
 		end
-		-- (2026-11-08, the user's pixel art, facing the way the ship sails: a transport is an army landing
-		-- boat, one of UnitSkins.army a country; a trade ship a cargo ship, the owner's boat skin or
-		-- TRADE_DEFAULT; a warship its warship skin, or its own sprite without one)
+		-- (2026-11-09, the user's pixel art, facing the way the ship sails: a warship or a trade ship wears
+		-- the owner's warship / boat skin; without one, and every transport, it is a default boat
+		-- (Data/BoatArt: the landing boat, the frigate, the container ship) with its Countryballs in the
+		-- owner's flag)
 		local sk = nil
+		local boat = nil
 		if kind == U_WARSHIP then
 			sk = skin_of(st, u.owner, "warship")
+			boat = "warship"
 		elseif kind == Defs.U_TRADE then
-			sk = skin_of(st, u.owner, "boat") or UnitSkins.skins[UnitSkins.TRADE_DEFAULT]
+			sk = skin_of(st, u.owner, "boat")
+			boat = "trade"
 		elseif kind == U_TRANSPORT then
-			local army = UnitSkins.army
-			sk = army[u.owner % #army + 1]
+			boat = "unit"
 		end
-		if sk ~= nil and sk.r ~= nil then
+		if boat ~= nil then
 			local prev = self._prevx[uid]
 			self._prevx[uid] = x
 			local right = self:_facing(uid * 16, if prev ~= nil then x - prev else 0)
 			local w = px * UnitLayer.SHIP_PX
-			self:_art(uid * 16, if right then sk.r else sk.l, x, y, w, w * sk.h / sk.w, 0)
-			drawn += 1
-			continue
+			if sk ~= nil and sk.r ~= nil then
+				self:_art(uid * 16, if right then sk.r else sk.l, x, y, w, w * sk.h / sk.w, 0)
+				drawn += 1
+				continue
+			end
+			local code, name = self:_flag_of(st, u.owner)
+			local c, bw, bh = Countryball.boat_content(boat, code, name, right)
+			if c ~= nil then
+				self:_art(uid * 16, c, x, y, w, w * bh / bw, 0)
+				drawn += 1
+				continue
+			end
 		end
 		self:_sprite(uid * 16, col, u.owner, x, y, px, seen)
 		drawn += 1
