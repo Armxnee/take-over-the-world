@@ -36,13 +36,13 @@ function GlassPanel.new(pad_h: number?, pad_v: number?, r: number?, frost: boole
 	local self = setmetatable({}, GlassPanel.__mt)
 	W.Control._init(self)
 	W.Panel._init_panel(self)
-	self.radius = r or UITheme.R_LG
+	self.radius = if UITheme.FLAT_LOOK then math.min(r or UITheme.R_LG, UITheme.MAX_RADIUS) else (r or UITheme.R_LG)
 	self.tint = UITheme.GLASS
 	self.border_color = UITheme.LINE
 	--- Optional accent stripe on the left edge (alliance cards, alerts...). Alpha 0 = none.
 	self.accent = UITheme.CLEAR
 	self.accent_width = 3.0
-	self.sheen = true
+	self.sheen = not UITheme.FLAT_LOOK
 	self._frost = if frost == nil then true else frost
 	self._shadow_size = if shadow_size == nil then 18 else shadow_size
 	local ph, pv = pad_h or 16.0, pad_v or 12.0

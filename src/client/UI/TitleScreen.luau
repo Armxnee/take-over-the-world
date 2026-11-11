@@ -19,6 +19,7 @@ local StarterButton = require("./StarterButton")
 local GeneralButton = require("./GeneralButton")
 local ShopButton = require("./ShopButton")
 local PartyPanel = require("./PartyPanel")
+local MenuHub = require("./MenuHub") -- (World Conquest, 2026-11-11: the new main menu layout)
 local Signal = UITheme.core("Signal")
 
 local TitleScreen = W.class(W.Control)
@@ -469,8 +470,38 @@ function TitleScreen.new(c: any)
 	--- in a party, and whether this player leads it (only the leader picks a public match)
 	self._in_party = false
 	self._party_leader = true
+	-- (World Conquest, 2026-11-11) the new main menu (MenuHub) over the old title's pieces: they stay
+	-- for their logic (Quick Play cards, the solo settings, the waiting room) but only the waiting
+	-- room's card and the party's invite list still show. The hub sits just under the party, so its
+	-- invite list opens above it.
+	self._party.hide_card = true
+	self.hub = MenuHub.new(self)
+	self.hub.root.ZIndex = self._party.gui.ZIndex - 1
 	self:set_process(true)
 	return self
+end
+
+--- (World Conquest) The old title's pieces the hub replaces stay hidden.
+function TitleScreen._hide_for_hub(self)
+	for _, n in {
+		self._vignette,
+		self._bottom_shade,
+		self._top_shade,
+		self._glow,
+		self._head,
+		self._dock,
+		self._solo_panel,
+		self._credits,
+		self._crate_btn,
+		self._arsenal_btn,
+		self._shop_btn,
+		self._starter_btn,
+		self._general_btn,
+	} do
+		if n ~= nil and n.visible then
+			n:set_visible(false)
+		end
+	end
 end
 
 --- The player's party (server/Party.state), or nil (parties are off).
@@ -968,6 +999,8 @@ function TitleScreen.apply_layout(self)
 	self._credits:set_offsets(0, -(cb + ctx.insets.w + 14.0), 0, -(cb + ctx.insets.w))
 	self:_place_crate_button(compact, head_top)
 	self._party:apply_layout()
+	self:_hide_for_hub()
+	self.hub:layout()
 end
 
 --- The crate button, top right: level with the wordmark's top on desktop; on phones up in the
@@ -1213,6 +1246,11 @@ function TitleScreen._build_solo_menu(self)
 end
 
 function TitleScreen.open_solo_menu(self)
+	-- (World Conquest: PLAY PRIVATE MATCH's window instead)
+	if self.hub ~= nil then
+		self.hub:open_private()
+		return
+	end
 	if self._solo_open then
 		return
 	end
@@ -1231,6 +1269,7 @@ function TitleScreen.close_solo_menu(self, quiet: boolean?)
 	self._solo_open = false
 	self._solo_panel:set_visible(false)
 	self._dock:set_visible(not self.ctx:mp_waiting())
+	self:_hide_for_hub()
 	if not quiet then
 		self.ctx:sfx("close", -6.0)
 	end
@@ -1342,7 +1381,7 @@ function TitleScreen._refresh_queue_mode(self)
 		self:close_solo_menu(true)
 	end
 	self._queue:set_visible(waiting)
-	self._dock:set_visible(not waiting and not self._solo_open)
+	self:_hide_for_hub() -- (World Conquest: the hub has the menu; the dock stays hidden)
 end
 
 function TitleScreen._countdown(self): number

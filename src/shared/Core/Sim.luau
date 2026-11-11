@@ -110,6 +110,8 @@ function Sim.new(p_map: any, config: { [string]: any }?): any
 	self._picked = {} :: { [number]: any } -- country id -> { from = placeholder, saved AI fields }
 	self.nation_flag = {} :: { [number]: string }
 	self.time_limit_s = math.max(Defs.trunc(tonumber(cfg.time_limit_s) or 0), 0)
+	--- (World Conquest: a private match's LAND TO WIN, 50-95%; default Rules.WIN_SHARE)
+	self.win_share = math.clamp(tonumber(cfg.win_share) or Rules.WIN_SHARE, 0.5, 0.95)
 	self.spawn_total = math.max(Defs.trunc(tonumber(cfg.spawn_ticks) or Rules.DEFAULT_SPAWN_TICKS), 10)
 	--- True when max_humans == 1 (spawn phase waits for the player's pick, then counts down 5 s).
 	self.solo = self.max_humans == 1
@@ -1987,7 +1989,7 @@ function Sim._check_victory(self: any)
 		end
 		bt = tt
 	end
-	if best > 0 and bt >= Rules.WIN_SHARE * (self.map.contestable_count - self.fallout_count) then
+	if best > 0 and bt >= (self.win_share or Rules.WIN_SHARE) * (self.map.contestable_count - self.fallout_count) then
 		self:_game_over(best, Defs.OVER_DOMINATION, team)
 		return
 	end

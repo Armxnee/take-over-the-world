@@ -440,6 +440,11 @@ function PartyPanel.apply_layout(self)
 		p.offset_left, p.offset_right = x + 4.0, x + 4.0
 		p.offset_top, p.offset_bottom = 0, 0
 	end
+	if self.hide_card then
+		-- (World Conquest: the main menu's PARTY button opens the invite list; no card of its own)
+		p:set_visible(false)
+		pill:set_visible(false)
+	end
 	p:reset_size()
 	-- the invite list: under the top bar row (its buttons draw above our layer), growing down, its rows
 	-- scrolling in what the screen leaves (_refresh_list)

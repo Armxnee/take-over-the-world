@@ -1652,7 +1652,11 @@ function UIRoot._on_play_solo(self, difficulty: number)
 	self._solo_msec = UICtx.msec()
 	ctx:set_setting("difficulty", difficulty)
 	ctx:sfx("click")
-	ctx:session_call("start_solo", { difficulty, UIMaps.valid(ctx:setting("map_id", UIMaps.DEFAULT_ID)) })
+	ctx:session_call("start_solo", {
+		difficulty,
+		UIMaps.valid(ctx:setting("map_id", UIMaps.DEFAULT_ID)),
+		{ win_share = tonumber(ctx:setting("win_share", 0.8)) }, -- (World Conquest: the private match's LAND TO WIN)
+	})
 end
 
 --- A fresh solo match from inside one: the results screen's "Play again", the game menu's "Restart
@@ -1677,7 +1681,11 @@ function UIRoot._restart_solo(self, difficulty: number)
 	ctx:set_setting("difficulty", difficulty)
 	ctx:sfx("click")
 	self._restart_pending = true
-	ctx:session_call("start_solo", { difficulty, UIMaps.valid(ctx:setting("map_id", UIMaps.DEFAULT_ID)) })
+	ctx:session_call("start_solo", {
+		difficulty,
+		UIMaps.valid(ctx:setting("map_id", UIMaps.DEFAULT_ID)),
+		{ win_share = tonumber(ctx:setting("win_share", 0.8)) }, -- (World Conquest: the private match's LAND TO WIN)
+	})
 	self:_update_pause()
 end
 

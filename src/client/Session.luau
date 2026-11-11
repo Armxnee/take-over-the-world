@@ -439,6 +439,7 @@ function Session.start_solo(self: any, p_difficulty: number, map_id: string?, op
 		max_humans = 1,
 		time_limit_s = 0,
 		map_id = self.map_id,
+		win_share = if type(opts) == "table" and type(opts.win_share) == "number" then opts.win_share else nil,
 	}, self:local_display_name())
 end
 
@@ -882,6 +883,13 @@ function Session.local_display_name(self: any): string
 		return n
 	end
 	return "Commander"
+end
+
+--- (World Conquest) The share of contestable land that wins the local match (a private match's LAND TO
+--- WIN), or nil (multiplayer, or no match: Rules.WIN_SHARE).
+function Session.win_share(self: any): number?
+	local sim = self._sim
+	return if sim ~= nil and type(sim.win_share) == "number" then sim.win_share else nil
 end
 
 --- Current local sim (title/solo only; nil in multiplayer). Tests, tools and the tutorial; a tick in

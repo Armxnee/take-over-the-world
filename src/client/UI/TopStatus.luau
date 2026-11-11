@@ -296,6 +296,10 @@ end
 function TopStatus.on_bind(self)
 	self._phase_end_tick = -1.0
 	self._over_secs = nil
+	-- (World Conquest: a private match's LAND TO WIN moves the goal)
+	local ws = tonumber(self.ctx:session_call("win_share")) or UITheme.core("Rules").WIN_SHARE
+	self._bar.goal = ws
+	self._goal:set_text(string.format("Goal %d%%", math.floor(ws * 100 + 0.5)))
 	local s = self.ctx.state
 	if s == nil then
 		return

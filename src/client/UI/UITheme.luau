@@ -144,16 +144,27 @@ function UITheme.equal(a: any, b: any): boolean
 end
 
 -- --- colour tokens (same as ui_theme.gd) ------------------------------------------------------
-UITheme.GLASS = UITheme.rgba(0.051, 0.075, 0.149, 0.84) -- #0d1326 @ 84 %
-UITheme.GLASS_SOLID = UITheme.rgba(0.043, 0.062, 0.125, 0.96)
-UITheme.GLASS_RAISED = UITheme.rgba(0.1, 0.13, 0.24, 0.94)
+-- (World Conquest, 2026-11-11: the upgraded look from the user's reference video: flat dark panels with
+-- near-square corners instead of navy glass. FLAT_LOOK = false brings the old glass back.)
+UITheme.FLAT_LOOK = true
+--- the largest corner radius any panel, button or pill gets in the flat look
+UITheme.MAX_RADIUS = 4
+UITheme.GLASS = if UITheme.FLAT_LOOK
+	then UITheme.rgba(0.110, 0.122, 0.149, 0.93) -- #1c1f26
+	else UITheme.rgba(0.051, 0.075, 0.149, 0.84) -- #0d1326 @ 84 %
+UITheme.GLASS_SOLID = if UITheme.FLAT_LOOK
+	then UITheme.rgba(0.086, 0.094, 0.114, 0.97) -- #16181d
+	else UITheme.rgba(0.043, 0.062, 0.125, 0.96)
+UITheme.GLASS_RAISED = if UITheme.FLAT_LOOK
+	then UITheme.rgba(0.153, 0.165, 0.196, 0.96) -- #272a32
+	else UITheme.rgba(0.1, 0.13, 0.24, 0.94)
 UITheme.LINE = UITheme.rgba(1.0, 1.0, 1.0, 0.1)
 UITheme.LINE_2 = UITheme.rgba(1.0, 1.0, 1.0, 0.18)
 UITheme.FILL = UITheme.rgba(1.0, 1.0, 1.0, 0.06)
 UITheme.FILL_2 = UITheme.rgba(1.0, 1.0, 1.0, 0.11)
 UITheme.TEXT = Color3.new(0.94, 0.955, 1.0)
-UITheme.TEXT_2 = Color3.new(0.68, 0.73, 0.86)
-UITheme.TEXT_3 = Color3.new(0.48, 0.53, 0.67)
+UITheme.TEXT_2 = if UITheme.FLAT_LOOK then Color3.new(0.62, 0.66, 0.73) else Color3.new(0.68, 0.73, 0.86)
+UITheme.TEXT_3 = if UITheme.FLAT_LOOK then Color3.new(0.44, 0.47, 0.54) else Color3.new(0.48, 0.53, 0.67)
 UITheme.AMBER = Color3.new(1.0, 0.71, 0.278) -- #ffb547 primary actions
 UITheme.AMBER_HI = Color3.new(1.0, 0.8, 0.47)
 UITheme.AMBER_LO = Color3.new(0.8, 0.49, 0.13)
@@ -190,7 +201,7 @@ UITheme.R_LG = 14
 --- sharply; 0.08 keeps the territory colour tinting the glass while hiding that detail.
 UITheme.GLASS_BOOST = 0.08
 --- Top sheen of the frosted glass (frost shader `sheen`, 0.045 when on).
-UITheme.GLASS_SHEEN = 0.045
+UITheme.GLASS_SHEEN = if UITheme.FLAT_LOOK then 0.0 else 0.045
 
 --- Frosted (screen-sampling) glass is unavailable in Roblox (kept for API parity).
 UITheme.frost_enabled = false
@@ -1488,7 +1499,7 @@ function UITheme.flat(bg: any, radius: number?, border: any?, bw: number?, mh: n
 	return {
 		kind = "flat",
 		bg = UITheme.to_rgba(bg),
-		radius = radius or UITheme.R_MD,
+		radius = if UITheme.FLAT_LOOK then math.min(radius or UITheme.R_MD, UITheme.MAX_RADIUS) else (radius or UITheme.R_MD),
 		border = if border ~= nil then UITheme.to_rgba(border) else UITheme.CLEAR,
 		bw = bw or 0,
 		mh = mh or 0,
