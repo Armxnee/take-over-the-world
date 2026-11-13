@@ -647,11 +647,9 @@ function NameLayer.tick(self: any, dt: number)
 					self._flags_map = st.map
 					self._flags = Countries.flags_by_name(st.map)
 				end
-				local content = Countryball.ball_content(self._flags[o.name], o.name, worn)
+				local content, layout = Countryball.ball_content(self._flags[o.name], o.name, worn)
 				p.face.Image = ""
-				if content ~= nil then
-					p.face.ImageContent = content
-				end
+				Countryball.show(p.face, content, layout) -- (an empire's crown rises over the label)
 				p.face.ResampleMode = Enum.ResamplerMode.Pixelated
 				p.face.BackgroundTransparency = 1
 				if ring then
@@ -659,6 +657,7 @@ function NameLayer.tick(self: any, dt: number)
 				end
 				p.face.Visible = content ~= nil
 			else
+				Countryball.show(p.face, nil, nil)
 				p.face.Image = if face_id > 0 then Cosmetics.face_image(face_id) else ""
 				p.face.ResampleMode = Enum.ResamplerMode.Default
 				p.face.BackgroundTransparency = 0

@@ -5,11 +5,13 @@
 Both are pixel art on white with a caption under each piece. Every piece is found as the ink between
 the captions (its separate parts, a moustache and its goatee, stay one piece), cut out with the white
 around it made clear, and kept at HI x the Countryball's 32 x 32 grid, so the sheet's detail survives:
-an empire's ball is drawn at 128 x 128 (UI/Countryball: the 32 x 32 ball scaled up, the pieces over it).
-  hats    the brim just over the eyes (the bottom at row 13; the eyes start on row 14), centred, at most
-          30 ball pixels wide and 13 tall (a tall crown may be squashed a little, at most 1.2x)
-  beards  a full beard fills the ball's lower face (rows 17.5-29.5, at most 24 wide, squashed at most
-          1.6x), a moustache keeps its shape under the eyes; both stay inside the ball's outline
+copied 1:1 (one sheet pixel a canvas pixel, only the colours merged a little to fit the palette):
+an empire's ball is drawn at HI x (UI/Countryball: the 32 x 32 ball scaled up, the pieces over it), on
+a canvas TOP ball pixels taller above the ball and BOT below, so a tall crown rises over the head and a
+long beard hangs under the chin while the ball keeps its size on screen.
+  hats    centred, their bottom on the brim line just over the eyes (row 13; the eyes start on row 14),
+          HAT_DY moving a piece whose lowest part hangs (pearl strings, a keffiyeh's cloth)
+  beards  centred, their top just under the eyes (row 18.5), BEARD_DY moving one
 PICKS says which piece each empire wears (sheet row, column); where a sheet has more than one for an
 empire the comment lists them.
 Writes src/shared/Data/EmpireLooks.luau and tools/assets_out/empire_looks_preview.png.
@@ -140,75 +142,48 @@ def cut(a, m):
     return Image.fromarray(rgba, "RGBA")
 
 
-def scaled(img, w, h, colours=40):
-    """`img` resized to w x h (box filter, colour from opaque pixels only), hard alpha, few colours."""
-    a = np.asarray(img).astype(float)
-    al = a[..., 3:4] / 255.0
-    pre = np.concatenate([a[..., :3] * al, al * 255], axis=2).astype(np.uint8)
-    small = np.asarray(Image.fromarray(pre, "RGBA").resize((w, h), Image.BOX)).astype(float)
-    alpha = small[..., 3] / 255.0
-    rgb = np.where(alpha[..., None] > 0, small[..., :3] / np.maximum(alpha[..., None], 1e-6), 0)
-    keep = alpha >= 0.5
-    rgb = np.clip(rgb, 0, 255).astype(np.uint8)
-    q = Image.fromarray(rgb, "RGB").quantize(colors=colours, method=Image.Quantize.MEDIANCUT)
-    rgb = np.asarray(q.convert("RGB"))
-    out = np.zeros((h, w, 4), np.uint8)
-    out[..., :3] = rgb
+# per piece fine-tuning, in canvas pixels (+ down)
+HAT_DY = {"byzantine": 6, "moroccan": 18, "ashanti": 8, "korean": 6, "japanese": 4, "central_african": 2}
+BEARD_DY = {"british": 2, "german": 0, "japanese": 2, "korean": 2, "burmese": 2}
+COLOURS = 76  # (len(ALPHA))
+
+
+def few_colours(img):
+    """The piece with at most COLOURS colours (median cut, no dither) and hard alpha: (h, w, 4) uint8."""
+    a = np.asarray(img)
+    keep = a[..., 3] > 0
+    q = Image.fromarray(a[..., :3], "RGB").quantize(colors=COLOURS, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE)
+    out = np.zeros(a.shape, np.uint8)
+    out[..., :3] = np.asarray(q.convert("RGB"))
     out[..., 3] = np.where(keep, 255, 0)
     return out
 
 
-def inside_hi(x, y, shrink):
-    """Is hi-res pixel (x, y) inside the ball (in ball pixels, less `shrink`)?"""
-    return ((x + 0.5) / HI - CX - 0.5 + 0.5) ** 2 + ((y + 0.5) / HI - CY - 0.5 + 0.5) ** 2 <= (R - shrink) ** 2
+def hat(img, key):
+    a = few_colours(img)
+    h, w = a.shape[:2]
+    return a, G * HI // 2 - w // 2, 13 * HI - h + HAT_DY.get(key, 0)
 
 
-def place(arr, x, y, clip=None):
-    """A sprite on the N x N canvas: (rows of rgb or None, x, y), trimmed; `clip`: inside the ball."""
-    h, w = arr.shape[:2]
-    canvas = np.zeros((N, N, 4), np.uint8)
-    for j in range(h):
-        for i in range(w):
-            px, py = x + i, y + j
-            if arr[j, i, 3] and 0 <= px < N and 0 <= py < N and (clip is None or inside_hi(px, py, clip)):
-                canvas[py, px] = arr[j, i]
-    return canvas
-
-
-def hat(img):
-    w0, h0 = img.size
-    sy = min(30 * HI / w0, 13 * HI / h0)
-    sx = min(30 * HI / w0, sy * 1.2)
-    w, h = max(2, round(w0 * sx)), max(2, round(h0 * sy))
-    return place(scaled(img, w, h), round(N / 2 - w / 2), 13 * HI - h)
-
-
-def beard(img, kscale):
-    w0, h0 = img.size
-    if h0 / w0 < 0.62:  # a moustache: its own shape, under the eyes
-        s = min(kscale, 20 * HI / w0, 9 * HI / h0)
-        w, h = max(2, round(w0 * s)), max(2, round(h0 * s))
-        return place(scaled(img, w, h), round(N / 2 - w / 2), round(18.5 * HI), clip=0.9)
-    sy = min(12 * HI / h0, kscale * 1.4)
-    sx = min(24 * HI / w0, sy * 1.6)
-    w, h = max(2, round(w0 * sx)), max(2, round(h0 * sy))
-    return place(scaled(img, w, h), round(N / 2 - w / 2), round(17.5 * HI), clip=0.9)
+def beard(img, key):
+    a = few_colours(img)
+    h, w = a.shape[:2]
+    return a, G * HI // 2 - w // 2, round(18.5 * HI) + BEARD_DY.get(key, 0)
 
 
 # ---------------------------------------------------------------- the module
 ALPHA = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!#$%&()*+,-/:;<=>?@^_`{|}~"
+assert len(ALPHA) >= COLOURS
 
 
-def encode(canvas):
-    """{ x, y, w, h, pal, data }: the trimmed sprite, `data` its rows run-length coded ("." clear, a
-    palette letter a pixel, a count before a run of more than one)."""
-    ys, xs = np.where(canvas[..., 3] > 0)
-    if len(ys) == 0:
-        return None
+def encode(piece):
+    """{ x, y, w, h, pal, data }: `data` its rows run-length coded ("." clear, a palette letter a pixel,
+    a count before a run of more than one); x, y on the ball's HI x canvas (y < 0: above the ball)."""
+    a, x, y = piece
+    ys, xs = np.where(a[..., 3] > 0)
     y0, y1, x0, x1 = ys.min(), ys.max() + 1, xs.min(), xs.max() + 1
-    c = canvas[y0:y1, x0:x1]
-    pal, idx = [], {}
-    cells = []
+    c = a[y0:y1, x0:x1]
+    pal, idx, cells = [], {}, []
     for row in c:
         for p in row:
             if p[3] == 0:
@@ -219,16 +194,14 @@ def encode(canvas):
                 idx[k] = ALPHA[len(pal)]
                 pal.append(k)
             cells.append(idx[k])
-    assert len(pal) <= len(ALPHA), len(pal)
     data, i = [], 0
     while i < len(cells):
         j = i
         while j < len(cells) and cells[j] == cells[i]:
             j += 1
-        n = j - i
-        data.append((str(n) if n > 1 else "") + cells[i])
+        data.append((str(j - i) if j - i > 1 else "") + cells[i])
         i = j
-    return {"x": int(x0), "y": int(y0), "w": int(x1 - x0), "h": int(y1 - y0), "pal": pal, "data": "".join(data)}
+    return {"x": int(x + x0), "y": int(y + y0), "w": int(x1 - x0), "h": int(y1 - y0), "pal": pal, "data": "".join(data)}
 
 
 def lua(sp):
@@ -238,7 +211,7 @@ def lua(sp):
 
 
 # ---------------------------------------------------------------- the preview, as the game draws it
-def ball_hi(key, look):
+def ball_hi(key, look, top, bot):
     flags = L.empire_flags()
     pal, ix = flags.get(key, ([(150, 156, 170)], "0" * 600))
     base = Image.new("RGBA", (G, G), (0, 0, 0, 0))
@@ -257,54 +230,65 @@ def ball_hi(key, look):
                 if (R - d) < 2.4 and (nx * 0.85 - ny * 0.25 > 0.45 or ny > 0.55):
                     c = tuple(int(q * 0.8 + 0.5) for q in c)
                 base.putpixel((x, y), c + (255,))
-    big = base.resize((N, N), Image.NEAREST)
-    big.alpha_composite(Image.fromarray(look[1], "RGBA"))
+    W, H = G * HI, (G + top + bot) * HI
+    out = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    out.alpha_composite(base.resize((W, G * HI), Image.NEAREST), (0, top * HI))
+
+    def put(piece):
+        a, x, y = piece
+        out.alpha_composite(Image.fromarray(a, "RGBA"), (x, y + top * HI))
+
+    put(look[1])
     ex, ey, epal, erows = L.eyes_sprite()
     eyes = Image.new("RGBA", (G, G), (0, 0, 0, 0))
     for j, row in enumerate(erows):
         for i, ch in enumerate(row):
             if ch in epal:
                 eyes.putpixel((ex + i, ey + j), epal[ch] + (255,))
-    big.alpha_composite(eyes.resize((N, N), Image.NEAREST))
-    big.alpha_composite(Image.fromarray(look[0], "RGBA"))
-    return big
+    out.alpha_composite(eyes.resize((W, G * HI), Image.NEAREST), (0, top * HI))
+    put(look[0])
+    return out
 
 
 def main():
     ba, ha = load(BEARDS), load(HATS)
     bp, hp = pieces(ba, 10), pieces(ha, 8)
-    # the beard sheet's scale: its widest full beard 24 ball pixels wide
-    kscale = 22 * HI / max(np.ptp(np.where(m)[1]) + 1 for m in bp.values())
     looks = {}
     for k in L.KEYS:
         (br, bc), (hr, hc) = PICKS[k]
         assert (br, bc) in bp, ("beard", k, br, bc)
         assert (hr, hc) in hp, ("hat", k, hr, hc)
-        looks[k] = (hat(cut(ha, hp[(hr, hc)])), beard(cut(ba, bp[(br, bc)]), kscale))
+        looks[k] = (hat(cut(ha, hp[(hr, hc)]), k), beard(cut(ba, bp[(br, bc)]), k))
+    # the room the pieces need above and below the ball, in ball pixels (the same for every empire)
+    top = max(0, -min(min(h[2], b[2]) for h, b in looks.values()))
+    bot = max(0, max(max(h[2] + h[0].shape[0], b[2] + b[0].shape[0]) for h, b in looks.values()) - G * HI)
+    top, bot = -(-top // HI), -(-bot // HI)
+    for h, b in looks.values():
+        assert h[1] >= 0 and h[1] + h[0].shape[1] <= G * HI, "a hat wider than the ball's canvas"
     parts = []
     for k in L.KEYS:
-        hs, bs = encode(looks[k][0]), encode(looks[k][1])
-        parts.append("\t%s = {\n\t\that = %s,\n\t\tbeard = %s,\n\t}," % (k, lua(hs), lua(bs)))
+        parts.append("\t%s = {\n\t\that = %s,\n\t\tbeard = %s,\n\t}," % (k, lua(encode(looks[k][0])), lua(encode(looks[k][1]))))
     mod = (
         "--!strict\n"
-        "-- GENERATED by tools/build_empire_art.py from the user's empire hat and beard sheets. Do not edit.\n"
+        "-- GENERATED by tools/build_empire_art.py from the user's empire hat and beard sheets (copied 1:1).\n"
+        "-- Do not edit.\n"
         "-- (World Conquest, 2026-11-12) Each historical empire's own hat and facial hair, by the empire's flag\n"
-        "-- key (Data/Empires.HISTORICAL, \"emp_<key>\"), at HI x the ball's 32 x 32 grid: UI/Countryball draws an\n"
-        "-- empire's ball at 128 x 128 with these over it (x, y, w, h on that canvas; pal; data: the rows\n"
-        "-- run-length coded, \".\" clear, a palette letter (ALPHA order) a pixel, a count before a run).\n"
-        "-- The player's own gear replaces them.\n"
-        "return {\n\tHI = %d,\n\tALPHA = \"%s\",\n" % (HI, ALPHA.replace("\\", "\\\\").replace('"', '\\"')) + "\n".join(parts) + "\n}\n"
+        "-- key (Data/Empires.HISTORICAL, \"emp_<key>\"). UI/Countryball draws an empire's ball at HI x its 32 x 32\n"
+        "-- grid on a canvas TOP ball pixels taller above the ball and BOT below, these pieces over it: x, y on\n"
+        "-- that HI x grid (y < 0: above the ball), pal, data: the rows run-length coded (\".\" clear, a palette\n"
+        "-- letter in ALPHA order a pixel, a count before a run). The player's own gear replaces them.\n"
+        "return {\n\tHI = %d,\n\tTOP = %d,\n\tBOT = %d,\n\tALPHA = \"%s\",\n" % (HI, top, bot, ALPHA)
+        + "\n".join(parts) + "\n}\n"
     )
     open(os.path.join(ROOT, "src", "shared", "Data", "EmpireLooks.luau"), "w", encoding="utf-8", newline="\n").write(mod)
-    S, cols = 2, 10
+    cols = 10
+    cw, ch = G * HI + 24, (G + top + bot) * HI + 24
     rows_n = (len(L.KEYS) + cols - 1) // cols
-    cell = N * S + 20
-    sheet = Image.new("RGBA", (cols * cell + 20, rows_n * cell + 20), (24, 30, 50, 255))
+    sheet = Image.new("RGBA", (cols * cw + 24, rows_n * ch + 24), (24, 30, 50, 255))
     for i, k in enumerate(L.KEYS):
-        big = ball_hi(k, looks[k]).resize((N * S, N * S), Image.NEAREST)
-        sheet.alpha_composite(big, (20 + (i % cols) * cell, 20 + (i // cols) * cell))
+        sheet.alpha_composite(ball_hi(k, looks[k], top, bot), (24 + (i % cols) * cw, 24 + (i // cols) * ch))
     sheet.save(os.path.join(ROOT, "tools", "assets_out", "empire_looks_preview.png"))
-    print("ok", len(L.KEYS), "module", len(mod), "chars")
+    print("ok", len(L.KEYS), "top", top, "bot", bot, "module", len(mod), "chars")
 
 
 if __name__ == "__main__":

@@ -89,6 +89,8 @@ local EYE_COL = { k = OUT, w = Color3.new(1, 1, 1), g = Color3.fromRGB(200, 200,
 --- the empire's moustache when it wears no beard of its own
 Countryball.EMPIRE_BEARD = "beard_handlebar"
 local balls: { [string]: any } = {}
+--- (2026-11-12) the layout of a tall empire ball by its cache key: { top, h } in ball pixels
+local layouts: { [string]: any } = {}
 
 --- A historical empire's own look ({ hat, beard } sprites, Data/EmpireLooks) by its flag code
 --- ("emp_german") or its name; nil for an "Empire of <country>" (the spiked helmet and moustache).
@@ -138,7 +140,7 @@ function Countryball.ball_content(code: string?, name: string?, gear: any, pose:
 		.. tostring(pose)
 	local hit = balls[key]
 	if hit ~= nil then
-		return hit or nil
+		return hit or nil, layouts[key]
 	end
 	balls[key] = false
 	local ok, img = pcall(function()
@@ -253,9 +255,10 @@ function Countryball.ball_content(code: string?, name: string?, gear: any, pose:
 	end
 	if hi_beard ~= nil or hi_hat ~= nil then
 		img:Destroy()
-		local content = Countryball._hi_content(b, top, hi_beard, hi_hat)
+		local content, layout = Countryball._hi_content(b, top, hi_beard, hi_hat)
 		balls[key] = content or false
-		return content
+		layouts[key] = layout
+		return content, layout
 	end
 	for i = 0, G * G - 1 do -- the top layer over the ball
 		if buffer.readu8(top, i * 4 + 3) > 0 then
@@ -270,7 +273,7 @@ end
 
 local alpha_index: { [string]: number }? = nil
 --- Draws an EmpireLooks piece ({ x, y, w, h, pal, data }, run-length coded rows) into a HI x buffer.
-local function hi_sprite(dst: buffer, n: number, sp: any)
+local function hi_sprite(dst: buffer, w_px: number, h_px: number, oy: number, sp: any)
 	if alpha_index == nil then
 		local t = {}
 		local a = EmpireLooks.ALPHA
@@ -287,9 +290,9 @@ local function hi_sprite(dst: buffer, n: number, sp: any)
 		local rgb = if ch ~= "." then sp.pal[idx[ch]] else nil
 		if rgb ~= nil then
 			for q = p, p + run - 1 do
-				local x, y = sp.x + q % w, sp.y + q // w
-				if x >= 0 and y >= 0 and x < n and y < n then
-					local o = (y * n + x) * 4
+				local x, y = sp.x + q % w, oy + sp.y + q // w
+				if x >= 0 and y >= 0 and x < w_px and y < h_px then
+					local o = (y * w_px + x) * 4
 					buffer.writeu8(dst, o, rgb[1])
 					buffer.writeu8(dst, o + 1, rgb[2])
 					buffer.writeu8(dst, o + 2, rgb[3])
@@ -301,25 +304,29 @@ local function hi_sprite(dst: buffer, n: number, sp: any)
 	end
 end
 
---- An empire's ball at HI x: the 32 x 32 ball scaled up, the sheet beard, the eyes (and anything else
---- in the top layer) scaled up, then the sheet hat.
-function Countryball._hi_content(base: buffer, top: buffer, beard: any, hat: any): Content?
+--- An empire's ball at HI x, the sheet pieces copied 1:1: the 32 x 32 ball scaled up, the sheet beard,
+--- the eyes (and anything else in the top layer) scaled up, then the sheet hat; on a canvas TOP ball
+--- pixels taller above the ball (the hat rises over the head) and BOT below (a beard hangs under the
+--- chin). Returns the content and its layout { top, h } (ball pixels): Countryball.show places it.
+function Countryball._hi_content(base: buffer, top: buffer, beard: any, hat: any): (Content?, any)
 	local s = EmpireLooks.HI or 4
-	local n = G * s
+	local t, bt = EmpireLooks.TOP or 0, EmpireLooks.BOT or 0
+	local w, h = G * s, (G + t + bt) * s
+	local oy = t * s
 	local ok, img = pcall(function()
-		return AssetService:CreateEditableImage({ Size = Vector2.new(n, n) })
+		return AssetService:CreateEditableImage({ Size = Vector2.new(w, h) })
 	end)
 	if not ok or img == nil then
-		return nil
+		return nil, nil
 	end
-	local out = buffer.create(n * n * 4)
+	local out = buffer.create(w * h * 4)
 	local function up(src: buffer, only_opaque: boolean)
 		for y = 0, G - 1 do
 			for x = 0, G - 1 do
 				local v = buffer.readu32(src, (y * G + x) * 4)
 				if not only_opaque or buffer.readu8(src, (y * G + x) * 4 + 3) > 0 then
 					for j = 0, s - 1 do
-						local row = ((y * s + j) * n + x * s) * 4
+						local row = ((oy + y * s + j) * w + x * s) * 4
 						for i = 0, s - 1 do
 							buffer.writeu32(out, row + i * 4, v)
 						end
@@ -330,14 +337,46 @@ function Countryball._hi_content(base: buffer, top: buffer, beard: any, hat: any
 	end
 	up(base, false)
 	if beard ~= nil then
-		hi_sprite(out, n, beard)
+		hi_sprite(out, w, h, oy, beard)
 	end
 	up(top, true)
 	if hat ~= nil then
-		hi_sprite(out, n, hat)
+		hi_sprite(out, w, h, oy, hat)
 	end
-	img:WritePixelsBuffer(Vector2.zero, Vector2.new(n, n), out)
-	return Content.fromObject(img)
+	img:WritePixelsBuffer(Vector2.zero, Vector2.new(w, h), out)
+	return Content.fromObject(img), { top = t, h = G + t + bt }
+end
+
+--- Shows a ball's content on `label` (sized as the ball). A tall empire ball (`layout`) goes on a child
+--- "Tall" label that reaches over the top and under the bottom, so the ball keeps its size and place;
+--- without a layout the child hides (call with content nil to only hide it).
+function Countryball.show(label: ImageLabel, content: Content?, layout: any?)
+	local tall = label:FindFirstChild("Tall") :: ImageLabel?
+	if layout ~= nil and content ~= nil then
+		label.Image = ""
+		label.ImageContent = Content.none
+		if tall == nil then
+			local t = Instance.new("ImageLabel")
+			t.Name = "Tall"
+			t.BackgroundTransparency = 1
+			t.ResampleMode = Enum.ResamplerMode.Pixelated
+			t.Parent = label
+			tall = t
+		end
+		local tl = tall :: ImageLabel
+		tl.ZIndex = label.ZIndex
+		tl.Size = UDim2.fromScale(1, layout.h / G)
+		tl.Position = UDim2.fromScale(0, -layout.top / G)
+		tl.ImageContent = content
+		tl.Visible = true
+		return
+	end
+	if tall ~= nil then
+		tall.Visible = false
+	end
+	if content ~= nil then
+		label.ImageContent = content
+	end
 end
 
 -- ===== (Take Over the World!, 2026-11-08) the map's little fighters =====
@@ -599,10 +638,8 @@ function Countryball.new(code: string?, px: number?, name: string?, gear: any): 
 	body.Size = UDim2.fromScale(1, 1)
 	body.ResampleMode = Enum.ResamplerMode.Pixelated
 	body.ZIndex = 2
-	local c = Countryball.ball_content(code, name, gear)
-	if c ~= nil then
-		body.ImageContent = c
-	end
+	local c, layout = Countryball.ball_content(code, name, gear)
+	Countryball.show(body, c, layout)
 	body.Parent = root
 	return root
 end
