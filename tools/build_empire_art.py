@@ -5,7 +5,8 @@
 Both are pixel art on white with a caption under each piece. Every piece is found as the ink between
 the captions (its separate parts, a moustache and its goatee, stay one piece), cut out with the white
 around it made clear, and kept at HI x the Countryball's 32 x 32 grid, so the sheet's detail survives:
-copied 1:1 (one sheet pixel a canvas pixel, only the colours merged a little to fit the palette):
+sized as on the user's sheet of finished empire balls (Downloads/2778f313-...webp; never larger than
+the sheet, the colours merged a little to fit the palette):
 an empire's ball is drawn at HI x (UI/Countryball: the 32 x 32 ball scaled up, the pieces over it), on
 a canvas TOP ball pixels taller above the ball and BOT below, so a tall crown rises over the head and a
 long beard hangs under the chin while the ball keeps its size on screen.
@@ -142,9 +143,19 @@ def cut(a, m):
     return Image.fromarray(rgba, "RGBA")
 
 
-# per piece fine-tuning, in canvas pixels (+ down)
-HAT_DY = {"byzantine": 6, "moroccan": 18, "ashanti": 8, "korean": 6, "japanese": 4, "central_african": 2}
-BEARD_DY = {"british": 2, "german": 0, "japanese": 2, "korean": 2, "burmese": 2}
+# (2026-11-12, after the user's reference sheet of finished empire balls, Downloads/2778f313-...webp:
+# the hat about as wide as the ball, over its top third, the brim just over the eyes; the beard small,
+# inside the lower half under the eyes.) Sizes in parts of the ball's diameter D.
+D = 2 * R * HI
+HAT_W, HAT_H = 0.9, 0.78  # a hat at most this wide and tall
+WIDE_W, WIDE_H = 1.18, 0.62  # a wide hat (bicorne, tricorne, gat, straw hat: wider than 1.35 x its height)
+BEARD_W, BEARD_H = 0.66, 0.4  # a beard inside the lower face (rows 18.5 down to the ball's bottom)
+TACHE_W, TACHE_H = 0.5, 0.2  # a moustache
+# per piece fine-tuning, in canvas pixels (+ down); and size (x)
+HAT_DY = {"byzantine": 6, "moroccan": 12, "ashanti": 4, "korean": 4, "japanese": 2}
+HAT_K = {}
+BEARD_DY = {}
+BEARD_K = {}
 COLOURS = 76  # (len(ALPHA))
 
 
@@ -159,16 +170,55 @@ def few_colours(img):
     return out
 
 
+def resized(img, k):
+    """`img` (RGBA) at k x its size: a box filter over its opaque pixels only, hard alpha (k >= 1: the
+    sheet's own pixels)."""
+    if k >= 0.999:
+        return img
+    w, h = max(2, round(img.width * k)), max(2, round(img.height * k))
+    a = np.asarray(img).astype(float)
+    al = a[..., 3:4] / 255.0
+    pre = np.concatenate([a[..., :3] * al, al * 255], axis=2).astype(np.uint8)
+    sm = np.asarray(Image.fromarray(pre, "RGBA").resize((w, h), Image.BOX)).astype(float)
+    alpha = sm[..., 3] / 255.0
+    rgb = np.clip(sm[..., :3] / np.maximum(alpha[..., None], 1e-6), 0, 255)
+    out = np.zeros((h, w, 4), np.uint8)
+    out[..., :3] = rgb.astype(np.uint8)
+    out[..., 3] = np.where(alpha >= 0.5, 255, 0)
+    return Image.fromarray(out, "RGBA")
+
+
+def clip_ball(a, x, y, shrink=0.9):
+    """Clears the piece's pixels outside the ball's outline."""
+    h, w = a.shape[:2]
+    jj, ii = np.mgrid[0:h, 0:w]
+    bx = (x + ii + 0.5) / HI
+    by = (y + jj + 0.5) / HI
+    out = (bx - CX - 0.5) ** 2 + (by - CY - 0.5) ** 2 > (R - shrink) ** 2
+    a = a.copy()
+    a[out, 3] = 0
+    return a
+
+
 def hat(img, key):
-    a = few_colours(img)
+    w0, h0 = img.size
+    wide = w0 > 1.35 * h0
+    mw, mh = (WIDE_W, WIDE_H) if wide else (HAT_W, HAT_H)
+    k = min(1.0, mw * D / w0, mh * D / h0) * HAT_K.get(key, 1.0)
+    a = few_colours(resized(img, k))
     h, w = a.shape[:2]
     return a, G * HI // 2 - w // 2, 13 * HI - h + HAT_DY.get(key, 0)
 
 
 def beard(img, key):
-    a = few_colours(img)
+    w0, h0 = img.size
+    tache = h0 < 0.62 * w0
+    mw, mh = (TACHE_W, TACHE_H) if tache else (BEARD_W, BEARD_H)
+    k = min(1.0, mw * D / w0, mh * D / h0) * BEARD_K.get(key, 1.0)
+    a = few_colours(resized(img, k))
     h, w = a.shape[:2]
-    return a, G * HI // 2 - w // 2, round(18.5 * HI) + BEARD_DY.get(key, 0)
+    x, y = G * HI // 2 - w // 2, round(18.5 * HI) + BEARD_DY.get(key, 0)
+    return clip_ball(a, x, y), x, y
 
 
 # ---------------------------------------------------------------- the module
