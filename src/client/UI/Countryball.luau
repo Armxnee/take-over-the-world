@@ -10,7 +10,8 @@ local FlagPix = require(game:GetService("ReplicatedStorage"):WaitForChild("Airfr
 local Gear = require(game:GetService("ReplicatedStorage"):WaitForChild("Airfront"):WaitForChild("Data"):WaitForChild("Gear")) -- (Take Over the World!: hats)
 local Empires = require(game:GetService("ReplicatedStorage"):WaitForChild("Airfront"):WaitForChild("Data"):WaitForChild("Empires")) -- (Take Over the World!: the evil look)
 local GearSprites = require(game:GetService("ReplicatedStorage"):WaitForChild("Airfront"):WaitForChild("Data"):WaitForChild("GearSprites"))
--- (2026-11-08: each historical empire's own hat and facial hair, tools/build_empire_looks.py)
+-- (2026-11-08: each historical empire's own hat and facial hair; 2026-11-12: cut from the user's sheets
+-- at EmpireLooks.HI x the ball's grid, tools/build_empire_art.py)
 local EmpireLooks = require(game:GetService("ReplicatedStorage"):WaitForChild("Airfront"):WaitForChild("Data"):WaitForChild("EmpireLooks"))
 -- (2026-11-09: the default boats from the user's pictures, tools/build_boat_art.py)
 local BoatArt = require(game:GetService("ReplicatedStorage"):WaitForChild("Airfront"):WaitForChild("Data"):WaitForChild("BoatArt"))
@@ -149,11 +150,16 @@ function Countryball.ball_content(code: string?, name: string?, gear: any, pose:
 	local g = FlagPix.forCode(code, name)
 	local FW, FH = FlagPix.W, FlagPix.H
 	local b = buffer.create(G * G * 4)
+	-- (2026-11-12) what is drawn over an empire's beard (eyes, glasses, hat, rifle) goes into its own
+	-- layer, so the sheet beard can go between the ball and the eyes on the HI x canvas
+	local top = buffer.create(G * G * 4)
+	local cur = b
 	local function put(x: number, y: number, c: Color3, k: number?)
 		if x < 0 or y < 0 or x >= G or y >= G then
 			return
 		end
 		local o = (y * G + x) * 4
+		local b = cur
 		local m = k or 1
 		buffer.writeu8(b, o, math.floor(c.R * 255 * m + 0.5))
 		buffer.writeu8(b, o + 1, math.floor(c.G * 255 * m + 0.5))
@@ -209,9 +215,13 @@ function Countryball.ball_content(code: string?, name: string?, gear: any, pose:
 	-- the beard (an empire's moustache) under the eyes, then the eyes, the glasses and the hat (an
 	-- empire's helmet)
 	local look = if evil then Countryball.empire_look(code, name) else nil
+	-- the sheet pieces (HI x): the empire's beard unless the player wears one, its hat likewise
+	local hi_beard = if look ~= nil and worn.beard == nil then look.beard else nil
+	local hi_hat = if look ~= nil and worn.hat == nil then look.hat else nil
 	local beard = Gear.item(worn.beard)
-		or (if evil then (if look ~= nil then look.beard else Gear.item(Countryball.EMPIRE_BEARD)) else nil)
+		or (if evil and look == nil then Gear.item(Countryball.EMPIRE_BEARD) else nil)
 	sprite(beard, 0, if evil and worn.beard == nil and look == nil then 1 else 0)
+	cur = top
 	if evil and worn.glasses == nil then
 		-- (Take Over the World!: the empire's angry eyes, from the user's evil ball; glasses the player
 		-- wears replace them, as their hat replaces the helmet and their beard the moustache, so the
@@ -233,18 +243,101 @@ function Countryball.ball_content(code: string?, name: string?, gear: any, pose:
 	sprite(Gear.item(worn.glasses))
 	if worn.hat ~= nil then
 		sprite(Gear.item(worn.hat))
-	elseif evil then
-		sprite(if look ~= nil then look.hat else GearSprites.empire.helmet)
+	elseif evil and look == nil then
+		sprite(GearSprites.empire.helmet)
 	end
 	-- (Take Over the World!: a front-line soldier's rifle, after the user's soldier balls: aiming left
 	-- it rests on the ball's right side, aiming right (mirrored) on its left)
 	if pose == "rifle_left" or pose == "rifle_right" then
 		sprite(GearSprites.soldier.rifle, 0, 0, pose == "rifle_right")
 	end
+	if hi_beard ~= nil or hi_hat ~= nil then
+		img:Destroy()
+		local content = Countryball._hi_content(b, top, hi_beard, hi_hat)
+		balls[key] = content or false
+		return content
+	end
+	for i = 0, G * G - 1 do -- the top layer over the ball
+		if buffer.readu8(top, i * 4 + 3) > 0 then
+			buffer.writeu32(b, i * 4, buffer.readu32(top, i * 4))
+		end
+	end
 	img:WritePixelsBuffer(Vector2.zero, Vector2.new(G, G), b)
 	local content = Content.fromObject(img)
 	balls[key] = content
 	return content
+end
+
+local alpha_index: { [string]: number }? = nil
+--- Draws an EmpireLooks piece ({ x, y, w, h, pal, data }, run-length coded rows) into a HI x buffer.
+local function hi_sprite(dst: buffer, n: number, sp: any)
+	if alpha_index == nil then
+		local t = {}
+		local a = EmpireLooks.ALPHA
+		for i = 1, #a do
+			t[string.sub(a, i, i)] = i
+		end
+		alpha_index = t
+	end
+	local idx = alpha_index :: { [string]: number }
+	local p = 0
+	local w = sp.w
+	for count, ch in string.gmatch(sp.data, "(%d*)(%D)") do
+		local run = if count == "" then 1 else tonumber(count) :: number
+		local rgb = if ch ~= "." then sp.pal[idx[ch]] else nil
+		if rgb ~= nil then
+			for q = p, p + run - 1 do
+				local x, y = sp.x + q % w, sp.y + q // w
+				if x >= 0 and y >= 0 and x < n and y < n then
+					local o = (y * n + x) * 4
+					buffer.writeu8(dst, o, rgb[1])
+					buffer.writeu8(dst, o + 1, rgb[2])
+					buffer.writeu8(dst, o + 2, rgb[3])
+					buffer.writeu8(dst, o + 3, 255)
+				end
+			end
+		end
+		p += run
+	end
+end
+
+--- An empire's ball at HI x: the 32 x 32 ball scaled up, the sheet beard, the eyes (and anything else
+--- in the top layer) scaled up, then the sheet hat.
+function Countryball._hi_content(base: buffer, top: buffer, beard: any, hat: any): Content?
+	local s = EmpireLooks.HI or 4
+	local n = G * s
+	local ok, img = pcall(function()
+		return AssetService:CreateEditableImage({ Size = Vector2.new(n, n) })
+	end)
+	if not ok or img == nil then
+		return nil
+	end
+	local out = buffer.create(n * n * 4)
+	local function up(src: buffer, only_opaque: boolean)
+		for y = 0, G - 1 do
+			for x = 0, G - 1 do
+				local v = buffer.readu32(src, (y * G + x) * 4)
+				if not only_opaque or buffer.readu8(src, (y * G + x) * 4 + 3) > 0 then
+					for j = 0, s - 1 do
+						local row = ((y * s + j) * n + x * s) * 4
+						for i = 0, s - 1 do
+							buffer.writeu32(out, row + i * 4, v)
+						end
+					end
+				end
+			end
+		end
+	end
+	up(base, false)
+	if beard ~= nil then
+		hi_sprite(out, n, beard)
+	end
+	up(top, true)
+	if hat ~= nil then
+		hi_sprite(out, n, hat)
+	end
+	img:WritePixelsBuffer(Vector2.zero, Vector2.new(n, n), out)
+	return Content.fromObject(img)
 end
 
 -- ===== (Take Over the World!, 2026-11-08) the map's little fighters =====
