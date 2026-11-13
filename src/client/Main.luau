@@ -34,8 +34,12 @@ Main.boot = {} :: { [string]: number }
 local BUTTON = 44
 local GAP = 8
 local ICON = 36 -- the hud_* masks keep Airship's 0.7 inset framing (glyph ≈ 25 px)
-local FILL = Color3.fromRGB(18, 18, 21)
-local FILL_T = 0.08
+-- (2026-11-12: square tiles in the main menu's look instead of Roblox's circles: #24272e, a 1 px
+-- #3a3e48 border, 3 px corners)
+local FILL = Color3.fromHex("24272E")
+local FILL_T = 0
+local LINE = Color3.fromHex("3A3E48")
+local RADIUS = UDim.new(0, 3)
 local OVERLAY_T = 1.0
 local OVERLAY_HOVER_T = 0.92
 local OVERLAY_PRESS_T = 0.84
@@ -150,8 +154,12 @@ local function make_button(h: Hud, key: string, icon: string, tooltip: string, o
 	b.Image = ""
 	b.Selectable = true
 	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(1, 0)
+	corner.CornerRadius = RADIUS
 	corner.Parent = b
+	local bs = Instance.new("UIStroke")
+	bs.Color = LINE
+	bs.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	bs.Parent = b
 	local overlay = Instance.new("Frame")
 	overlay.Name = "StateOverlay"
 	overlay.BackgroundColor3 = Color3.new(1, 1, 1)
@@ -160,7 +168,7 @@ local function make_button(h: Hud, key: string, icon: string, tooltip: string, o
 	overlay.Size = UDim2.fromScale(1, 1)
 	overlay.ZIndex = 2
 	local oc = Instance.new("UICorner")
-	oc.CornerRadius = UDim.new(1, 0)
+	oc.CornerRadius = RADIUS
 	oc.Parent = overlay
 	overlay.Parent = b
 	local img = Instance.new("ImageLabel")
@@ -347,8 +355,12 @@ local function build_hud(player: Player)
 	tip.Name = "Tooltip"
 	tip.AnchorPoint = Vector2.new(0.5, 0)
 	tip.AutomaticSize = Enum.AutomaticSize.XY
-	tip.BackgroundColor3 = FILL
-	tip.BackgroundTransparency = 0.1
+	tip.BackgroundColor3 = Color3.fromHex("1C1F26")
+	tip.BackgroundTransparency = 0
+	local ts = Instance.new("UIStroke")
+	ts.Color = LINE
+	ts.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	ts.Parent = tip
 	tip.TextColor3 = Color3.new(1, 1, 1)
 	tip.FontFace = Font.fromId(12187365977, Enum.FontWeight.Medium)
 	tip.TextSize = 14
@@ -361,7 +373,7 @@ local function build_hud(player: Player)
 	pad.PaddingBottom = UDim.new(0, 6)
 	pad.Parent = tip
 	local tc = Instance.new("UICorner")
-	tc.CornerRadius = UDim.new(0, 8)
+	tc.CornerRadius = RADIUS
 	tc.Parent = tip
 	tip.Parent = gui
 	local h: Hud = { gui = gui, bar = bar, buttons = {}, tip = tip }

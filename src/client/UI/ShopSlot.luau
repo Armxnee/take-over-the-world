@@ -42,9 +42,11 @@ ShopSlot.WIGGLE_S = 6.4
 --- The strip at the bottom the word SHOP sits in, logical px.
 ShopSlot.CAPTION_H = 17.0
 
-local GOLD_LIGHT = Color3.fromRGB(255, 226, 122)
-local GOLD_DEEP = Color3.fromRGB(238, 148, 28)
-local INK = Color3.fromRGB(52, 28, 2)
+-- (2026-11-12: the main menu's gold tile, like its COMING SOON button: a dark gold fill, a gold border
+-- and gold letters)
+local GOLD_BG = UITheme.HUB_STYLES.gold.bg
+local GOLD_LINE = UITheme.HUB_STYLES.gold.line
+local INK = UITheme.HUB.gold
 local RED = Color3.fromRGB(232, 52, 52)
 local FONT_H = Font.fromId(12187365977, Enum.FontWeight.Heavy)
 
@@ -100,18 +102,16 @@ function ShopSlot._build(self)
 	self._scale = new("UIScale", {}, body)
 	local ground = new("Frame", {
 		Name = "Ground",
-		BackgroundColor3 = Color3.new(1, 1, 1),
+		BackgroundColor3 = GOLD_BG,
 		BorderSizePixel = 0,
 		Size = UDim2.fromScale(1, 1),
 		ZIndex = 1,
 	}, body)
 	self._corner = new("UICorner", {}, ground)
-	-- (a UIGradient multiplies the frame's colour: the frame is white)
-	self._grad = new("UIGradient", { Color = ColorSequence.new(GOLD_LIGHT, GOLD_DEEP), Rotation = 90 }, ground)
 	self._stroke = new("UIStroke", {
-		Color = INK,
+		Color = GOLD_LINE,
 		Thickness = 1.5,
-		Transparency = 0.25,
+		Transparency = 0,
 		ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
 	}, ground)
 	-- the two pictures it crossfades between, and its shield when there is nothing left to get
@@ -177,7 +177,7 @@ function ShopSlot._build(self)
 		Visible = false,
 		ZIndex = 7,
 	}, body)
-	new("UICorner", { CornerRadius = UDim.new(0.5, 0) }, badge)
+	new("UICorner", { CornerRadius = UDim.new(0, UITheme.HUB.radius) }, badge)
 	new(
 		"UIStroke",
 		{ Color = Color3.fromRGB(90, 10, 10), Thickness = 1.5, ApplyStrokeMode = Enum.ApplyStrokeMode.Border },
@@ -240,7 +240,7 @@ function ShopSlot._place(self)
 	local size = if self.size.X > 0 and self.size.Y > 0 then self.size else self.custom_minimum_size
 	local u = UITheme.scale
 	local w, h = size.X * u, size.Y * u
-	local r = UDim.new(0, UITheme.R_MD * u)
+	local r = UDim.new(0, UITheme.HUB.radius * u)
 	self._corner.CornerRadius = r
 	self._shine_corner.CornerRadius = r
 	local cap_h = ShopSlot.CAPTION_H * u

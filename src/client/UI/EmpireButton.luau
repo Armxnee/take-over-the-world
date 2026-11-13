@@ -111,7 +111,7 @@ function EmpireButton.new(ctx: any, gui: Instance, top: (() -> GuiObject?)?)
 		ZIndex = 33,
 	}, holder)
 	self.tip = tip
-	make("UICorner", { CornerRadius = UDim.new(0, UITheme.R_MD) }, tip)
+	make("UICorner", { CornerRadius = UDim.new(0, UITheme.HUB.radius) }, tip)
 	make("UIStroke", { Color = Color3.new(1, 1, 1), Transparency = 0.88 }, tip)
 	self.tip_title = label({
 		Text = "",

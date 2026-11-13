@@ -28,13 +28,14 @@ local CountryPicker = {}
 CountryPicker.__index = CountryPicker
 
 local FONT = "rbxassetid://12187365977"
-local NAVY = Color3.fromHex("0D1326")
-local AMBER = Color3.fromHex("FFB547")
-local TEXT = Color3.new(1, 1, 1)
-local TEXT2 = Color3.fromHex("A9B4D0")
-local GREEN = Color3.fromHex("5BE38E")
-local RED = Color3.fromHex("FF5C61")
-local DIFF_COLORS = { GREEN, Color3.fromHex("49C6F2"), AMBER, Color3.fromHex("FF9147"), RED }
+-- (2026-11-12: the main menu's palette, UITheme.HUB)
+local HUB = UITheme.HUB
+local AMBER = HUB.gold
+local TEXT = HUB.text
+local TEXT2 = HUB.text2
+local GREEN = HUB.green
+local RED = HUB.red
+local DIFF_COLORS = { GREEN, HUB.blue_text, AMBER, Color3.fromHex("FF9147"), RED }
 
 local function font(weight: Enum.FontWeight): Font
 	return Font.new(FONT, weight)
@@ -66,14 +67,8 @@ local function make(class: string, props: { [string]: any }, parent: Instance?):
 end
 
 local function glass(parent: Instance, name: string): Frame
-	local f = make("Frame", {
-		Name = name,
-		BackgroundColor3 = NAVY,
-		BackgroundTransparency = 0.12,
-		BorderSizePixel = 0,
-	}, parent)
-	make("UICorner", { CornerRadius = UDim.new(0, 12) }, f)
-	make("UIStroke", { Color = Color3.new(1, 1, 1), Transparency = 0.88, Thickness = 1 }, f)
+	local f = make("Frame", { Name = name, BorderSizePixel = 0 }, parent)
+	UITheme.hub_panel(f)
 	return f
 end
 
@@ -125,7 +120,7 @@ function CountryPicker.new(ctx: any, gui: Instance)
 		PaddingLeft = UDim.new(0, 12),
 		PaddingRight = UDim.new(0, 8),
 	}, lp)
-	self.title = label(lp, "CHOOSE YOUR COUNTRY", 15, Enum.FontWeight.Heavy, AMBER, { Position = UDim2.fromOffset(0, 0) })
+	self.title = label(lp, UITheme.tracked("CHOOSE YOUR COUNTRY"), 13, Enum.FontWeight.Heavy, TEXT, { Position = UDim2.fromOffset(0, 2) })
 	self.sub = label(lp, "", 12, Enum.FontWeight.Medium, TEXT2, { Position = UDim2.fromOffset(0, 20) })
 	local search = make("TextBox", {
 		Name = "Search",
@@ -137,13 +132,11 @@ function CountryPicker.new(ctx: any, gui: Instance)
 		TextColor3 = TEXT,
 		PlaceholderColor3 = TEXT2,
 		TextXAlignment = Enum.TextXAlignment.Left,
-		BackgroundColor3 = Color3.new(1, 1, 1),
-		BackgroundTransparency = 0.94,
 		BorderSizePixel = 0,
 		Position = UDim2.fromOffset(0, 42),
 		Size = UDim2.new(1, -4, 0, 30),
 	}, lp)
-	make("UICorner", { CornerRadius = UDim.new(0, 8) }, search)
+	UITheme.hub_panel(search, "ink")
 	make("UIPadding", { PaddingLeft = UDim.new(0, 10) }, search)
 	search:GetPropertyChangedSignal("Text"):Connect(function()
 		self:_filter(search.Text)
@@ -196,13 +189,13 @@ function CountryPicker.new(ctx: any, gui: Instance)
 		Size = UDim2.fromOffset(84, 20),
 		BorderSizePixel = 0,
 	}, card)
-	make("UICorner", { CornerRadius = UDim.new(1, 0) }, self.diff)
+	make("UICorner", { CornerRadius = UDim.new(0, HUB.radius) }, self.diff)
 	local grid = make("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(0, 94), Size = UDim2.new(1, 0, 0, 96) }, card)
 	make("UIGridLayout", { CellSize = UDim2.new(0.5, -6, 0, 44), CellPadding = UDim2.fromOffset(12, 6), SortOrder = Enum.SortOrder.LayoutOrder }, grid)
 	self.stats = {}
 	for i, key in { "Population", "Economy", "Military", "Provinces" } do
-		local cell = make("Frame", { BackgroundColor3 = Color3.new(1, 1, 1), BackgroundTransparency = 0.95, BorderSizePixel = 0, LayoutOrder = i }, grid)
-		make("UICorner", { CornerRadius = UDim.new(0, 8) }, cell)
+		local cell = make("Frame", { BorderSizePixel = 0, LayoutOrder = i }, grid)
+		UITheme.hub_panel(cell, "row")
 		make("UIPadding", { PaddingLeft = UDim.new(0, 10), PaddingTop = UDim.new(0, 5) }, cell)
 		label(cell, string.upper(key), 10, Enum.FontWeight.Bold, TEXT2)
 		self.stats[key] = label(cell, "", 17, Enum.FontWeight.Heavy, TEXT, { Position = UDim2.fromOffset(0, 15) })
@@ -218,13 +211,10 @@ function CountryPicker.new(ctx: any, gui: Instance)
 	-- (Take Over the World!: the empire this country can found, and the land it takes)
 	local emp = make("Frame", {
 		Name = "Empire",
-		BackgroundColor3 = Color3.fromHex("FFB547"),
-		BackgroundTransparency = 0.88,
 		Position = UDim2.fromOffset(0, 250),
 		Size = UDim2.new(1, 0, 0, 48),
 	}, card)
-	make("UICorner", { CornerRadius = UDim.new(0, 10) }, emp)
-	make("UIStroke", { Color = Color3.fromHex("FFB547"), Transparency = 0.6 }, emp)
+	UITheme.hub_panel(emp, "gold_bg", 0, HUB.gold_line)
 	self.empire_row = emp
 	self.empire_ball = make("Frame", {
 		BackgroundTransparency = 1,
@@ -244,18 +234,15 @@ function CountryPicker.new(ctx: any, gui: Instance)
 	})
 	local btn = make("TextButton", {
 		Name = "Confirm",
-		Text = "CONFIRM",
-		TextSize = 17,
+		Text = "▶   " .. UITheme.tracked("CONFIRM"),
+		TextSize = 18,
 		FontFace = font(Enum.FontWeight.Heavy),
-		TextColor3 = Color3.fromHex("3A2400"),
-		BackgroundColor3 = AMBER,
 		BorderSizePixel = 0,
-		AutoButtonColor = true,
 		AnchorPoint = Vector2.new(0, 1),
 		Position = UDim2.fromScale(0, 1),
-		Size = UDim2.new(1, 0, 0, 46),
+		Size = UDim2.new(1, 0, 0, 48),
 	}, card)
-	make("UICorner", { CornerRadius = UDim.new(0, 10) }, btn)
+	UITheme.hub_button(btn, "gold")
 	btn.Activated:Connect(function()
 		self:_confirm()
 	end)
@@ -430,13 +417,13 @@ function CountryPicker._build_rows(self)
 			Name = d.name,
 			Text = "",
 			AutoButtonColor = false,
-			BackgroundColor3 = Color3.new(1, 1, 1),
+			BackgroundColor3 = HUB.row,
 			BackgroundTransparency = 1,
 			BorderSizePixel = 0,
 			LayoutOrder = i,
 			Size = UDim2.new(1, -6, 0, 40),
 		}, self.scroll)
-		make("UICorner", { CornerRadius = UDim.new(0, 8) }, row)
+		make("UICorner", { CornerRadius = UDim.new(0, HUB.radius) }, row)
 		local ball = Countryball.new(d.flag, 34, d.name)
 		ball.Position = UDim2.fromOffset(2, 3)
 		ball.Parent = row
@@ -453,7 +440,7 @@ function CountryPicker._build_rows(self)
 		})
 		row.MouseEnter:Connect(function()
 			if self.selected ~= d.owner then
-				row.BackgroundTransparency = 0.94
+				row.BackgroundTransparency = 0.45
 			end
 		end)
 		row.MouseLeave:Connect(function()
@@ -498,7 +485,7 @@ function CountryPicker._refresh_rows(self)
 		r.tag.Text = if st == "mine" then "YOU" elseif st == "taken" then "TAKEN" elseif st == "gone" then "FALLEN" else ""
 		r.tag.TextColor3 = if st == "mine" then AMBER elseif st == "taken" then RED else TEXT2
 		r.name.TextColor3 = if st == "taken" or st == "gone" then TEXT2 else TEXT
-		r.frame.BackgroundTransparency = if owner == self.selected then 0.88 else 1
+		r.frame.BackgroundTransparency = if owner == self.selected then 0 else 1
 	end
 	self.sub.Text = string.format("%d countries · %d free", #self.list, free)
 end
@@ -593,19 +580,19 @@ function CountryPicker._refresh_card(self)
 	local btn = self.confirm
 	if st == "mine" then
 		btn.Text = "YOU LEAD " .. string.upper(self.defs[owner].name)
-		btn.BackgroundColor3 = GREEN
+		UITheme.hub_button(btn, "green")
 		btn.Active = false
 	elseif st == "taken" then
 		btn.Text = "TAKEN BY ANOTHER PLAYER"
-		btn.BackgroundColor3 = Color3.fromHex("4A5168")
+		UITheme.hub_button(btn, "off")
 		btn.Active = false
 	elseif st == "gone" then
 		btn.Text = "THIS COUNTRY HAS FALLEN"
-		btn.BackgroundColor3 = Color3.fromHex("4A5168")
+		UITheme.hub_button(btn, "off")
 		btn.Active = false
 	else
-		btn.Text = "CONFIRM"
-		btn.BackgroundColor3 = AMBER
+		btn.Text = "▶   " .. UITheme.tracked("CONFIRM")
+		UITheme.hub_button(btn, "gold")
 		btn.Active = true
 	end
 end

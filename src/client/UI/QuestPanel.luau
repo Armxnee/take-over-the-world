@@ -18,14 +18,15 @@ QuestPanel.ICON = "rbxassetid://110859228590510" -- the quests icon
 QuestPanel.CARDS = 3 -- a period's quests
 
 local FONT = "rbxassetid://12187365977"
-local NAVY = Color3.fromHex("0D1326")
-local CARD = Color3.fromHex("18213D")
-local AMBER = Color3.fromHex("FFB547")
-local INK = Color3.fromHex("3A2400")
-local TEXT = Color3.new(1, 1, 1)
-local TEXT2 = Color3.fromHex("A9B4D0")
-local MUTED = Color3.fromHex("2A3352")
-local GREEN = Color3.fromHex("5BE38E")
+-- (2026-11-12: the main menu's look, UITheme.HUB: flat dark panels, 1 px borders, 3 px corners)
+local HUB = UITheme.HUB
+local NAVY = HUB.panel
+local CARD = HUB.row
+local AMBER = HUB.gold
+local TEXT = HUB.text
+local TEXT2 = HUB.text2
+local GREEN = HUB.green
+local R = UDim.new(0, HUB.radius)
 
 local function make(class: string, props: { [string]: any }, parent: Instance?): any
 	local o = Instance.new(class)
@@ -105,31 +106,34 @@ function QuestPanel.new(ctx: any, gui: Instance)
 		Text = "",
 		AutoButtonColor = false,
 		BackgroundColor3 = NAVY,
-		BackgroundTransparency = 0.03,
+		BackgroundTransparency = 0,
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = UDim2.fromScale(0.5, 0.5),
 		Size = UDim2.fromScale(1, 1),
 		ZIndex = 41,
 	}, holder)
 	self.panel = panel
-	make("UICorner", { CornerRadius = UDim.new(0, 16) }, panel)
-	make("UIStroke", { Color = Color3.new(1, 1, 1), Transparency = 0.86 }, panel)
+	make("UICorner", { CornerRadius = R }, panel)
+	make("UIStroke", { Color = HUB.stroke, ApplyStrokeMode = Enum.ApplyStrokeMode.Border }, panel)
 	-- the header: a band with the icon, the title and what quests are for
 	local head = make("Frame", {
-		BackgroundColor3 = Color3.fromHex("1A2550"),
+		BackgroundColor3 = HUB.bar,
 		Size = UDim2.new(1, 0, 0, 84),
 		ZIndex = 42,
 	}, panel)
-	make("UICorner", { CornerRadius = UDim.new(0, 16) }, head)
-	make("UIGradient", {
-		Color = ColorSequence.new(Color3.fromHex("2B3C86"), Color3.fromHex("141B36")),
-		Rotation = 90,
-	}, head)
-	make("Frame", { -- (squares the band's lower corners)
-		BackgroundColor3 = Color3.fromHex("141B36"),
+	make("UICorner", { CornerRadius = R }, head)
+	make("Frame", { -- (squares the band's lower corners, with the hairline under it)
+		BackgroundColor3 = HUB.bar,
 		BorderSizePixel = 0,
-		Position = UDim2.new(0, 0, 1, -16),
-		Size = UDim2.new(1, 0, 0, 16),
+		Position = UDim2.new(0, 0, 1, -4),
+		Size = UDim2.new(1, 0, 0, 4),
+		ZIndex = 42,
+	}, head)
+	make("Frame", {
+		BackgroundColor3 = HUB.stroke,
+		BorderSizePixel = 0,
+		Position = UDim2.new(0, 0, 1, 0),
+		Size = UDim2.new(1, 0, 0, 1),
 		ZIndex = 42,
 	}, head)
 	make("ImageLabel", {
@@ -140,29 +144,37 @@ function QuestPanel.new(ctx: any, gui: Instance)
 		Size = UDim2.fromOffset(68, 68),
 		ZIndex = 43,
 	}, head)
-	local title = label(head, "QUESTS", 30, Enum.FontWeight.Heavy, TEXT, {
-		Position = UDim2.fromOffset(94, 14),
-		Size = UDim2.fromOffset(300, 34),
+	label(head, UITheme.tracked("QUESTS"), 24, Enum.FontWeight.Heavy, TEXT, {
+		Position = UDim2.fromOffset(94, 16),
+		Size = UDim2.fromOffset(300, 30),
 	})
-	make("UIGradient", { Color = ColorSequence.new(Color3.fromHex("FFF1B8"), AMBER), Rotation = 90 }, title)
-	make("UIStroke", { Color = Color3.fromHex("7A3E00"), Thickness = 2 }, title)
 	self.sub = label(head, "", 13, Enum.FontWeight.Medium, TEXT2, {
 		Position = UDim2.fromOffset(96, 50),
 		Size = UDim2.new(1, -170, 0, 18),
 	})
 	local close = make("TextButton", {
 		Text = "X",
-		TextSize = 18,
+		TextSize = 20,
 		FontFace = Font.new(FONT, Enum.FontWeight.Heavy),
-		TextColor3 = TEXT,
-		BackgroundColor3 = Color3.fromHex("C83A3A"),
 		AnchorPoint = Vector2.new(1, 0),
 		Position = UDim2.new(1, -16, 0, 20),
 		Size = UDim2.fromOffset(42, 42),
 		ZIndex = 44,
 	}, head)
-	make("UICorner", { CornerRadius = UDim.new(0, 10) }, close)
-	make("UIStroke", { Color = Color3.fromHex("1B1000"), Thickness = 2, ApplyStrokeMode = Enum.ApplyStrokeMode.Border }, close)
+	UITheme.hub_paint(close, "dark")
+	local close_icon = UITheme.icon("close")
+	if close_icon then -- (the main menu's close: its icon, white)
+		close.Text = ""
+		make("ImageLabel", {
+			BackgroundTransparency = 1,
+			Image = close_icon,
+			ImageColor3 = TEXT,
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(0.5, 0.5),
+			Size = UDim2.fromOffset(22, 22),
+			ZIndex = 45,
+		}, close)
+	end
 	Anim.button(close)
 	close.Activated:Connect(function()
 		self:close()
@@ -173,14 +185,14 @@ function QuestPanel.new(ctx: any, gui: Instance)
 		local tab = make("TextButton", {
 			Text = "",
 			AutoButtonColor = false,
-			BackgroundColor3 = MUTED,
+			BackgroundColor3 = UITheme.HUB_STYLES.nav.bg,
 			Position = UDim2.new((i - 1) * 0.5, if i == 1 then 18 else 6, 0, 98),
 			Size = UDim2.new(0.5, -24, 0, 50),
 			ZIndex = 42,
 		}, panel)
-		make("UICorner", { CornerRadius = UDim.new(0, 12) }, tab)
-		local stroke = make("UIStroke", { Color = AMBER, Thickness = 2, Transparency = 1, ApplyStrokeMode = Enum.ApplyStrokeMode.Border }, tab)
-		local name = label(tab, string.upper(period), 18, Enum.FontWeight.Heavy, TEXT, {
+		make("UICorner", { CornerRadius = R }, tab)
+		local stroke = make("UIStroke", { Color = HUB.stroke, Thickness = 1, ApplyStrokeMode = Enum.ApplyStrokeMode.Border }, tab)
+		local name = label(tab, UITheme.tracked(string.upper(period)), 16, Enum.FontWeight.Heavy, TEXT, {
 			Position = UDim2.fromOffset(16, 6),
 			Size = UDim2.new(1, -60, 0, 22),
 		})
@@ -200,7 +212,7 @@ function QuestPanel.new(ctx: any, gui: Instance)
 			Visible = false,
 			ZIndex = 43,
 		}, tab)
-		make("UICorner", { CornerRadius = UDim.new(1, 0) }, badge)
+		make("UICorner", { CornerRadius = R }, badge)
 		Anim.button(tab, nil, 1.03)
 		tab.Activated:Connect(function()
 			if self.period ~= period then
@@ -222,17 +234,18 @@ function QuestPanel.new(ctx: any, gui: Instance)
 			Size = UDim2.new(1, -36, 0, 100),
 			ZIndex = 42,
 		}, panel)
-		make("UICorner", { CornerRadius = UDim.new(0, 14) }, card)
-		local stroke = make("UIStroke", { Color = Color3.new(1, 1, 1), Transparency = 0.9, Thickness = 1, ApplyStrokeMode = Enum.ApplyStrokeMode.Border }, card)
+		make("UICorner", { CornerRadius = R }, card)
+		local stroke = make("UIStroke", { Color = HUB.stroke, Thickness = 1, ApplyStrokeMode = Enum.ApplyStrokeMode.Border }, card)
 		-- the icon tile: the quest's number, a tick once it is done
 		local tile = make("Frame", {
-			BackgroundColor3 = Color3.fromHex("26315A"),
+			BackgroundColor3 = HUB.ink,
 			AnchorPoint = Vector2.new(0, 0.5),
 			Position = UDim2.new(0, 14, 0.5, 0),
 			Size = UDim2.fromOffset(68, 68),
 			ZIndex = 43,
 		}, card)
-		make("UICorner", { CornerRadius = UDim.new(0, 12) }, tile)
+		make("UICorner", { CornerRadius = R }, tile)
+		local tile_stroke = make("UIStroke", { Color = HUB.stroke, ApplyStrokeMode = Enum.ApplyStrokeMode.Border }, tile)
 		local mark = make("TextLabel", {
 			BackgroundTransparency = 1,
 			Text = tostring(j),
@@ -248,16 +261,15 @@ function QuestPanel.new(ctx: any, gui: Instance)
 		})
 		-- the progress bar, its count inside
 		local track = make("Frame", {
-			BackgroundColor3 = Color3.fromHex("0A0F20"),
+			BackgroundColor3 = HUB.ink,
 			Position = UDim2.fromOffset(96, 50),
 			Size = UDim2.new(1, -250, 0, 26),
 			ZIndex = 43,
 		}, card)
-		make("UICorner", { CornerRadius = UDim.new(1, 0) }, track)
-		make("UIStroke", { Color = Color3.new(1, 1, 1), Transparency = 0.88 }, track)
-		local fill = make("Frame", { BackgroundColor3 = GREEN, Size = UDim2.fromScale(0, 1), ZIndex = 44 }, track)
-		make("UICorner", { CornerRadius = UDim.new(1, 0) }, fill)
-		make("UIGradient", { Color = ColorSequence.new(Color3.fromHex("8DF0B4"), GREEN), Rotation = 90 }, fill)
+		make("UICorner", { CornerRadius = R }, track)
+		make("UIStroke", { Color = HUB.stroke, ApplyStrokeMode = Enum.ApplyStrokeMode.Border }, track)
+		local fill = make("Frame", { BackgroundColor3 = UITheme.HUB_STYLES.green.line, Size = UDim2.fromScale(0, 1), ZIndex = 44 }, track)
+		make("UICorner", { CornerRadius = R }, fill)
 		local count = make("TextLabel", {
 			BackgroundTransparency = 1,
 			Text = "",
@@ -270,13 +282,14 @@ function QuestPanel.new(ctx: any, gui: Instance)
 		make("UIStroke", { Color = Color3.new(0, 0, 0), Thickness = 1.2, Transparency = 0.3 }, count)
 		-- the reward and the button
 		local reward = make("Frame", {
-			BackgroundColor3 = Color3.fromHex("2A2410"),
+			BackgroundColor3 = HUB.ink,
 			AnchorPoint = Vector2.new(1, 0),
 			Position = UDim2.new(1, -14, 0, 12),
 			Size = UDim2.fromOffset(126, 30),
 			ZIndex = 43,
 		}, card)
-		make("UICorner", { CornerRadius = UDim.new(1, 0) }, reward)
+		make("UICorner", { CornerRadius = R }, reward)
+		make("UIStroke", { Color = HUB.stroke, ApplyStrokeMode = Enum.ApplyStrokeMode.Border }, reward)
 		make("ImageLabel", {
 			BackgroundTransparency = 1,
 			Image = UITheme.icon("coin") or "",
@@ -295,19 +308,18 @@ function QuestPanel.new(ctx: any, gui: Instance)
 			Text = "CLAIM",
 			TextSize = 15,
 			FontFace = Font.new(FONT, Enum.FontWeight.Heavy),
-			TextColor3 = INK,
-			BackgroundColor3 = AMBER,
 			AnchorPoint = Vector2.new(1, 0),
 			Position = UDim2.new(1, -14, 0, 50),
 			Size = UDim2.fromOffset(126, 36),
 			ZIndex = 43,
 			Selectable = true,
 		}, card)
-		make("UICorner", { CornerRadius = UDim.new(0, 10) }, btn)
+		UITheme.hub_paint(btn, "off")
 		local c = {
 			card = card,
 			stroke = stroke,
 			tile = tile,
+			tile_stroke = tile_stroke,
 			mark = mark,
 			text = text,
 			fill = fill,
@@ -376,9 +388,10 @@ function QuestPanel.refresh(self)
 	local week_left = (7 - (now // 86400 + 3) % 7) * 86400 - now % 86400
 	for period, t in self.tabs do
 		local on = period == self.period
-		t.tab.BackgroundColor3 = if on then Color3.fromHex("2B3C86") else MUTED
-		t.stroke.Transparency = if on then 0 else 1
-		t.name.TextColor3 = if on then AMBER else TEXT
+		local st = UITheme.HUB_STYLES[if on then "sel" else "nav"]
+		t.tab.BackgroundColor3 = st.bg
+		t.stroke.Color = st.line
+		t.name.TextColor3 = TEXT
 		t.timer.Text = "New in " .. clock(if period == "daily" then day_left else week_left)
 		local n = self:claimable(period)
 		t.badge.Visible = n > 0
@@ -407,33 +420,33 @@ function QuestPanel.refresh(self)
 		local btn = c.button
 		if it.claimed then
 			btn.Text = "CLAIMED"
-			btn.BackgroundColor3 = MUTED
-			btn.TextColor3 = GREEN
+			UITheme.hub_paint(btn, "green")
 			c.mark.Text = "✓"
 			c.mark.TextColor3 = GREEN
-			c.tile.BackgroundColor3 = Color3.fromHex("1D3B2E")
-			c.stroke.Color, c.stroke.Transparency = Color3.new(1, 1, 1), 0.92
+			c.tile.BackgroundColor3 = UITheme.HUB_STYLES.green.bg
+			c.tile_stroke.Color = UITheme.HUB_STYLES.green.line
+			c.stroke.Color = HUB.stroke
 			c.card.BackgroundTransparency = 0.35
 		elseif c.ready then
 			if btn.Text ~= "…" then
 				btn.Text = "CLAIM"
 			end
-			btn.BackgroundColor3 = AMBER
-			btn.TextColor3 = INK
+			UITheme.hub_paint(btn, "gold")
 			c.mark.Text = "★"
 			c.mark.TextColor3 = AMBER
-			c.tile.BackgroundColor3 = Color3.fromHex("3A2E10")
-			c.stroke.Color, c.stroke.Transparency = AMBER, 0.15
+			c.tile.BackgroundColor3 = UITheme.HUB_STYLES.gold.bg
+			c.tile_stroke.Color = HUB.gold_line
+			c.stroke.Color = HUB.gold_line
 			c.card.BackgroundTransparency = 0
 		else
 			btn.Text = "IN PROGRESS"
 			btn.TextSize = 12
-			btn.BackgroundColor3 = MUTED
-			btn.TextColor3 = TEXT2
+			UITheme.hub_paint(btn, "off")
 			c.mark.Text = tostring(j)
 			c.mark.TextColor3 = TEXT2
-			c.tile.BackgroundColor3 = Color3.fromHex("26315A")
-			c.stroke.Color, c.stroke.Transparency = Color3.new(1, 1, 1), 0.9
+			c.tile.BackgroundColor3 = HUB.ink
+			c.tile_stroke.Color = HUB.stroke
+			c.stroke.Color = HUB.stroke
 			c.card.BackgroundTransparency = 0
 		end
 		if btn.Text ~= "IN PROGRESS" then

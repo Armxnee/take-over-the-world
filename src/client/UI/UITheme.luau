@@ -148,28 +148,29 @@ end
 -- near-square corners instead of navy glass. FLAT_LOOK = false brings the old glass back.)
 UITheme.FLAT_LOOK = true
 --- the largest corner radius any panel, button or pill gets in the flat look
-UITheme.MAX_RADIUS = 4
+UITheme.MAX_RADIUS = 3
 UITheme.GLASS = if UITheme.FLAT_LOOK
-	then UITheme.rgba(0.110, 0.122, 0.149, 0.93) -- #1c1f26
+	then UITheme.rgba(0.110, 0.122, 0.149, 0.97) -- #1c1f26 (the main menu's panel)
 	else UITheme.rgba(0.051, 0.075, 0.149, 0.84) -- #0d1326 @ 84 %
 UITheme.GLASS_SOLID = if UITheme.FLAT_LOOK
-	then UITheme.rgba(0.086, 0.094, 0.114, 0.97) -- #16181d
+	then UITheme.rgba(0.082, 0.090, 0.110, 0.98) -- #15171c (the main menu's top bar)
 	else UITheme.rgba(0.043, 0.062, 0.125, 0.96)
 UITheme.GLASS_RAISED = if UITheme.FLAT_LOOK
-	then UITheme.rgba(0.153, 0.165, 0.196, 0.96) -- #272a32
+	then UITheme.rgba(0.153, 0.165, 0.196, 0.98) -- #272a32 (the main menu's rows)
 	else UITheme.rgba(0.1, 0.13, 0.24, 0.94)
-UITheme.LINE = UITheme.rgba(1.0, 1.0, 1.0, 0.1)
-UITheme.LINE_2 = UITheme.rgba(1.0, 1.0, 1.0, 0.18)
+UITheme.LINE = if UITheme.FLAT_LOOK then UITheme.rgba(0.227, 0.243, 0.282, 1.0) else UITheme.rgba(1.0, 1.0, 1.0, 0.1) -- #3a3e48
+UITheme.LINE_2 = if UITheme.FLAT_LOOK then UITheme.rgba(0.30, 0.32, 0.37, 1.0) else UITheme.rgba(1.0, 1.0, 1.0, 0.18)
 UITheme.FILL = UITheme.rgba(1.0, 1.0, 1.0, 0.06)
 UITheme.FILL_2 = UITheme.rgba(1.0, 1.0, 1.0, 0.11)
-UITheme.TEXT = Color3.new(0.94, 0.955, 1.0)
-UITheme.TEXT_2 = if UITheme.FLAT_LOOK then Color3.new(0.62, 0.66, 0.73) else Color3.new(0.68, 0.73, 0.86)
-UITheme.TEXT_3 = if UITheme.FLAT_LOOK then Color3.new(0.44, 0.47, 0.54) else Color3.new(0.48, 0.53, 0.67)
-UITheme.AMBER = Color3.new(1.0, 0.71, 0.278) -- #ffb547 primary actions
-UITheme.AMBER_HI = Color3.new(1.0, 0.8, 0.47)
-UITheme.AMBER_LO = Color3.new(0.8, 0.49, 0.13)
-UITheme.CYAN = Color3.new(0.31, 0.82, 1.0) -- info
-UITheme.GREEN = Color3.new(0.37, 0.89, 0.6)
+UITheme.TEXT = if UITheme.FLAT_LOOK then Color3.fromHex("F2F4F8") else Color3.new(0.94, 0.955, 1.0)
+UITheme.TEXT_2 = if UITheme.FLAT_LOOK then Color3.fromHex("9AA3B4") else Color3.new(0.68, 0.73, 0.86)
+UITheme.TEXT_3 = if UITheme.FLAT_LOOK then Color3.fromHex("6B7385") else Color3.new(0.48, 0.53, 0.67)
+-- (2026-11-12: the whole UI took the main menu's palette: its gold for primary actions, its green and blue)
+UITheme.AMBER = if UITheme.FLAT_LOOK then Color3.fromHex("F2C94C") else Color3.new(1.0, 0.71, 0.278) -- primary actions
+UITheme.AMBER_HI = if UITheme.FLAT_LOOK then Color3.fromHex("F7DA7A") else Color3.new(1.0, 0.8, 0.47)
+UITheme.AMBER_LO = if UITheme.FLAT_LOOK then Color3.fromHex("C9A227") else Color3.new(0.8, 0.49, 0.13)
+UITheme.CYAN = if UITheme.FLAT_LOOK then Color3.fromHex("8FB4FF") else Color3.new(0.31, 0.82, 1.0) -- info
+UITheme.GREEN = if UITheme.FLAT_LOOK then Color3.fromHex("5FD38A") else Color3.new(0.37, 0.89, 0.6)
 UITheme.RED = Color3.new(1.0, 0.33, 0.39)
 --- the solid SurrenderButton's fill, hover and lip
 UITheme.SURRENDER_RED = Color3.fromRGB(222, 48, 60)
@@ -177,11 +178,160 @@ UITheme.SURRENDER_RED_HI = Color3.fromRGB(240, 72, 82)
 UITheme.SURRENDER_RED_LO = Color3.fromRGB(140, 20, 32)
 UITheme.ORANGE = Color3.new(1.0, 0.58, 0.36)
 UITheme.VIOLET = Color3.new(0.72, 0.62, 1.0)
-UITheme.GOLD = Color3.new(1.0, 0.84, 0.4)
+UITheme.GOLD = if UITheme.FLAT_LOOK then Color3.fromHex("F2C94C") else Color3.new(1.0, 0.84, 0.4)
 UITheme.INK = Color3.new(0.1, 0.066, 0.02) -- text on amber
 UITheme.WHITE = Color3.new(1, 1, 1)
 UITheme.BLACK = Color3.new(0, 0, 0)
 UITheme.CLEAR = UITheme.rgba(0, 0, 0, 0)
+
+-- --- the main menu's look for screens built from raw Instances (2026-11-12) ------------------------
+-- MenuHub's palette and button styles, shared so every screen (except the Item Shop, which keeps its
+-- own look) reads like the main menu: flat dark panels with a 1 px #3a3e48 border and 3 px corners,
+-- tinted buttons with a matching border (gold = primary, green = go, dark/nav = secondary).
+UITheme.HUB = {
+	bar = Color3.fromHex("15171C"),
+	panel = Color3.fromHex("1C1F26"),
+	row = Color3.fromHex("272A32"),
+	row_hover = Color3.fromHex("30343D"),
+	stroke = Color3.fromHex("3A3E48"),
+	text = Color3.fromHex("F2F4F8"),
+	text2 = Color3.fromHex("9AA3B4"),
+	text3 = Color3.fromHex("6B7385"),
+	gold = Color3.fromHex("F2C94C"),
+	gold_bg = Color3.fromHex("4D3F12"),
+	gold_line = Color3.fromHex("C9A227"),
+	green = Color3.fromHex("5FD38A"),
+	green_bg = Color3.fromHex("1C4A2D"),
+	green_line = Color3.fromHex("3FAE6A"),
+	blue = Color3.fromHex("4D8BFF"),
+	blue_text = Color3.fromHex("8FB4FF"),
+	red = Color3.fromHex("FF6B74"),
+	ink = Color3.fromHex("101216"),
+	radius = 3,
+}
+UITheme.HUB_STYLES = {
+	green = { bg = Color3.fromHex("1C4A2D"), hover = Color3.fromHex("235C38"), line = Color3.fromHex("3FAE6A"), fg = Color3.fromHex("E8F7EE") },
+	gold = { bg = Color3.fromHex("4D3F12"), hover = Color3.fromHex("5E4D16"), line = Color3.fromHex("C9A227"), fg = Color3.fromHex("F2C94C") },
+	dark = { bg = Color3.fromHex("101216"), hover = Color3.fromHex("22252C"), line = Color3.fromHex("3A3E48"), fg = Color3.fromHex("F2F4F8") },
+	nav = { bg = Color3.fromHex("24272E"), hover = Color3.fromHex("2E323A"), line = Color3.fromHex("3A3E48"), fg = Color3.fromHex("F2F4F8") },
+	red = { bg = Color3.fromHex("4A1C22"), hover = Color3.fromHex("5C232A"), line = Color3.fromHex("C2434F"), fg = Color3.fromHex("FFC2C7") },
+	sel = { bg = Color3.fromHex("123A3A"), hover = Color3.fromHex("174A4A"), line = Color3.fromHex("4FD1C5"), fg = Color3.fromHex("F2F4F8") },
+	off = { bg = Color3.fromHex("1E2026"), hover = Color3.fromHex("1E2026"), line = Color3.fromHex("2E3139"), fg = Color3.fromHex("6B7385") },
+}
+
+--- Wide-tracked caps ("DAILY CHALLENGES"): Roblox has no letter spacing, so spaces between letters.
+function UITheme.tracked(s: string, gap: string?): string
+	local out = {}
+	for _, cp in utf8.codes(s) do
+		table.insert(out, utf8.char(cp))
+	end
+	return table.concat(out, gap or " ")
+end
+
+local function hub_part(parent: Instance, class: string, props: { [string]: any }): any
+	local o = parent:FindFirstChildOfClass(class)
+	if o == nil then
+		o = Instance.new(class)
+		o.Parent = parent
+	end
+	for k, v in props do
+		(o :: any)[k] = v
+	end
+	return o
+end
+
+--- Gives a raw Frame the main menu's panel look (fill, 1 px border, 3 px corners). `fill` picks
+--- "panel" (default), "bar" or "row".
+function UITheme.hub_panel(f: GuiObject, fill: string?, transparency: number?, line: Color3?)
+	if not IS_ROBLOX then
+		return
+	end
+	f.BackgroundColor3 = UITheme.HUB[fill or "panel"] or UITheme.HUB.panel
+	f.BackgroundTransparency = transparency or 0
+	hub_part(f, "UICorner", { CornerRadius = UDim.new(0, UITheme.HUB.radius) })
+	hub_part(f, "UIStroke", {
+		Color = line or UITheme.HUB.stroke,
+		Thickness = 1,
+		Transparency = 0,
+		ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+	})
+end
+
+--- Gives a raw TextButton / ImageButton one of the main menu's button styles (see HUB_STYLES), with
+--- its hover tint and press squash. Safe to call again to switch styles (hover reads the attribute).
+function UITheme.hub_button(b: GuiButton, style: string)
+	if not IS_ROBLOX then
+		return
+	end
+	local st = UITheme.HUB_STYLES[style] or UITheme.HUB_STYLES.nav
+	local first = b:GetAttribute("HubStyle") == nil
+	UITheme.hub_paint(b, style)
+	if not first then
+		return
+	end
+	local TS = game:GetService("TweenService")
+	local function tw(o: Instance, t: number, props: { [string]: any })
+		TS:Create(o, TweenInfo.new(t, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), props):Play()
+	end
+	local function cur()
+		return UITheme.HUB_STYLES[b:GetAttribute("HubStyle")] or st
+	end
+	b.MouseEnter:Connect(function()
+		tw(b, 0.12, { BackgroundColor3 = cur().hover })
+	end)
+	b.MouseLeave:Connect(function()
+		tw(b, 0.18, { BackgroundColor3 = cur().bg })
+		local sc = b:FindFirstChild("HubPress")
+		if sc then
+			tw(sc, 0.12, { Scale = 1 })
+		end
+	end)
+	b.MouseButton1Down:Connect(function()
+		local sc = b:FindFirstChild("HubPress")
+		if sc == nil then
+			sc = Instance.new("UIScale")
+			sc.Name = "HubPress"
+			sc.Parent = b
+		end
+		tw(sc, 0.06, { Scale = 0.96 })
+	end)
+	b.MouseButton1Up:Connect(function()
+		local sc = b:FindFirstChild("HubPress")
+		if sc then
+			tw(sc, 0.12, { Scale = 1 })
+		end
+	end)
+end
+
+--- The colours of a HUB_STYLES button only (fill, border, text, 3 px corners), for buttons that
+--- already have their own hover / press animation (Anim.button).
+function UITheme.hub_paint(b: GuiObject, style: string)
+	if not IS_ROBLOX then
+		return
+	end
+	local st = UITheme.HUB_STYLES[style] or UITheme.HUB_STYLES.nav
+	b:SetAttribute("HubStyle", style)
+	if b:IsA("GuiButton") then
+		(b :: GuiButton).AutoButtonColor = false
+	end
+	b.BackgroundColor3 = st.bg
+	b.BackgroundTransparency = 0
+	if b:IsA("TextButton") then
+		(b :: TextButton).TextColor3 = st.fg
+	end
+	hub_part(b, "UICorner", { CornerRadius = UDim.new(0, UITheme.HUB.radius) })
+	hub_part(b, "UIStroke", {
+		Color = st.line,
+		Thickness = if style == "gold" then 1.5 else 1,
+		Transparency = 0,
+		ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+	})
+	for _, g in b:GetChildren() do
+		if g:IsA("UIGradient") then
+			g.Enabled = false
+		end
+	end
+end
 
 -- --- spacing / radii (8 px scale with a 4 px half step) -----------------------------------------
 UITheme.S1 = 4
@@ -1618,6 +1768,55 @@ function UITheme.theme(): any
 		return _theme
 	end
 	local t = {}
+	if UITheme.FLAT_LOOK then
+		-- (2026-11-12) the main menu's buttons: tinted fills with a matching border, 3 px corners
+		local H = UITheme.HUB_STYLES
+		local function hub(name: string, st: any, weight: number, size: number?, spacing: number?)
+			local v = button_styles(t, name, st.bg, st.hover, st.bg, st.line, st.line, st.fg, weight)
+			for _, k in { "font_hover_color", "font_pressed_color", "font_hover_pressed_color", "icon_hover_color", "icon_pressed_color", "icon_hover_pressed_color" } do
+				v.colors[k] = st.fg
+			end
+			v.colors.font_disabled_color = UITheme.HUB.text3
+			v.colors.icon_disabled_color = UITheme.HUB.text3
+			v.styles.disabled = UITheme.flat(H.off.bg, UITheme.R_MD, H.off.line, 1, 16.0, 8.0)
+			v.font_size = size or 15
+			v.font_spacing = spacing or 1
+			return v
+		end
+		hub("Button", H.nav, 700)
+		hub("GlassButton", H.nav, 700)
+		hub("PublicButton", H.green, 800)
+		hub("DangerButton", H.red, 800)
+		local ghost = button_styles(t, "GhostButton", UITheme.rgba(1, 1, 1, 0.0), H.nav.bg, H.dark.bg, UITheme.CLEAR, UITheme.CLEAR, UITheme.TEXT_2, 700)
+		ghost.colors.font_hover_color = UITheme.TEXT
+		ghost.colors.icon_hover_color = UITheme.TEXT
+		local chip = hub("ChipButton", H.off, 700, 13)
+		chip.colors.font_color = UITheme.TEXT_2
+		chip.colors.icon_normal_color = UITheme.TEXT_2
+		chip.colors.font_hover_color = UITheme.TEXT
+		chip.colors.icon_hover_color = UITheme.TEXT
+		chip.styles.normal = UITheme.flat(H.off.bg, 3, H.nav.line, 1, 14.0, 6.0)
+		chip.styles.hover = UITheme.flat(H.nav.hover, 3, UITheme.LINE_2, 1, 14.0, 6.0)
+		chip.styles.pressed = UITheme.flat(H.gold.bg, 3, H.gold.line, 1, 14.0, 6.0)
+		chip.styles.hover_pressed = UITheme.flat(H.gold.hover, 3, H.gold.line, 1, 14.0, 6.0)
+		chip.colors.font_pressed_color = H.gold.fg
+		chip.colors.font_hover_pressed_color = H.gold.fg
+		local prim = hub("PrimaryButton", H.gold, 900, 17, 3)
+		prim.styles.normal = UITheme.flat(H.gold.bg, 3, H.gold.line, 2, 22.0, 10.0)
+		prim.styles.hover = UITheme.flat(H.gold.hover, 3, H.gold.line, 2, 22.0, 10.0)
+		prim.styles.pressed = UITheme.flat(UITheme.lerp(H.gold.bg, H.dark.bg, 0.4), 3, H.gold.line, 2, 22.0, 10.0)
+		prim.styles.hover_pressed = prim.styles.pressed
+		local sur = hub("SurrenderButton", H.red, 900, 17, 3)
+		sur.styles.normal = UITheme.flat(Color3.fromHex("6B1D25"), 3, Color3.fromHex("E0505C"), 2, 22.0, 10.0)
+		sur.styles.hover = UITheme.flat(Color3.fromHex("82232D"), 3, Color3.fromHex("F06A75"), 2, 22.0, 10.0)
+		sur.styles.pressed = UITheme.flat(Color3.fromHex("521820"), 3, Color3.fromHex("E0505C"), 2, 22.0, 10.0)
+		sur.styles.hover_pressed = sur.styles.pressed
+		for _, k in { "font_color", "font_hover_color", "font_pressed_color", "font_hover_pressed_color", "icon_normal_color", "icon_hover_color", "icon_pressed_color", "icon_hover_pressed_color" } do
+			sur.colors[k] = Color3.new(1, 1, 1)
+		end
+		_theme = t
+		return t
+	end
 	button_styles(
 		t,
 		"Button",

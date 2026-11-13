@@ -58,6 +58,13 @@ function RatioSlider.new(c: any)
 	self._track_stroke = ts
 	self._glow, self._glow_corner = frame("Glow", 2)
 	self._thumb, self._thumb_corner = frame("Thumb", 3)
+	-- (2026-11-12: the main menu's gold chip: a dark gold fill with a gold border and gold letters)
+	local ths = Instance.new("UIStroke")
+	ths.Thickness = 1
+	ths.Color = UITheme.HUB.gold_line
+	ths.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	ths.Parent = self._thumb
+	self._thumb_stroke = ths
 	self._labels = {}
 	for i, stop in UICtx.RATIO_STOPS do
 		local t = Instance.new("TextLabel")
@@ -207,13 +214,20 @@ function RatioSlider._redraw(self)
 	local ty = (self.size.Y - th) * 0.5
 	local cw = w / n
 	local _, at = UICtx.ratio_stop(ctx.ratio, ctx.ratio_max)
-	local radius = math.min(th * 0.5, 10.0)
+	local radius = if UITheme.FLAT_LOOK then UITheme.HUB.radius + 0.0 else math.min(th * 0.5, 10.0)
 	-- the row
 	set_rect(self._track, 0, ty, w, th)
 	self._track_corner.CornerRadius = UDim.new(0, math.floor(radius * s + 0.5))
-	self._track.BackgroundColor3 = Color3.new(1, 1, 1)
-	self:_part(self._track, "BackgroundTransparency", 0.07)
-	self:_part(self._track_stroke, "Transparency", 0.12)
+	if UITheme.FLAT_LOOK then
+		self._track.BackgroundColor3 = UITheme.HUB.ink
+		self._track_stroke.Color = UITheme.HUB.stroke
+		self:_part(self._track, "BackgroundTransparency", 1.0)
+		self:_part(self._track_stroke, "Transparency", 1.0)
+	else
+		self._track.BackgroundColor3 = Color3.new(1, 1, 1)
+		self:_part(self._track, "BackgroundTransparency", 0.07)
+		self:_part(self._track_stroke, "Transparency", 0.12)
+	end
 	-- the thumb, on the stop in use (and a soft edge around it while it is held)
 	local inset = 2.0
 	local x = (self._shown - 1) * cw + inset
@@ -226,8 +240,14 @@ function RatioSlider._redraw(self)
 		self:_part(self._glow, "BackgroundTransparency", 0.3)
 	end
 	set_rect(self._thumb, x, ty + inset, cw - inset * 2.0, th - inset * 2.0)
-	self._thumb_corner.CornerRadius = UDim.new(0, math.floor((radius - inset) * s + 0.5))
-	self._thumb.BackgroundColor3 = if hot then UITheme.AMBER_HI else UITheme.AMBER
+	self._thumb_corner.CornerRadius = UDim.new(0, math.floor(math.max(2.0, radius - inset) * s + 0.5))
+	if UITheme.FLAT_LOOK then
+		self._thumb.BackgroundColor3 = if hot then UITheme.HUB_STYLES.gold.hover else UITheme.HUB_STYLES.gold.bg
+		self:_part(self._thumb_stroke, "Transparency", 1.0)
+	else
+		self._thumb.BackgroundColor3 = if hot then UITheme.AMBER_HI else UITheme.AMBER
+		self:_part(self._thumb_stroke, "Transparency", 0.0)
+	end
 	self:_part(self._thumb, "BackgroundTransparency", 1.0)
 	-- the stops
 	local ts = UITheme.text_size(self.font_size)
@@ -239,7 +259,7 @@ function RatioSlider._redraw(self)
 		local locked = stops[i] > top
 		t.FontFace = UITheme.font(if on then 800 else 700)
 		if on then
-			t.TextColor3 = UITheme.INK
+			t.TextColor3 = if UITheme.FLAT_LOOK then UITheme.HUB.gold else UITheme.INK
 			self:_part(t, "TextTransparency", 1.0)
 		elseif locked then
 			t.TextColor3 = UITheme.TEXT_3
