@@ -5,8 +5,8 @@
 Both are pixel art on white with a caption under each piece. Every piece is found as the ink between
 the captions (its separate parts, a moustache and its goatee, stay one piece), cut out with the white
 around it made clear, and kept at HI x the Countryball's 32 x 32 grid, so the sheet's detail survives:
-sized as on the user's sheet of finished empire balls (Downloads/2778f313-...webp; never larger than
-the sheet, the colours merged a little to fit the palette):
+sized and placed as on the user's sheet of finished empire balls (Downloads/2778f313-...webp; see
+KINDS), the colours merged a little to fit the palette:
 an empire's ball is drawn at HI x (UI/Countryball: the 32 x 32 ball scaled up, the pieces over it), on
 a canvas TOP ball pixels taller above the ball and BOT below, so a tall crown rises over the head and a
 long beard hangs under the chin while the ball keeps its size on screen.
@@ -33,7 +33,7 @@ DL = os.path.dirname(ROOT)
 BEARDS = "cecbdd5a-f2e8-4d1d-8d27-d31a00aee4af.webp"
 HATS = "fc268d47-2096-41c8-bc7a-6c45ca7decc4.webp"
 G, CX, CY, R = L.G, L.CX, L.CY, L.R
-HI = 4  # the pieces' resolution: HI pixels a ball pixel
+HI = 3  # the pieces' resolution: HI pixels a ball pixel (the sheet art about its own size)
 N = G * HI
 OUT = L.OUT
 
@@ -143,20 +143,36 @@ def cut(a, m):
     return Image.fromarray(rgba, "RGBA")
 
 
-# (2026-11-12, after the user's reference sheet of finished empire balls, Downloads/2778f313-...webp:
-# the hat about as wide as the ball, over its top third, the brim just over the eyes; the beard small,
-# inside the lower half under the eyes.) Sizes in parts of the ball's diameter D.
-D = 2 * R * HI
-HAT_W, HAT_H = 0.9, 0.78  # a hat at most this wide and tall
-WIDE_W, WIDE_H = 1.18, 0.62  # a wide hat (bicorne, tricorne, gat, straw hat: wider than 1.35 x its height)
-BEARD_W, BEARD_H = 0.66, 0.4  # a beard inside the lower face (rows 18.5 down to the ball's bottom)
-TACHE_W, TACHE_H = 0.5, 0.2  # a moustache
-# per piece fine-tuning, in canvas pixels (+ down); and size (x)
-HAT_DY = {"byzantine": 6, "moroccan": 12, "ashanti": 4, "korean": 4, "japanese": 2}
-HAT_K = {}
+# (2026-11-12, after the user's reference sheet of finished empire balls, Downloads/2778f313-...webp.)
+# Each hat by its kind: (width in parts of the ball's diameter D, the row its bottom sits on):
+#   wrap   helmets, caps, turbans: as wide as the ball, covering the head down to just over the eyes
+#   wide   bicornes, tricornes, the gat, the straw hat: wider than the ball, the brim over the eyes
+#   band   wreaths, headbands, feather headdresses: round the head over the eyes
+#   crown  crowns: on top of the head, about 0.72 D wide
+#   fez    the fez: on top, narrower
+#   cloth  the keffiyeh: over the head and down the sides of the face
+KINDS = {"wrap": (1.0, 13.5), "wide": (1.32, 13.5), "band": (1.0, 12.5), "crown": (0.72, 5.0),
+         "fez": (0.56, 8.0), "cloth": (1.12, 25.0)}
+HAT_KIND = {
+    "british": "crown", "german": "wrap", "russian": "crown", "ottoman": "fez", "japanese": "wrap",
+    "french": "wide", "austrian": "crown", "spanish": "wrap", "portuguese": "crown", "qing": "wrap",
+    "persian": "crown", "brazilian": "crown", "mexican": "wide", "ethiopian": "crown", "byzantine": "crown",
+    "roman": "band", "korean": "wide", "swedish": "wide", "dutch": "wide", "mughal": "wrap", "mongol": "wrap",
+    "inca": "band", "mali": "crown", "songhai": "wide", "ashanti": "band", "zulu": "band", "vietnamese": "wrap",
+    "bulgarian": "crown", "serbian": "crown", "timurid": "crown", "durrani": "wrap", "central_african": "wrap",
+    "haitian": "crown", "moroccan": "cloth", "omani": "wrap", "burmese": "crown", "majapahit": "crown",
+    "danish": "crown",
+}
+BEARD_W = 0.62  # a full beard: this wide (D), its top under the eyes; it may hang a little under the chin
+TACHE_W = 0.56  # a moustache
+BEARD_TOP = 18.5
+# per piece fine-tuning: rows (+ down) and size (x)
+HAT_DY = {"spanish": 0.5, "byzantine": 1.0}
+HAT_K = {"spanish": 1.12}
 BEARD_DY = {}
 BEARD_K = {}
 COLOURS = 76  # (len(ALPHA))
+D = 2 * R * HI
 
 
 def few_colours(img):
@@ -171,16 +187,15 @@ def few_colours(img):
 
 
 def resized(img, k):
-    """`img` (RGBA) at k x its size: a box filter over its opaque pixels only, hard alpha (k >= 1: the
-    sheet's own pixels)."""
-    if k >= 0.999:
+    """`img` (RGBA) at k x its size (Lanczos over its opaque pixels only), hard alpha."""
+    if abs(k - 1) < 0.01:
         return img
     w, h = max(2, round(img.width * k)), max(2, round(img.height * k))
     a = np.asarray(img).astype(float)
     al = a[..., 3:4] / 255.0
     pre = np.concatenate([a[..., :3] * al, al * 255], axis=2).astype(np.uint8)
-    sm = np.asarray(Image.fromarray(pre, "RGBA").resize((w, h), Image.BOX)).astype(float)
-    alpha = sm[..., 3] / 255.0
+    sm = np.asarray(Image.fromarray(pre, "RGBA").resize((w, h), Image.LANCZOS)).astype(float)
+    alpha = np.clip(sm[..., 3] / 255.0, 0, 1)
     rgb = np.clip(sm[..., :3] / np.maximum(alpha[..., None], 1e-6), 0, 255)
     out = np.zeros((h, w, 4), np.uint8)
     out[..., :3] = rgb.astype(np.uint8)
@@ -201,24 +216,19 @@ def clip_ball(a, x, y, shrink=0.9):
 
 
 def hat(img, key):
-    w0, h0 = img.size
-    wide = w0 > 1.35 * h0
-    mw, mh = (WIDE_W, WIDE_H) if wide else (HAT_W, HAT_H)
-    k = min(1.0, mw * D / w0, mh * D / h0) * HAT_K.get(key, 1.0)
+    wd, bottom = KINDS[HAT_KIND[key]]
+    k = wd * D / img.width * HAT_K.get(key, 1.0)
     a = few_colours(resized(img, k))
     h, w = a.shape[:2]
-    return a, G * HI // 2 - w // 2, 13 * HI - h + HAT_DY.get(key, 0)
+    return a, G * HI // 2 - w // 2, round((bottom + HAT_DY.get(key, 0)) * HI) - h
 
 
 def beard(img, key):
-    w0, h0 = img.size
-    tache = h0 < 0.62 * w0
-    mw, mh = (TACHE_W, TACHE_H) if tache else (BEARD_W, BEARD_H)
-    k = min(1.0, mw * D / w0, mh * D / h0) * BEARD_K.get(key, 1.0)
+    tache = img.height < 0.62 * img.width
+    k = (TACHE_W if tache else BEARD_W) * D / img.width * BEARD_K.get(key, 1.0)
     a = few_colours(resized(img, k))
     h, w = a.shape[:2]
-    x, y = G * HI // 2 - w // 2, round(18.5 * HI) + BEARD_DY.get(key, 0)
-    return clip_ball(a, x, y), x, y
+    return a, G * HI // 2 - w // 2, round((BEARD_TOP + BEARD_DY.get(key, 0)) * HI)
 
 
 # ---------------------------------------------------------------- the module
@@ -261,7 +271,7 @@ def lua(sp):
 
 
 # ---------------------------------------------------------------- the preview, as the game draws it
-def ball_hi(key, look, top, bot):
+def ball_hi(key, look, top, bot, side):
     flags = L.empire_flags()
     pal, ix = flags.get(key, ([(150, 156, 170)], "0" * 600))
     base = Image.new("RGBA", (G, G), (0, 0, 0, 0))
@@ -280,13 +290,14 @@ def ball_hi(key, look, top, bot):
                 if (R - d) < 2.4 and (nx * 0.85 - ny * 0.25 > 0.45 or ny > 0.55):
                     c = tuple(int(q * 0.8 + 0.5) for q in c)
                 base.putpixel((x, y), c + (255,))
-    W, H = G * HI, (G + top + bot) * HI
+    W, H = (G + 2 * side) * HI, (G + top + bot) * HI
+    B = G * HI
     out = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    out.alpha_composite(base.resize((W, G * HI), Image.NEAREST), (0, top * HI))
+    out.alpha_composite(base.resize((B, B), Image.NEAREST), (side * HI, top * HI))
 
     def put(piece):
         a, x, y = piece
-        out.alpha_composite(Image.fromarray(a, "RGBA"), (x, y + top * HI))
+        out.alpha_composite(Image.fromarray(a, "RGBA"), (x + side * HI, y + top * HI))
 
     put(look[1])
     ex, ey, epal, erows = L.eyes_sprite()
@@ -295,7 +306,7 @@ def ball_hi(key, look, top, bot):
         for i, ch in enumerate(row):
             if ch in epal:
                 eyes.putpixel((ex + i, ey + j), epal[ch] + (255,))
-    out.alpha_composite(eyes.resize((W, G * HI), Image.NEAREST), (0, top * HI))
+    out.alpha_composite(eyes.resize((B, B), Image.NEAREST), (side * HI, top * HI))
     put(look[0])
     return out
 
@@ -312,33 +323,34 @@ def main():
     # the room the pieces need above and below the ball, in ball pixels (the same for every empire)
     top = max(0, -min(min(h[2], b[2]) for h, b in looks.values()))
     bot = max(0, max(max(h[2] + h[0].shape[0], b[2] + b[0].shape[0]) for h, b in looks.values()) - G * HI)
-    top, bot = -(-top // HI), -(-bot // HI)
-    for h, b in looks.values():
-        assert h[1] >= 0 and h[1] + h[0].shape[1] <= G * HI, "a hat wider than the ball's canvas"
+    side = max(0, -min(min(h[1], b[1]) for h, b in looks.values()))
+    side = max(side, max(max(h[1] + h[0].shape[1], b[1] + b[0].shape[1]) for h, b in looks.values()) - G * HI)
+    top, bot, side = -(-top // HI), -(-bot // HI), -(-side // HI)
     parts = []
     for k in L.KEYS:
         parts.append("\t%s = {\n\t\that = %s,\n\t\tbeard = %s,\n\t}," % (k, lua(encode(looks[k][0])), lua(encode(looks[k][1]))))
     mod = (
         "--!strict\n"
-        "-- GENERATED by tools/build_empire_art.py from the user's empire hat and beard sheets (copied 1:1).\n"
+        "-- GENERATED by tools/build_empire_art.py from the user's empire hat and beard sheets.\n"
         "-- Do not edit.\n"
         "-- (World Conquest, 2026-11-12) Each historical empire's own hat and facial hair, by the empire's flag\n"
         "-- key (Data/Empires.HISTORICAL, \"emp_<key>\"). UI/Countryball draws an empire's ball at HI x its 32 x 32\n"
-        "-- grid on a canvas TOP ball pixels taller above the ball and BOT below, these pieces over it: x, y on\n"
-        "-- that HI x grid (y < 0: above the ball), pal, data: the rows run-length coded (\".\" clear, a palette\n"
+        "-- grid on a canvas TOP ball pixels taller above the ball, BOT below and SIDE wider on each side, these\n"
+        "-- pieces over it: x, y on the ball's HI x grid (< 0: left of / above the ball), pal, data: the rows\n"
+        "-- run-length coded (\".\" clear, a palette\n"
         "-- letter in ALPHA order a pixel, a count before a run). The player's own gear replaces them.\n"
-        "return {\n\tHI = %d,\n\tTOP = %d,\n\tBOT = %d,\n\tALPHA = \"%s\",\n" % (HI, top, bot, ALPHA)
+        "return {\n\tHI = %d,\n\tTOP = %d,\n\tBOT = %d,\n\tSIDE = %d,\n\tALPHA = \"%s\",\n" % (HI, top, bot, side, ALPHA)
         + "\n".join(parts) + "\n}\n"
     )
     open(os.path.join(ROOT, "src", "shared", "Data", "EmpireLooks.luau"), "w", encoding="utf-8", newline="\n").write(mod)
     cols = 10
-    cw, ch = G * HI + 24, (G + top + bot) * HI + 24
+    cw, ch = (G + 2 * side) * HI + 24, (G + top + bot) * HI + 24
     rows_n = (len(L.KEYS) + cols - 1) // cols
     sheet = Image.new("RGBA", (cols * cw + 24, rows_n * ch + 24), (24, 30, 50, 255))
     for i, k in enumerate(L.KEYS):
-        sheet.alpha_composite(ball_hi(k, looks[k], top, bot), (24 + (i % cols) * cw, 24 + (i // cols) * ch))
+        sheet.alpha_composite(ball_hi(k, looks[k], top, bot, side), (24 + (i % cols) * cw, 24 + (i // cols) * ch))
     sheet.save(os.path.join(ROOT, "tools", "assets_out", "empire_looks_preview.png"))
-    print("ok", len(L.KEYS), "top", top, "bot", bot, "module", len(mod), "chars")
+    print("ok", len(L.KEYS), "top", top, "bot", bot, "side", side, "module", len(mod), "chars")
 
 
 if __name__ == "__main__":
